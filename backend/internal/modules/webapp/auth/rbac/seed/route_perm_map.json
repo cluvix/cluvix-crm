@@ -3436,5 +3436,176 @@
   "kind": "public",
   "enforce_phase1": false,
   "note": "tải file export (S-2/O-6): nhóm authed (JWT); handler chỉ phục vụ file trong storage/export/<userID>/ của chính user đăng nhập, tên regex chặt ⇒ không cần perm riêng (quyền đã kiểm ở lúc tạo export)"
+ },
+ {
+  "method": "POST",
+  "path": "/api/fbgroup/ingest",
+  "module": "fbgroup",
+  "perm": "",
+  "kind": "public",
+  "enforce_phase1": false,
+  "note": "NextCore GROUPCRAWL đẩy group Facebook — nằm NGOÀI authed (không JWT), xác thực bằng khoá API riêng (fb_group_ingest_key, middleware RequireIngestKey)"
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/group",
+  "module": "fbgroup",
+  "perm": "viewFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "POST",
+  "path": "/api/fbgroup/group/bulk",
+  "module": "fbgroup",
+  "perm": "updateFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "POST",
+  "path": "/api/fbgroup/group/import-csv",
+  "module": "fbgroup",
+  "perm": "updateFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": "nhập tệp Xuất CSV của GROUPCRAWL"
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/group/:id",
+  "module": "fbgroup",
+  "perm": "viewFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "PUT",
+  "path": "/api/fbgroup/group/:id",
+  "module": "fbgroup",
+  "perm": "updateFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/topic",
+  "module": "fbgroup",
+  "perm": "viewFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": "màn danh sách/thống kê cần danh sách chủ đề để lọc"
+ },
+ {
+  "method": "POST",
+  "path": "/api/fbgroup/topic",
+  "module": "fbgroup",
+  "perm": "manageFbGroupTopic",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "POST",
+  "path": "/api/fbgroup/topic/preview",
+  "module": "fbgroup",
+  "perm": "manageFbGroupTopic",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "POST",
+  "path": "/api/fbgroup/topic/reclassify",
+  "module": "fbgroup",
+  "perm": "manageFbGroupTopic",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/topic/:id",
+  "module": "fbgroup",
+  "perm": "viewFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "PUT",
+  "path": "/api/fbgroup/topic/:id",
+  "module": "fbgroup",
+  "perm": "manageFbGroupTopic",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "DELETE",
+  "path": "/api/fbgroup/topic/:id",
+  "module": "fbgroup",
+  "perm": "manageFbGroupTopic",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/stats/overview",
+  "module": "fbgroup",
+  "perm": "viewFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/stats/branches",
+  "module": "fbgroup",
+  "perm": "viewFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/stats/provinces",
+  "module": "fbgroup",
+  "perm": "viewFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/stats/keywords",
+  "module": "fbgroup",
+  "perm": "viewFbGroup",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "GET",
+  "path": "/api/fbgroup/ingest-key",
+  "module": "fbgroup",
+  "perm": "manageFbGroupTopic",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": "trạng thái khoá API NextCore (không trả khoá)"
+ },
+ {
+  "method": "POST",
+  "path": "/api/fbgroup/ingest-key",
+  "module": "fbgroup",
+  "perm": "manageFbGroupTopic",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": "tạo khoá API NextCore mới, thu hồi khoá cũ"
  }
 ]

@@ -108,6 +108,10 @@
     "description": "Báo cáo CRM — Quản lý"
   },
   {
+    "name": "manageFbGroupTopic",
+    "description": "Chủ đề group Facebook — Quản lý"
+  },
+  {
     "name": "searchCustomerGlobal",
     "description": "Tìm kiếm khách hàng Global — Danh sách"
   },
@@ -118,6 +122,10 @@
   {
     "name": "updateCustomer",
     "description": "Khách hàng — Cập nhật"
+  },
+  {
+    "name": "updateFbGroup",
+    "description": "Group Facebook — Cập nhật"
   },
   {
     "name": "updateNote",
@@ -150,6 +158,10 @@
   {
     "name": "viewCustomer",
     "description": "Khách hàng — Danh sách"
+  },
+  {
+    "name": "viewFbGroup",
+    "description": "Group Facebook — Danh sách"
   },
   {
     "name": "viewHistory",

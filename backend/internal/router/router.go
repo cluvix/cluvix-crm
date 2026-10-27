@@ -13,6 +13,7 @@ import (
 	configModule "erpCluvix/internal/modules/webapp/config"
 	"erpCluvix/internal/modules/webapp/crm"
 	exportModule "erpCluvix/internal/modules/webapp/export"
+	"erpCluvix/internal/modules/webapp/fbgroup"
 	"erpCluvix/internal/modules/webapp/history"
 	"erpCluvix/internal/modules/webapp/hr"
 	importmodule "erpCluvix/internal/modules/webapp/import"
@@ -104,6 +105,8 @@ func Setup(cfg *config.Config, d deps.Deps) *gin.Engine {
 	history.Register(authed, d)
 	importmodule.Register(authed, d)
 	printModule.Register(authed, d)
+	// Group Facebook — POST /api/fbgroup/ingest nằm ở `api` (NextCore gọi bằng khoá API, không JWT).
+	fbgroup.Register(api, authed, d)
 	// Tải file export — CÓ JWT + chỉ file của chính người tạo (S-2/O-6). Thay static công khai cũ.
 	exportModule.RegisterDownload(authed)
 

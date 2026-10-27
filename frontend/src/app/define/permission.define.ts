@@ -50,6 +50,11 @@ export const PERMISSION_SELECT = {
 
   // ─── Cấu hình ────────────────────────────────
   permissionManageConfig: 'manageConfig', // Cấu hình — Quản lý
+
+  // ─── Group Facebook (bmad/fb-group/thiet-ke.md) ────────────────────────────────
+  permissionViewFbGroup: 'viewFbGroup', // Group Facebook — Danh sách
+  permissionUpdateFbGroup: 'updateFbGroup', // Group Facebook — Cập nhật
+  permissionManageFbGroupTopic: 'manageFbGroupTopic', // Chủ đề group Facebook — Quản lý
 };
 
 // CRM_MODULE_PERMISSIONS — tập 3 quyền OR-gate "quyền module CRM". FE từng dùng cho ô "/crm" trong

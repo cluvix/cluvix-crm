@@ -109,7 +109,9 @@
         "reminder": "Nhắc nhở",
         "crm_report": "Báo cáo CRM",
         "refund_service": "Hoàn dịch vụ",
-        "service_used": "Dịch vụ đã dùng"
+        "service_used": "Dịch vụ đã dùng",
+        "fb_group": "Group Facebook",
+        "fb_group_topic": "Chủ đề group Facebook"
       }
     },
     "tag_severity": {

@@ -109,7 +109,9 @@
         "reminder": "Reminder",
         "crm_report": "CRM reports",
         "refund_service": "Refund service",
-        "service_used": "Service used"
+        "service_used": "Service used",
+        "fb_group": "Facebook groups",
+        "fb_group_topic": "Facebook group topics"
       }
     },
     "tag_severity": {

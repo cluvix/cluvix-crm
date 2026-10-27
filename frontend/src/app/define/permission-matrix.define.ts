@@ -551,6 +551,52 @@ export const PERMISSION_MATRIX: PermissionMatrixModule[] = [
     ]
   },
   {
+    name: "Group Facebook",
+    nameKey: "define.permission.module.fb_group",
+    id: 121,
+    appModule: "cxCrm",
+    viewMode: 0,
+    typeModule: "Chức năng",
+    typeModuleKey: "common.label.feature",
+    permissions: [
+      {
+        value: PERMISSION_SELECT.permissionViewFbGroup,
+        label: "Danh sách",
+        labelKey: "define.permission.action.list",
+        type: 1,
+        parent: 121
+      },
+      {value: null, label: "Tạo mới", labelKey: "common.action.create", type: 0, parent: 121},
+      {
+        value: PERMISSION_SELECT.permissionUpdateFbGroup,
+        label: "Cập nhật",
+        labelKey: "common.action.update",
+        type: 3,
+        parent: 121
+      },
+      {value: null, label: "Mở rộng", labelKey: "define.permission.action.extend", type: 0, parent: 121},
+      {value: null, label: "Xóa", labelKey: "common.action.delete", type: 0, parent: 121},
+    ]
+  },
+  {
+    name: "Chủ đề group Facebook",
+    nameKey: "define.permission.module.fb_group_topic",
+    id: 122,
+    appModule: "cxCrm",
+    viewMode: 0,
+    typeModule: "Chức năng",
+    typeModuleKey: "common.label.feature",
+    permissions: [
+      {
+        value: PERMISSION_SELECT.permissionManageFbGroupTopic,
+        label: "Quản lý",
+        labelKey: "define.permission.action.manage",
+        type: 1,
+        parent: 122
+      },
+    ]
+  },
+  {
     name: "Đặt cọc",
     nameKey: "common.label.deposit",
     id: 103,
