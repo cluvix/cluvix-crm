@@ -1,0 +1,58 @@
+@if (detail(); as d) {
+  <div class="flex flex-col gap-4 p-1">
+    <a [href]="d.url" target="_blank" rel="noopener noreferrer" class="text-sm text-[#7B3F9E] hover:underline break-all">
+      <i class="pi pi-external-link mr-1"></i>{{ d.url }}
+    </a>
+
+    <dl class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 m-0 text-sm">
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.members' | translate }}</dt>
+        <dd class="m-0 font-semibold tabular-nums text-[var(--p-text-color)]">{{ fmt(d.member_count) }}@if (d.member_rounded) { <span class="text-xs font-normal text-[var(--p-text-muted-color)]">({{ 'fbgroup.label.rounded' | translate }})</span> }</dd></div>
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.posts_per_day' | translate }}</dt>
+        <dd class="m-0 font-semibold tabular-nums text-[var(--p-text-color)]">{{ fmt(d.posts_per_day) }}</dd></div>
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.privacy' | translate }}</dt>
+        <dd class="m-0 text-[var(--p-text-color)]">{{ (d.privacy === PRIVACY.PRIVATE ? 'fbgroup.privacy.private' : 'fbgroup.privacy.public') | translate }}</dd></div>
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.province' | translate }}</dt>
+        <dd class="m-0 text-[var(--p-text-color)]">{{ d.province ?? '—' }}</dd></div>
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.keyword' | translate }}</dt>
+        <dd class="m-0 text-[var(--p-text-color)]">{{ d.found_keyword ?? '—' }}</dd></div>
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.found_by_profile' | translate }}</dt>
+        <dd class="m-0 text-[var(--p-text-color)]">{{ d.found_by_profile ?? '—' }}</dd></div>
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.ncb_category' | translate }}</dt>
+        <dd class="m-0 text-[var(--p-text-color)]">{{ d.ncb_category ?? '—' }}</dd></div>
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.first_seen' | translate }}</dt>
+        <dd class="m-0 text-[var(--p-text-color)]">{{ (d.first_seen_at | customDate) || '—' }}</dd></div>
+      <div><dt class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.last_seen' | translate }}</dt>
+        <dd class="m-0 text-[var(--p-text-color)]">{{ (d.last_seen_at | customDate) || '—' }}</dd></div>
+    </dl>
+
+    <div class="flex flex-col gap-1">
+      <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.topic' | translate }}</span>
+      <div class="flex flex-wrap gap-1">
+        @for (t of d.topics; track t.topic_id) {
+          <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border border-[var(--p-content-border-color)] text-[var(--p-text-color)]">
+            <span class="w-2 h-2 rounded-full" [style.background]="t.color"></span>{{ t.name }}
+            @if (t.branch_name) { <span class="text-[var(--p-text-muted-color)]">· {{ t.branch_name }}</span> }
+          </span>
+        } @empty {
+          <span class="text-sm text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.no_topic' | translate }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="fbg-status" class="text-xs text-[var(--p-text-muted-color)]">{{ 'common.label.status' | translate }}</label>
+      <p-select inputId="fbg-status" [options]="workStatusOptions()" optionLabel="label" optionValue="value"
+        [ngModel]="workStatus()" (ngModelChange)="workStatus.set($event)" [disabled]="!canUpdate" appendTo="body" class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="fbg-note" class="text-xs text-[var(--p-text-muted-color)]">{{ 'common.label.note' | translate }}</label>
+      <textarea id="fbg-note" pTextarea rows="4" class="w-full" [attr.maxlength]="noteMax" [disabled]="!canUpdate"
+        [value]="note()" (input)="note.set($any($event.target).value)"></textarea>
+    </div>
+  </div>
+  @if (canUpdate) {
+    <app-dialog-footer [isSubmitting]="isSubmitting()" (cancelForm)="cancel()" (saveForm)="onSubmit()" />
+  }
+} @else if (loading()) {
+  <div class="flex justify-center py-8"><p-progress-spinner styleClass="w-10 h-10" /></div>
+}

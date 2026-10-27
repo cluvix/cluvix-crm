@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	exportHandlers "erpCluvix/internal/modules/webapp/export"
 	"erpCluvix/internal/modules/webapp/fbgroup/classify"
 	"erpCluvix/pkg/define"
 	"erpCluvix/pkg/helpers"
@@ -212,6 +213,10 @@ func (h *Handler) ListGroup(c *gin.Context) {
 		return
 	}
 	q = applySort(c, q)
+	if c.Query("_export") == "1" {
+		exportHandlers.ExportFbGroups(c, q) // cùng bộ lọc + sắp xếp với danh sách
+		return
+	}
 	items := make([]GroupRow, 0)
 	result := pagination.PaginateTyped(c, q, &items)
 	if c.Writer.Written() {

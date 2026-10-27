@@ -55,4 +55,10 @@ export default [
     loadComponent: () =>
       import('@/modules/crm/reminder/list/reminder-list').then((c) => c.ReminderList),
   },
+  {
+    // Group Facebook (bmad/fb-group/thiet-ke.md) — quyền gác từng màn trong fbgroup.routes.
+    path: 'fb-group',
+    loadChildren: () => import('@/modules/fbgroup/fbgroup.routes'),
+    data: {breadcrumb: 'fbgroup.menu.root'},
+  },
 ] as Routes;

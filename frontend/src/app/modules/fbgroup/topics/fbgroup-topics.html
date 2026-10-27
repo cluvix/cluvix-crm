@@ -1,0 +1,104 @@
+<div class="flex flex-wrap gap-5 items-start">
+  <div class="flex flex-col gap-3 grow basis-[28rem] min-w-0">
+    <div class="flex flex-wrap items-end gap-3">
+      <h1 class="text-xl font-semibold m-0 grow text-[var(--p-text-color)]">{{ 'fbgroup.menu.topics' | translate }}</h1>
+      @if (canManage()) {
+        <button pButton type="button" size="small" [outlined]="true" [disabled]="reclassifying()" (click)="reclassify($event)">
+          <i class="pi pi-refresh" [class.pi-spin]="reclassifying()"></i><span>{{ 'fbgroup.topic.reclassify' | translate }}</span>
+        </button>
+        <button pButton type="button" size="small" (click)="openForm(null)">
+          <i class="pi pi-plus"></i><span>{{ 'fbgroup.topic.create_title' | translate }}</span>
+        </button>
+      }
+    </div>
+
+    @for (t of topics(); track t.id) {
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 flex items-center gap-3"
+        [class.opacity-60]="t.status !== 1">
+        <span class="w-3 self-stretch rounded" [style.background]="t.color" aria-hidden="true"></span>
+        <div class="grow min-w-0">
+          <div class="font-semibold text-[var(--p-text-color)]">
+            {{ t.name }}
+            @if (t.status !== 1) { <p-tag [value]="'fbgroup.topic.inactive' | translate" severity="secondary" class="ml-2" /> }
+          </div>
+          <div class="text-xs text-[var(--p-text-muted-color)] truncate">
+            {{ 'fbgroup.topic.branch_count' | translate: { n: t.branches.length } }} · {{ t.include_keywords.join(', ') }}
+          </div>
+        </div>
+        <div class="text-right tabular-nums shrink-0">
+          <div class="font-semibold text-[var(--p-text-color)]">{{ fmt(t.group_count) }}</div>
+          <div class="text-xs text-[#7B3F9E]">{{ 'fbgroup.topic.qualified_count' | translate: { n: fmt(t.qualified_count) } }}</div>
+        </div>
+        @if (canManage()) {
+          <div class="flex shrink-0">
+            <button pButton type="button" size="small" [text]="true" [rounded]="true" [iconOnly]="true" (click)="openForm(t)"
+              [attr.aria-label]="'common.action.update' | translate" [pTooltip]="'common.action.update' | translate"><i class="pi pi-pencil"></i></button>
+            <button pButton type="button" size="small" [text]="true" [rounded]="true" [iconOnly]="true" severity="danger"
+              (click)="deleteTopic($event, t)" [attr.aria-label]="'common.action.delete' | translate" [pTooltip]="'common.action.delete' | translate">
+              <i class="pi pi-trash"></i></button>
+          </div>
+        }
+      </div>
+    } @empty {
+      @if (!loading()) {
+        <p class="text-sm text-[var(--p-text-muted-color)]">{{ 'fbgroup.topic.empty' | translate }}</p>
+      }
+    }
+  </div>
+
+  @if (canManage()) {
+    <section class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 flex flex-col gap-3 grow basis-[22rem] min-w-0">
+      <h2 class="text-base font-semibold m-0 text-[var(--p-text-color)]">{{ 'fbgroup.connect.title' | translate }}</h2>
+      <p class="m-0 text-sm leading-relaxed text-[var(--p-text-color)]">{{ 'fbgroup.connect.hint' | translate }}</p>
+
+      <div class="grid grid-cols-[7rem_minmax(0,1fr)] gap-2 items-center text-sm">
+        <span class="text-[var(--p-text-muted-color)]">{{ 'fbgroup.connect.url' | translate }}</span>
+        <div class="flex items-center gap-1 min-w-0">
+          <code class="rounded-md px-2 py-1.5 text-xs overflow-x-auto whitespace-nowrap bg-[var(--p-content-border-color)]/40 text-[var(--p-text-color)] grow">{{ ingestUrl() }}</code>
+          <button pButton type="button" size="small" [text]="true" [iconOnly]="true" (click)="copy(ingestUrl())"
+            [attr.aria-label]="'fbgroup.connect.copy' | translate"><i class="pi pi-copy"></i></button>
+        </div>
+        <span class="text-[var(--p-text-muted-color)]">{{ 'fbgroup.connect.header' | translate }}</span>
+        <code class="rounded-md px-2 py-1.5 text-xs bg-[var(--p-content-border-color)]/40 text-[var(--p-text-color)]">Authorization</code>
+        <span class="text-[var(--p-text-muted-color)]">{{ 'fbgroup.connect.key' | translate }}</span>
+        @if (keyInfo()?.has_key) {
+          <code class="rounded-md px-2 py-1.5 text-xs bg-[var(--p-content-border-color)]/40 text-[var(--p-text-color)]">Bearer ncb_••••{{ keyInfo()?.key_hint }}</code>
+        } @else {
+          <span class="text-[var(--p-text-muted-color)]">{{ 'fbgroup.connect.no_key' | translate }}</span>
+        }
+        @if (keyInfo(); as k) {
+          @if (k.has_key) {
+            <span class="text-[var(--p-text-muted-color)]">{{ 'fbgroup.connect.last_used' | translate }}</span>
+            <span class="text-[var(--p-text-color)]">
+              @if (k.last_used_at) {
+                {{ k.last_used_at | customDate: true }} · {{ 'fbgroup.connect.total_received' | translate: { n: fmt(k.total_received) } }}
+              } @else {
+                {{ 'fbgroup.connect.never_used' | translate }}
+              }
+            </span>
+          }
+        }
+      </div>
+
+      @if (newKey(); as key) {
+        <div class="rounded-lg p-3 flex flex-col gap-2 bg-[var(--cx-note-bg)] border border-[var(--cx-note-border)]">
+          <span class="text-sm font-semibold text-[#B45309]">{{ 'fbgroup.connect.new_key_once' | translate }}</span>
+          <div class="flex items-center gap-1 min-w-0">
+            <code class="rounded-md px-2 py-1.5 text-xs overflow-x-auto whitespace-nowrap bg-[var(--p-content-background)] text-[var(--p-text-color)] grow">Bearer {{ key }}</code>
+            <button pButton type="button" size="small" [iconOnly]="true" (click)="copy('Bearer ' + key)"
+              [attr.aria-label]="'fbgroup.connect.copy' | translate"><i class="pi pi-copy"></i></button>
+          </div>
+        </div>
+      }
+
+      <button pButton type="button" size="small" [outlined]="true" class="self-start" (click)="createKey($event)">
+        <i class="pi pi-key"></i><span>{{ (keyInfo()?.has_key ? 'fbgroup.connect.rotate_key' : 'fbgroup.connect.create_key') | translate }}</span>
+      </button>
+      <ol class="m-0 pl-5 text-xs leading-relaxed text-[var(--p-text-muted-color)]">
+        <li>{{ 'fbgroup.connect.step1' | translate }}</li>
+        <li>{{ 'fbgroup.connect.step2' | translate }}</li>
+        <li>{{ 'fbgroup.connect.step3' | translate }}</li>
+      </ol>
+    </section>
+  }
+</div>

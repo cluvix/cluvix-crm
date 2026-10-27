@@ -11,6 +11,11 @@ const (
 	FbGroupWorkExcluded = 3 // Loại (lạc đề, chất lượng kém…)
 )
 
+// FbGroupWorkStatusLabels — nhãn trạng thái ghi vào file Excel xuất (FE hiển thị qua i18n riêng).
+var FbGroupWorkStatusLabels = map[int]string{
+	FbGroupWorkNew: "Mới", FbGroupWorkTarget: "Mục tiêu", FbGroupWorkWatch: "Theo dõi", FbGroupWorkExcluded: "Loại",
+}
+
 // FbGroupWorkStatuses — tập giá trị hợp lệ của work_status (validate payload).
 var FbGroupWorkStatuses = map[int]bool{
 	FbGroupWorkNew: true, FbGroupWorkTarget: true, FbGroupWorkWatch: true, FbGroupWorkExcluded: true,

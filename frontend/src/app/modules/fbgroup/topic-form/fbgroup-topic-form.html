@@ -1,0 +1,95 @@
+<div class="flex flex-col gap-4 p-1">
+  <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3">
+    <div class="flex flex-col gap-1">
+      <label for="tp-name" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.topic.name' | translate }} *</label>
+      <input id="tp-name" pInputText maxlength="128" [value]="name()" (input)="name.set($any($event.target).value)" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'common.label.color' | translate }}</span>
+      <div class="flex items-center gap-2 h-10" role="radiogroup" [attr.aria-label]="'common.label.color' | translate">
+        @for (c of colors; track c) {
+          <button type="button" role="radio" [attr.aria-checked]="color() === c" [attr.aria-label]="c"
+            class="w-7 h-7 rounded-md border-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7B3F9E]"
+            [style.background]="c" [style.box-shadow]="color() === c ? '0 0 0 2px var(--p-content-background), 0 0 0 4px ' + c : 'none'"
+            (click)="color.set(c)"></button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-1">
+    <label for="tp-inc" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.topic.include' | translate }} *</label>
+    <textarea id="tp-inc" pTextarea rows="3" class="w-full" [value]="include()" (input)="include.set($any($event.target).value)"></textarea>
+    <small class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.topic.keywords_hint' | translate }}</small>
+  </div>
+  <div class="flex flex-col gap-1">
+    <label for="tp-exc" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.topic.exclude' | translate }}</label>
+    <textarea id="tp-exc" pTextarea rows="2" class="w-full" [value]="exclude()" (input)="exclude.set($any($event.target).value)"></textarea>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-[var(--p-text-muted-color)] grow">{{ 'fbgroup.topic.branches_hint' | translate }}</span>
+      <button pButton type="button" size="small" [text]="true" (click)="addBranch()">
+        <i class="pi pi-plus"></i><span>{{ 'fbgroup.topic.add_branch' | translate }}</span>
+      </button>
+    </div>
+    @for (b of branches(); track b.key; let first = $first; let last = $last) {
+      <div class="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto] gap-2 items-center">
+        <input pInputText maxlength="128" [value]="b.name" (input)="patchBranch(b.key, 'name', $any($event.target).value)"
+          [attr.aria-label]="'fbgroup.topic.branch_name' | translate" [placeholder]="'fbgroup.topic.branch_name' | translate" />
+        <input pInputText [value]="b.keywords" (input)="patchBranch(b.key, 'keywords', $any($event.target).value)"
+          [attr.aria-label]="'fbgroup.topic.branch_keywords' | translate" [placeholder]="'fbgroup.topic.branch_keywords' | translate" />
+        <div class="flex">
+          <button pButton type="button" size="small" [text]="true" [iconOnly]="true" [disabled]="first" (click)="moveBranch(b.key, -1)"
+            [attr.aria-label]="'fbgroup.topic.move_up' | translate"><i class="pi pi-arrow-up"></i></button>
+          <button pButton type="button" size="small" [text]="true" [iconOnly]="true" [disabled]="last" (click)="moveBranch(b.key, 1)"
+            [attr.aria-label]="'fbgroup.topic.move_down' | translate"><i class="pi pi-arrow-down"></i></button>
+          <button pButton type="button" size="small" [text]="true" [iconOnly]="true" severity="danger" (click)="removeBranch(b.key)"
+            [attr.aria-label]="'common.action.delete' | translate"><i class="pi pi-trash"></i></button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+    <div class="flex flex-col gap-1">
+      <label for="tp-min" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.topic.min_members' | translate }}</label>
+      <p-inputnumber inputId="tp-min" [ngModel]="minMembers()" (ngModelChange)="minMembers.set($event ?? 0)" [min]="0" [useGrouping]="true" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="tp-posts" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.topic.min_posts' | translate }}</label>
+      <p-inputnumber inputId="tp-posts" [ngModel]="minPosts()" (ngModelChange)="minPosts.set($event ?? 0)" [min]="0" />
+    </div>
+    <div class="flex flex-col gap-2 pb-1">
+      <div class="flex items-center gap-2">
+        <p-checkbox inputId="tp-public" [binary]="true" [ngModel]="publicOnly()" (ngModelChange)="publicOnly.set($event)" />
+        <label for="tp-public" class="text-sm cursor-pointer text-[var(--p-text-color)]">{{ 'fbgroup.topic.public_only' | translate }}</label>
+      </div>
+      <div class="flex items-center gap-2">
+        <p-checkbox inputId="tp-active" [binary]="true" [ngModel]="active()" (ngModelChange)="active.set($event)" />
+        <label for="tp-active" class="text-sm cursor-pointer text-[var(--p-text-color)]">{{ 'fbgroup.topic.active' | translate }}</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-[#7B3F9E]/30 bg-[#7B3F9E]/5 p-3 flex flex-col gap-2">
+    <div class="flex items-center gap-2">
+      <span class="font-semibold text-[#7B3F9E] grow">{{ 'fbgroup.topic.preview' | translate }}</span>
+      <button pButton type="button" size="small" [outlined]="true" [disabled]="!includeList().length || previewing()" (click)="runPreview()">
+        <i class="pi pi-search"></i><span>{{ 'fbgroup.topic.run_preview' | translate }}</span>
+      </button>
+    </div>
+    @if (preview(); as p) {
+      <p class="m-0 text-sm text-[var(--p-text-color)]">
+        {{ 'fbgroup.topic.preview_result' | translate: { matched: p.matched, excluded: p.excluded } }}
+      </p>
+      @if (p.samples.length) {
+        <p class="m-0 text-xs leading-relaxed text-[var(--p-text-muted-color)]">{{ p.samples.join(' · ') }}</p>
+      }
+    } @else {
+      <p class="m-0 text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.topic.preview_hint' | translate }}</p>
+    }
+  </div>
+</div>
+<app-dialog-footer [isSubmitting]="isSubmitting() || !valid()" (cancelForm)="cancel()" (saveForm)="onSubmit()" />

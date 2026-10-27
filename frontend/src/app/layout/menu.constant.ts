@@ -156,6 +156,40 @@ export function buildMenuTree(): any[] {
         },
       ],
     },
+    // Group Facebook (bmad/fb-group/thiet-ke.md) — màu kênh Facebook có sẵn ở token --cx-ch-fb.
+    {
+      label: 'Group Facebook',
+      labelKey: 'fbgroup.menu.root',
+      icon: 'pi pi-facebook',
+      iconColor: '#1877F2',
+      routerLinkExact: false,
+      items: [
+        {
+          label: 'Thống kê',
+          labelKey: 'fbgroup.menu.stats',
+          icon: 'pi pi-chart-bar',
+          iconColor: '#7B3F9E',
+          routerLink: ['/fb-group/stats'],
+          permission: PERMISSION_SELECT.permissionViewFbGroup,
+        },
+        {
+          label: 'Danh sách group',
+          labelKey: 'fbgroup.menu.groups',
+          icon: 'pi pi-list',
+          iconColor: '#1877F2',
+          routerLink: ['/fb-group/groups'],
+          permission: PERMISSION_SELECT.permissionViewFbGroup,
+        },
+        {
+          label: 'Chủ đề',
+          labelKey: 'fbgroup.menu.topics',
+          icon: 'pi pi-tags',
+          iconColor: '#FF5722',
+          routerLink: ['/fb-group/topics'],
+          permission: PERMISSION_SELECT.permissionViewFbGroup,
+        },
+      ],
+    },
     // Chuyển từ layout/hr/hr.menu.ts (HrLayout đã xoá).
     {
       label: 'Quản lý nhân sự',

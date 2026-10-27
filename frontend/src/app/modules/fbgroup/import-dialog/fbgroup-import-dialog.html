@@ -1,0 +1,32 @@
+<div class="flex flex-col gap-4 p-1">
+  @if (result(); as r) {
+    <div class="grid grid-cols-3 gap-3">
+      <div class="flex flex-col items-center gap-1 p-4 rounded-xl border border-[var(--p-content-border-color)]">
+        <span class="text-2xl font-bold text-[#10B981] tabular-nums">{{ r.created }}</span>
+        <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.import.created' | translate }}</span>
+      </div>
+      <div class="flex flex-col items-center gap-1 p-4 rounded-xl border border-[var(--p-content-border-color)]">
+        <span class="text-2xl font-bold text-[#3B82F6] tabular-nums">{{ r.updated }}</span>
+        <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'common.label.updated' | translate }}</span>
+      </div>
+      <div class="flex flex-col items-center gap-1 p-4 rounded-xl border border-[var(--p-content-border-color)]">
+        <span class="text-2xl font-bold text-[var(--p-text-muted-color)] tabular-nums">{{ r.skipped }}</span>
+        <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.import.skipped' | translate }}</span>
+      </div>
+    </div>
+  } @else {
+    <p class="m-0 text-sm text-[var(--p-text-color)] leading-relaxed">{{ 'fbgroup.import.hint' | translate }}</p>
+    <div class="flex flex-col gap-1">
+      <label for="fbg-file" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.import.file' | translate }}</label>
+      <input id="fbg-file" type="file" accept=".csv,text/csv" (change)="onFileChange($event)"
+        class="text-sm text-[var(--p-text-color)] file:mr-3 file:rounded-md file:border-0 file:px-3 file:py-1.5 file:bg-[#7B3F9E] file:text-white" />
+    </div>
+  }
+</div>
+@if (result()) {
+  <div class="flex justify-end pt-3">
+    <button pButton type="button" (click)="cancel()">{{ 'common.action.close' | translate }}</button>
+  </div>
+} @else {
+  <app-dialog-footer [isSubmitting]="isSubmitting() || !file()" (cancelForm)="cancel()" (saveForm)="onSubmit()" />
+}

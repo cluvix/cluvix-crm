@@ -1,0 +1,179 @@
+<div class="flex flex-col gap-3">
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold m-0 text-[var(--p-text-color)]">{{ 'fbgroup.menu.groups' | translate }}</h1>
+    </div>
+    <button pButton type="button" size="small" [outlined]="true" [disabled]="isSubmitting()" (click)="exportExcel()">
+      <i class="pi pi-file-excel"></i><span>{{ 'common.action.export_excel' | translate }}</span>
+    </button>
+    @if (canUpdate()) {
+      <button pButton type="button" size="small" [outlined]="true" (click)="openImport()">
+        <i class="pi pi-upload"></i><span>{{ 'fbgroup.import.button' | translate }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- Bộ lọc -->
+  <section class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-3 flex flex-wrap items-end gap-3"
+    [attr.aria-label]="'fbgroup.list.filters' | translate">
+    <div class="flex flex-col gap-1 grow basis-56 min-w-0">
+      <label for="fb-kw" class="text-xs text-[var(--p-text-muted-color)]">{{ 'common.action.search' | translate }}</label>
+      <input id="fb-kw" pInputText type="search" [value]="keyword()" (input)="onKeyword($any($event.target).value)"
+        [placeholder]="'fbgroup.list.search_placeholder' | translate" />
+    </div>
+    <div class="flex flex-col gap-1 basis-40 grow">
+      <label for="fb-topic" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.topic' | translate }}</label>
+      <p-select inputId="fb-topic" [options]="topics()" optionLabel="name" optionValue="id" [showClear]="true"
+        [ngModel]="topicId()" (ngModelChange)="setTopic($event)" [placeholder]="'common.label.all' | translate" appendTo="body" />
+    </div>
+    <div class="flex flex-col gap-1 basis-40 grow">
+      <label for="fb-branch" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.branch' | translate }}</label>
+      <p-select inputId="fb-branch" [options]="branchOptions()" optionLabel="name" optionValue="id" [showClear]="true"
+        [disabled]="!topicId()" [ngModel]="branchId()" (ngModelChange)="setFilter(branchId, $event)"
+        [placeholder]="'common.label.all' | translate" appendTo="body" />
+    </div>
+    <div class="flex flex-col gap-1 basis-48 grow">
+      <label for="fb-status" class="text-xs text-[var(--p-text-muted-color)]">{{ 'common.label.status' | translate }}</label>
+      <p-multiselect inputId="fb-status" [options]="workStatusOptions()" optionLabel="label" optionValue="value"
+        [ngModel]="workStatuses()" (ngModelChange)="setFilter(workStatuses, $event)" [showToggleAll]="false"
+        [placeholder]="'common.label.all' | translate" display="chip" appendTo="body" />
+    </div>
+    <div class="flex flex-col gap-1 basis-36 grow">
+      <label for="fb-privacy" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.privacy' | translate }}</label>
+      <p-select inputId="fb-privacy" [options]="privacyOptions()" optionLabel="label" optionValue="value" [showClear]="true"
+        [ngModel]="privacy()" (ngModelChange)="setFilter(privacy, $event)" [placeholder]="'common.label.all' | translate" appendTo="body" />
+    </div>
+    <div class="flex flex-col gap-1 basis-36 grow">
+      <label for="fb-min" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.list.min_members' | translate }}</label>
+      <p-inputnumber inputId="fb-min" [ngModel]="minMembers()" (ngModelChange)="setFilter(minMembers, $event)"
+        [min]="0" [useGrouping]="true" [showButtons]="false" />
+    </div>
+    <div class="flex flex-col gap-1 basis-40 grow">
+      <label for="fb-prov" class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.province' | translate }}</label>
+      <p-select inputId="fb-prov" [options]="provinces()" optionLabel="province" optionValue="province" [showClear]="true"
+        [filter]="true" [ngModel]="province()" (ngModelChange)="setFilter(province, $event)"
+        [placeholder]="'common.label.all' | translate" appendTo="body" />
+    </div>
+    <div class="flex items-center gap-2 h-10">
+      <p-checkbox inputId="fb-q" [binary]="true" [ngModel]="qualifiedOnly()" (ngModelChange)="setFilter(qualifiedOnly, $event)" />
+      <label for="fb-q" class="text-sm text-[var(--p-text-color)] cursor-pointer">{{ 'fbgroup.list.qualified_only' | translate }}</label>
+    </div>
+    <button pButton type="button" size="small" [text]="true" (click)="clearFilters()">
+      <i class="pi pi-filter-slash"></i><span>{{ 'common.action.clear' | translate }}</span>
+    </button>
+  </section>
+
+  <!-- Thao tác hàng loạt -->
+  @if (canUpdate() && selected().length) {
+    <section class="sticky top-0 z-20 rounded-xl p-3 flex flex-wrap items-center gap-2 bg-[#7B3F9E]/10 border border-[#7B3F9E]/30"
+      [attr.aria-label]="'fbgroup.list.bulk' | translate">
+      <span class="font-semibold text-[var(--p-text-color)]">{{ 'fbgroup.list.selected' | translate: { n: selected().length } }}</span>
+      <span class="grow"></span>
+      <button pButton type="button" size="small" [disabled]="isSubmitting()" (click)="bulk({ work_status: WORK.TARGET })">
+        {{ 'fbgroup.list.set_target' | translate }}
+      </button>
+      <button pButton type="button" size="small" severity="info" [outlined]="true" [disabled]="isSubmitting()"
+        (click)="bulk({ work_status: WORK.WATCH })">{{ 'fbgroup.work_status.watch' | translate }}</button>
+      <button pButton type="button" size="small" severity="secondary" [outlined]="true" [disabled]="isSubmitting()"
+        (click)="bulk({ work_status: WORK.NEW })">{{ 'fbgroup.list.set_new' | translate }}</button>
+      <button pButton type="button" size="small" severity="danger" [disabled]="isSubmitting()"
+        (click)="bulk({ work_status: WORK.EXCLUDED })">{{ 'fbgroup.list.set_excluded' | translate }}</button>
+      <p-select [options]="topics()" optionLabel="name" optionValue="id" [ngModel]="bulkTopicId()" (ngModelChange)="bulkTopicId.set($event)"
+        [placeholder]="'fbgroup.label.topic' | translate" appendTo="body" size="small" [attr.aria-label]="'fbgroup.label.topic' | translate" />
+      <button pButton type="button" size="small" [outlined]="true" [disabled]="!bulkTopicId() || isSubmitting()" (click)="bulkTopic('add')">
+        {{ 'fbgroup.list.add_topic' | translate }}
+      </button>
+      <button pButton type="button" size="small" severity="secondary" [outlined]="true" [disabled]="!bulkTopicId() || isSubmitting()"
+        (click)="bulkTopic('remove')">{{ 'fbgroup.list.remove_topic' | translate }}</button>
+    </section>
+  }
+
+  <p-table
+    [value]="models()"
+    [lazy]="true"
+    [lazyLoadOnInit]="false"
+    (onLazyLoad)="onLazyLoad($event)"
+    [paginator]="true"
+    [rows]="perPage"
+    [first]="first()"
+    [totalRecords]="pagination()?.totalCount ?? 0"
+    [loading]="loading()"
+    [showCurrentPageReport]="true"
+    [currentPageReportTemplate]="'common.page.current_report' | translate"
+    [selection]="selected()"
+    (selectionChange)="selected.set($event)"
+    sortField="member_count"
+    [sortOrder]="-1"
+    [rowHover]="true"
+    [stripedRows]="true"
+    [scrollable]="true"
+    dataKey="id"
+    styleClass="text-sm"
+  >
+    <ng-template #header>
+      <tr>
+        @if (canUpdate()) {
+          <th class="w-10"><p-table-header-checkbox [attr.aria-label]="'fbgroup.list.select_all' | translate" /></th>
+        }
+        <th>{{ 'fbgroup.label.group' | translate }}</th>
+        <th>{{ 'fbgroup.label.topic' | translate }}</th>
+        <th pSortableColumn="member_count" class="text-right">{{ 'fbgroup.label.members' | translate }} <p-sort-icon field="member_count" /></th>
+        <th pSortableColumn="posts_per_day" class="text-right">{{ 'fbgroup.label.posts_per_day' | translate }} <p-sort-icon field="posts_per_day" /></th>
+        <th>{{ 'fbgroup.label.province' | translate }}</th>
+        <th>{{ 'common.label.status' | translate }}</th>
+        <th pSortableColumn="last_seen_at">{{ 'fbgroup.label.last_seen' | translate }} <p-sort-icon field="last_seen_at" /></th>
+        <th class="w-12"></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-g>
+      <tr>
+        @if (canUpdate()) {
+          <td><p-table-checkbox [value]="g" [attr.aria-label]="g.name" /></td>
+        }
+        <td class="max-w-[360px]">
+          <a [href]="g.url" target="_blank" rel="noopener noreferrer" class="font-medium text-[var(--p-text-color)] hover:text-[#7B3F9E] hover:underline">
+            {{ g.name }}
+          </a>
+          <div class="text-xs text-[var(--p-text-muted-color)] mt-0.5">
+            {{ (g.privacy === PRIVACY.PRIVATE ? 'fbgroup.privacy.private' : 'fbgroup.privacy.public') | translate }}
+            @if (g.found_keyword) { · {{ 'fbgroup.label.keyword' | translate }}: {{ g.found_keyword }} }
+          </div>
+        </td>
+        <td>
+          <div class="flex flex-wrap gap-1">
+            @for (t of g.topics; track t.topic_id) {
+              <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border border-[var(--p-content-border-color)] text-[var(--p-text-color)]">
+                <span class="w-2 h-2 rounded-full" [style.background]="t.color"></span>{{ t.name }}
+                @if (t.branch_name) { <span class="text-[var(--p-text-muted-color)]">· {{ t.branch_name }}</span> }
+              </span>
+            } @empty {
+              <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.label.no_topic' | translate }}</span>
+            }
+          </div>
+        </td>
+        <td class="text-right tabular-nums whitespace-nowrap">
+          <span class="inline-flex items-center gap-2">
+            <span class="inline-block h-1.5 rounded-full bg-[#9B5FBE]" [style.width.px]="barWidth(g.member_count)" aria-hidden="true"></span>
+            {{ fmt(g.member_count) }}
+          </span>
+        </td>
+        <td class="text-right tabular-nums">{{ fmt(g.posts_per_day) }}</td>
+        <td>{{ g.province ?? '' }}</td>
+        <td>
+          @let s = statusOption(g.work_status);
+          <p-tag [value]="s.labelKey | translate" [severity]="s.severity" [rounded]="true" />
+        </td>
+        <td class="whitespace-nowrap text-[var(--p-text-muted-color)]">{{ g.last_seen_at | customDate }}</td>
+        <td>
+          <button pButton type="button" size="small" [text]="true" [rounded]="true" [iconOnly]="true"
+            [attr.aria-label]="'common.label.detail' | translate" [pTooltip]="'common.label.detail' | translate" (click)="openGroup(g)">
+            <i class="pi pi-pencil"></i>
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr><td [attr.colspan]="canUpdate() ? 9 : 8" class="text-center py-6 text-[var(--p-text-muted-color)]">{{ 'common.message.no_data' | translate }}</td></tr>
+    </ng-template>
+  </p-table>
+</div>

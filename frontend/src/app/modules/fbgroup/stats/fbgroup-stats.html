@@ -1,0 +1,198 @@
+<div class="flex flex-col gap-4">
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="flex-1 min-w-0">
+      <h1 class="text-xl font-semibold m-0 text-[var(--p-text-color)]">{{ 'fbgroup.stats.title' | translate }}</h1>
+      @if (overview(); as o) {
+        <p class="m-0 mt-1 text-sm text-[var(--p-text-muted-color)]">
+          {{ 'fbgroup.stats.subtitle' | translate: { total: fmt(o.overview.total_groups) } }}
+          @if (o.overview.last_synced_at) {
+            · {{ 'fbgroup.stats.last_synced' | translate }} {{ o.overview.last_synced_at | customDate: true }}
+          }
+        </p>
+      }
+    </div>
+    <a pButton [outlined]="true" routerLink="/fb-group/topics" size="small">
+      <i class="pi pi-tags"></i><span>{{ 'fbgroup.menu.topics' | translate }}</span>
+    </a>
+    <a pButton routerLink="/fb-group/groups" size="small">
+      <i class="pi pi-list"></i><span>{{ 'fbgroup.menu.groups' | translate }}</span>
+    </a>
+  </div>
+
+  <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="'fbgroup.label.topic' | translate">
+    <button pButton type="button" size="small" [rounded]="true" [outlined]="topicId() !== null"
+      [attr.aria-pressed]="topicId() === null" (click)="pickTopic(null)">
+      {{ 'fbgroup.stats.all_topics' | translate }}
+    </button>
+    @for (t of topics(); track t.id) {
+      <button pButton type="button" size="small" [rounded]="true" [outlined]="topicId() !== t.id"
+        [attr.aria-pressed]="topicId() === t.id" (click)="pickTopic(t.id)">
+        <span class="inline-block w-2 h-2 rounded-full" [style.background]="t.color"></span>{{ t.name }}
+      </button>
+    }
+  </div>
+
+  @if (overview(); as o) {
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4" [class.opacity-60]="loading()">
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 flex flex-col gap-1">
+        <span class="text-sm text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.kpi_on_topic' | translate }}</span>
+        <span class="text-2xl font-bold text-[var(--p-text-color)] tabular-nums">{{ fmt(o.overview.on_topic_groups) }}</span>
+        <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.kpi_on_topic_hint' | translate: { n: fmt(o.overview.excluded) } }}</span>
+      </div>
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 flex flex-col gap-1">
+        <span class="text-sm text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.kpi_qualified' | translate }}</span>
+        <span class="text-2xl font-bold text-[#7B3F9E] tabular-nums">{{ fmt(o.overview.qualified) }}</span>
+        <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.kpi_qualified_hint' | translate }}</span>
+      </div>
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 flex flex-col gap-1">
+        <span class="text-sm text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.kpi_members' | translate }}</span>
+        <span class="text-2xl font-bold text-[#FF5722] tabular-nums">{{ compact(o.overview.members) }}</span>
+        <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.kpi_members_hint' | translate }}</span>
+      </div>
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 flex flex-col gap-1">
+        <span class="text-sm text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.kpi_big' | translate }}</span>
+        <span class="text-2xl font-bold text-[var(--p-text-color)] tabular-nums">{{ fmt(o.overview.big_groups) }}</span>
+        <span class="text-xs text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.kpi_new_7d' | translate: { n: fmt(o.overview.new_7d) } }}</span>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 min-w-0">
+        <h2 class="text-base font-semibold m-0 text-[var(--p-text-color)]">{{ 'fbgroup.stats.members_by_topic' | translate }}</h2>
+        <p class="text-xs m-0 mt-1 mb-4 text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.members_by_topic_hint' | translate }}</p>
+        @if (topicBars().length) {
+          <div class="flex flex-col gap-3">
+            @for (b of topicBars(); track b.topic_id) {
+              <div class="grid grid-cols-[110px_minmax(0,1fr)_150px] items-center gap-3 text-sm" [class.opacity-30]="b.dim">
+                <span class="truncate text-[var(--p-text-color)]">{{ b.name }}</span>
+                <span class="h-3.5 rounded-full bg-[var(--p-content-border-color)] overflow-hidden">
+                  <span class="block h-full rounded-full" [style.width.%]="b.pct" [style.background]="b.color"></span>
+                </span>
+                <span class="text-right tabular-nums text-[var(--p-text-muted-color)]">
+                  {{ compact(b.members) }} · {{ fmt(b.groups) }} {{ 'fbgroup.label.groups_unit' | translate }}
+                </span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-sm text-[var(--p-text-muted-color)]">{{ 'common.message.no_data' | translate }}</p>
+        }
+      </div>
+
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 min-w-0">
+        <h2 class="text-base font-semibold m-0 text-[var(--p-text-color)]">{{ 'fbgroup.stats.work_status' | translate }}</h2>
+        <p class="text-xs m-0 mt-1 mb-4 text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.work_status_hint' | translate }}</p>
+        <div class="flex h-6 rounded-md overflow-hidden gap-0.5" aria-hidden="true">
+          @for (s of statusBars(); track s.value) {
+            @if (s.groups > 0) {
+              <span [style.flex]="s.groups" [style.background]="s.color"></span>
+            }
+          }
+        </div>
+        <ul class="grid grid-cols-2 gap-x-6 gap-y-2 mt-4 p-0 list-none text-sm text-[var(--p-text-color)]">
+          @for (s of statusBars(); track s.value) {
+            <li class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-sm" [style.background]="s.color"></span>
+              {{ s.labelKey | translate }} · <b class="tabular-nums">{{ fmt(s.groups) }}</b>
+            </li>
+          }
+        </ul>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 min-w-0">
+        <h2 class="text-base font-semibold m-0 text-[var(--p-text-color)]">{{ 'fbgroup.stats.branches' | translate }}</h2>
+        <p class="text-xs m-0 mt-1 mb-3 text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.branches_hint' | translate }}</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm tabular-nums border-collapse">
+            <thead>
+              <tr class="text-left text-[var(--p-text-muted-color)]">
+                <th class="py-2 pr-2 font-medium">{{ 'fbgroup.label.topic' | translate }}</th>
+                <th class="py-2 pr-2 font-medium">{{ 'fbgroup.label.branch' | translate }}</th>
+                <th class="py-2 pr-2 font-medium text-right">{{ 'fbgroup.label.groups' | translate }}</th>
+                <th class="py-2 pr-2 font-medium text-right">{{ 'fbgroup.label.members' | translate }}</th>
+                <th class="py-2 font-medium text-right">{{ 'fbgroup.stats.active_10' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of branches(); track r.topic_id + '-' + r.branch_id) {
+                <tr class="border-t border-[var(--p-content-border-color)] text-[var(--p-text-color)]">
+                  <td class="py-2 pr-2">
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" [style.background]="r.topic_color"></span>{{ r.topic_name }}</span>
+                  </td>
+                  <td class="py-2 pr-2">{{ r.branch_name ?? ('fbgroup.label.no_branch' | translate) }}</td>
+                  <td class="py-2 pr-2 text-right">{{ fmt(r.groups) }}</td>
+                  <td class="py-2 pr-2 text-right">{{ compact(r.members) }}</td>
+                  <td class="py-2 text-right">{{ fmt(r.active_10_per_day) }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="py-3 text-[var(--p-text-muted-color)]">{{ 'common.message.no_data' | translate }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 min-w-0">
+        <h2 class="text-base font-semibold m-0 text-[var(--p-text-color)]">{{ 'fbgroup.stats.provinces' | translate }}</h2>
+        <p class="text-xs m-0 mt-1 mb-4 text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.provinces_hint' | translate }}</p>
+        <div class="flex flex-col gap-2.5">
+          @for (p of provinceBars(); track p.province) {
+            <div class="grid grid-cols-[120px_minmax(0,1fr)_120px] items-center gap-3 text-sm">
+              <span class="truncate text-[var(--p-text-color)]">{{ p.province }}</span>
+              <span class="h-3 rounded-full bg-[var(--p-content-border-color)] overflow-hidden">
+                <span class="block h-full rounded-full bg-[#7B3F9E]" [style.width.%]="p.pct"></span>
+              </span>
+              <span class="text-right tabular-nums text-[var(--p-text-muted-color)]">{{ compact(p.members) }} · {{ fmt(p.groups) }}</span>
+            </div>
+          } @empty {
+            <p class="text-sm text-[var(--p-text-muted-color)]">{{ 'common.message.no_data' | translate }}</p>
+          }
+        </div>
+      </div>
+    </section>
+  } @else if (loading()) {
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="h-24 rounded-xl bg-[var(--p-content-border-color)] animate-pulse"></div>
+      }
+    </div>
+  }
+
+  <section class="rounded-xl border border-[var(--p-content-border-color)] bg-[var(--p-content-background)] p-4 min-w-0">
+    <h2 class="text-base font-semibold m-0 text-[var(--p-text-color)]">{{ 'fbgroup.stats.keywords' | translate }}</h2>
+    <p class="text-xs m-0 mt-1 mb-3 text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.keywords_hint' | translate }}</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm tabular-nums border-collapse">
+        <thead>
+          <tr class="text-left text-[var(--p-text-muted-color)]">
+            <th class="py-2 pr-2 font-medium">{{ 'fbgroup.label.keyword' | translate }}</th>
+            <th class="py-2 pr-2 font-medium text-right">{{ 'fbgroup.stats.on_topic' | translate }}</th>
+            <th class="py-2 pr-2 font-medium text-right">{{ 'fbgroup.stats.off_topic' | translate }}</th>
+            <th class="py-2 pr-2 font-medium text-right">{{ 'fbgroup.stats.avg_members' | translate }}</th>
+            <th class="py-2 pr-2 font-medium text-right">{{ 'fbgroup.stats.over_10k' | translate }}</th>
+            <th class="py-2 font-medium">{{ 'fbgroup.stats.verdict' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (k of keywords(); track k.keyword) {
+            <tr class="border-t border-[var(--p-content-border-color)] text-[var(--p-text-color)]">
+              <td class="py-2 pr-2 font-medium">{{ k.keyword }}</td>
+              <td class="py-2 pr-2 text-right">{{ fmt(k.on_topic) }}</td>
+              <td class="py-2 pr-2 text-right">{{ fmt(k.off_topic) }}</td>
+              <td class="py-2 pr-2 text-right">{{ fmt(k.avg_members) }}</td>
+              <td class="py-2 pr-2 text-right">{{ fmt(k.over_10k) }}</td>
+              <td class="py-2">
+                @let v = keywordVerdict(k);
+                <p-tag [value]="v.labelKey | translate" [severity]="v.severity" />
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="py-3 text-[var(--p-text-muted-color)]">{{ 'fbgroup.stats.keywords_empty' | translate }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
