@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField, required, pattern, minLength, maxLength, disabled, SchemaPathTree } from '@angular/forms/signals';
 import { finalize, take } from 'rxjs';
@@ -6,7 +6,6 @@ import { finalize, take } from 'rxjs';
 import { RoleModel } from '@/core/models/hr/role.model';
 import { RbacService } from '@/core/services/auth/rbac.service';
 import { BaseSignalForm } from '@/share/base/base-signal-form';
-import { AlphabetOnlyDirective } from '@/share/directive/alphabet-only.directive';
 import { FormShareImports } from '@/share/import/form-share-imports';
 
 const NAME_PATTERN = /^[a-z]+$/; // chỉ a–z
@@ -23,7 +22,7 @@ const NAME_PATTERN = /^[a-z]+$/; // chỉ a–z
   selector: 'app-role-form',
   templateUrl: './role-form.html',
   styles: [],
-  imports: [...FormShareImports, FormField, AlphabetOnlyDirective],
+  imports: [...FormShareImports, FormField],
   standalone: true,
 })
 export class RoleForm extends BaseSignalForm<RoleModel> {
@@ -33,17 +32,20 @@ export class RoleForm extends BaseSignalForm<RoleModel> {
   constructor() {
     super();
     this.name = this.dialogConfig?.data?.name;
+  }
 
-    // Chuẩn hoá input name: trim + lowercase (không đổi khi control invalid do pattern) — mirror
-    // `valueChanges.subscribe()` gốc, chuyển sang `effect()` self-correcting (field ghi lại chính nó).
-    effect(() => {
-      const val = this.rootField.name!().value();
-      if (val == null) return;
-      const normalized = val.trim().toLowerCase();
-      if (normalized !== val) {
-        untracked(() => this.rootField.name!().value.set(normalized));
-      }
-    });
+  /**
+   * Chuẩn hoá `name` (trim + lowercase) — CHỈ gọi lúc rời ô (`blur`) và lúc Lưu, KHÔNG theo từng phím.
+   * Bản cũ ghi lại giá trị ngay trong lúc gõ (effect tự sửa) + chặn phím ngoài a–z ở `keypress`
+   * (`alphabetOnly`): bộ gõ tiếng Việt (Unikey/EVKey/Telex) xoá-rồi-chèn ký tự có dấu, bị chặn/ghi đè
+   * giữa chừng ⇒ lệch bộ đệm của bộ gõ, chữ bị lặp/rối. Ràng buộc chỉ a–z vẫn do `pattern()` báo lỗi.
+   */
+  normalizeName(): void {
+    const state = this.rootField.name!();
+    const val = state.value();
+    if (val == null) return;
+    const normalized = val.trim().toLowerCase();
+    if (normalized !== val) state.value.set(normalized);
   }
 
   override ngOnInit(): void {
@@ -72,6 +74,7 @@ export class RoleForm extends BaseSignalForm<RoleModel> {
 
   override onSubmit(): void {
     if (this.isSubmitting()) return;
+    this.normalizeName();
     this.submitted.set(true);
     this.rootField().markAsTouched();
     if (this.rootField().invalid()) return;

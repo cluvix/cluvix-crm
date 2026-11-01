@@ -5,7 +5,7 @@
         <input
           [autofocus]="true"
           [class.ng-invalid]="isFieldInvalid(rootField.name!)"
-          alphabetOnly
+          (blur)="normalizeName()"
           autocomplete="off"
           class="ng-dirty"
           [formField]="rootField.name!"
