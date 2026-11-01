@@ -200,7 +200,7 @@ export class UserList extends BaseListV2<UserModel> implements OnInit, OnDestroy
       return;
     }
     const dialogRef = this.dialogWrapperService.open(UserForm, {
-      width: '960px',
+      width: '760px',
       header: this.translate.instant('common.action.create'),
       data: { childRole: this.childRole() },
     });
@@ -220,7 +220,7 @@ export class UserList extends BaseListV2<UserModel> implements OnInit, OnDestroy
       return;
     }
     const dialogRef = this.dialogWrapperService.open(UserForm, {
-      width: '960px',
+      width: '760px',
       header: this.translate.instant('common.action.update'),
       data: { model, childRole: this.childRole() },
     });

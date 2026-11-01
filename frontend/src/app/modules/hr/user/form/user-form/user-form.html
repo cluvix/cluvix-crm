@@ -1,301 +1,189 @@
 <form novalidate>
-  <div class="grid grid-cols-12 gap-6">
-    <!-- Header Section -->
-    <div class="col-span-12 lg:col-span-4">
-      <div class="sticky top-4">
-        <div
-          class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-surface-800 dark:to-surface-700 p-6 rounded-xl border-2 border-blue-200 dark:border-surface-600 shadow-sm">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-              <i class="pi pi-user text-blue-600 dark:text-blue-400 text-2xl"></i>
-            </div>
-            <div>
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ 'hr.user_form.section_profile' | translate }}</h3>
-              @if (isEditMode()) {
-                <span class="text-sm text-blue-600 dark:text-blue-400 font-semibold">ID: {{ model().id }}</span>
-              }
-            </div>
-          </div>
-          <p class="text-gray-600 dark:text-gray-400 leading-relaxed text-sm">
-            {{ 'hr.user_form.section_profile_desc' | translate }}
-          </p>
-        </div>
+  <p-fluid class="flex flex-col gap-6 pt-2">
+    <!-- Tài khoản -->
+    <section class="flex flex-col gap-4">
+      <div class="flex items-center gap-2 pb-2 border-b border-[var(--p-content-border-color)]">
+        <i aria-hidden="true" class="pi pi-shield text-[#7B3F9E]"></i>
+        <h4 class="text-base font-semibold text-[var(--p-text-color)]">{{ 'hr.user_form.section_account' | translate }}</h4>
+        @if (isEditMode()) {
+          <span class="ml-auto text-sm text-[var(--p-text-muted-color)] tabular-nums">ID: {{ model().id }}</span>
+        }
       </div>
-    </div>
-
-    <!-- Form Fields Section -->
-    <div class="col-span-12 lg:col-span-8">
-      <div
-        class="bg-white dark:bg-surface-800 p-6 rounded-xl border border-gray-200 dark:border-surface-600 shadow-sm">
-
-        <!-- Account Information -->
-        <div class="mb-8">
-          <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200 dark:border-surface-600">
-            <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
-              <i class="pi pi-shield text-purple-600 dark:text-purple-400"></i>
-            </div>
-            <h4 class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ 'hr.user_form.section_account' | translate }}</h4>
-          </div>
-          <div class="grid grid-cols-12 gap-4">
-            <div class="col-span-12 md:col-span-6">
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-12 md:col-span-6">
+          <p-floatlabel variant="on">
+            <input
+              [class.ng-invalid]="isFieldInvalid(rootField.username!)"
+              [pKeyFilter]="blockSpace"
+              autocomplete="off"
+              class="ng-dirty"
+              [formField]="rootField.username!"
+              id="username"
+              pInputText
+              type="text"
+            />
+            <label for="username">{{ 'common.label.username' | translate }}</label>
+          </p-floatlabel>
+        </div>
+        @if (!isEditMode()) {
+          <div class="col-span-12 md:col-span-6">
+            <p-inputgroup>
               <p-floatlabel variant="on">
                 <input
-                  [class.ng-invalid]="isFieldInvalid(rootField.username!)"
-                  [fluid]="true"
-                  [pKeyFilter]="blockSpace"
-                  autocomplete="off"
+                  [class.p-invalid]="isFieldInvalid(rootField.password!)"
+                  [formField]="rootField.password!"
                   class="ng-dirty"
-                  [formField]="rootField.username!"
-                  id="username"
+                  id="password"
                   pInputText
-                  type="text"
-                />
-                <label for="username">
-                  <i class="pi pi-user mr-2"></i>{{ 'common.label.username' | translate }}
-                </label>
+                  type="text"/>
+                <label for="password">{{ 'common.label.password' | translate }}</label>
               </p-floatlabel>
-            </div>
-            @if (!isEditMode()) {
-              <div class="col-span-12 md:col-span-6">
-                <p-inputgroup>
-                  <p-floatlabel variant="on" class="w-full">
-                    <input
-                      [class.p-invalid]="isFieldInvalid(rootField.password!)"
-                      [formField]="rootField.password!"
-                      class="ng-dirty w-full"
-                      id="password"
-                      pInputText
-                      type="text"/>
-                    <label for="password">
-                      <i class="pi pi-lock mr-2"></i>{{ 'common.label.password' | translate }}
-                    </label>
-                  </p-floatlabel>
-                  <p-buttongroup>
-                    <p-button
-    icon="pi pi-refresh"
-                      (onClick)="generatePassword()"
-                      [ariaLabel]="'common.action.refresh' | translate"
-                      [pTooltip]="'hr.user_form.tooltip_generate' | translate"
-                      severity="success"
-                      size="small"
-                      tooltipPosition="top"
-                      [iconOnly]="true"
-
-  ></p-button>
-                    <p-button
-    icon="pi pi-copy"
-                      [appCopyText]="rootField.password!().value()"
-                      [ariaLabel]="'common.action.copy' | translate"
-                      [pTooltip]="'common.action.copy' | translate"
-                      severity="info"
-                      size="small"
-                      tooltipPosition="top"
-                      [iconOnly]="true"
-
-  ></p-button>
-                  </p-buttongroup>
-                </p-inputgroup>
-              </div>
-            }
-            @if (!isSelf()) {
-              <div class="col-span-12 md:col-span-6">
-                <p-floatlabel variant="on">
-                  <p-select
-                    appendTo="body"
-                    [class.ng-invalid]="isFieldInvalid(rootField.role!)"
-                    [options]="childRole()"
-                    class="ng-dirty w-full"
-                    emptyFilterMessage="{{ 'common.label.no_results' | translate }}"
-                    [formField]="$any(rootField.role!)"
-                    id="role"
-                    inputId="role"
-                    optionLabel="label"
-                    optionValue="value"
-                  >
-                  </p-select>
-                  <label for="role">
-                    <i class="pi pi-star mr-2"></i>{{ 'common.label.role' | translate }}
-                  </label>
-                </p-floatlabel>
-              </div>
-              <div class="col-span-12 flex items-center gap-4">
-                {{ 'common.label.status' | translate }}:
-                @for (option of userStatusOptions(); track option.value) {
-                  <div class="flex items-center">
-                    <p-radiobutton [inputId]="'status_' + option.value" [value]="option.value"
-                                   [formField]="rootField.status!"></p-radiobutton>
-                    <label [for]="'status_' + option.value" class="ml-2">{{ (option.labelKey || option.label) | translate }}</label>
-                  </div>
-                }
+              <p-button
+                icon="pi pi-refresh"
+                (onClick)="generatePassword()"
+                [ariaLabel]="'common.action.refresh' | translate"
+                [pTooltip]="'hr.user_form.tooltip_generate' | translate"
+                severity="secondary"
+                tooltipPosition="top"
+                [iconOnly]="true"
+              ></p-button>
+              <p-button
+                icon="pi pi-copy"
+                [appCopyText]="rootField.password!().value()"
+                [ariaLabel]="'common.action.copy' | translate"
+                [pTooltip]="'common.action.copy' | translate"
+                severity="secondary"
+                tooltipPosition="top"
+                [iconOnly]="true"
+              ></p-button>
+            </p-inputgroup>
+          </div>
+        }
+        @if (!isSelf()) {
+          <div class="col-span-12 md:col-span-6">
+            <p-floatlabel variant="on">
+              <p-select
+                appendTo="body"
+                [class.ng-invalid]="isFieldInvalid(rootField.role!)"
+                [options]="childRole()"
+                class="ng-dirty"
+                emptyFilterMessage="{{ 'common.label.no_results' | translate }}"
+                [formField]="$any(rootField.role!)"
+                id="role"
+                inputId="role"
+                optionLabel="label"
+                optionValue="value"
+              ></p-select>
+              <label for="role">{{ 'common.label.role' | translate }}</label>
+            </p-floatlabel>
+          </div>
+          <div class="col-span-12 md:col-span-6 flex flex-wrap items-center gap-x-4 gap-y-2 min-h-[2.5rem]">
+            <span class="text-[var(--p-text-muted-color)]">{{ 'common.label.status' | translate }}:</span>
+            @for (option of userStatusOptions(); track option.value) {
+              <div class="flex items-center">
+                <p-radiobutton [inputId]="'status_' + option.value" [value]="option.value"
+                               [formField]="rootField.status!"></p-radiobutton>
+                <label [for]="'status_' + option.value" class="ml-2">{{ (option.labelKey || option.label) | translate }}</label>
               </div>
             }
           </div>
-        </div>
-
-        <!-- Personal Information -->
-        <div class="mb-8">
-          <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200 dark:border-surface-600">
-            <div class="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
-              <i class="pi pi-id-card text-green-600 dark:text-green-400"></i>
-            </div>
-            <h4 class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ 'hr.user_form.section_personal' | translate }}</h4>
-          </div>
-          <div class="grid grid-cols-12 gap-4">
-            <div class="col-span-12 md:col-span-6">
-              <p-floatlabel variant="on">
-                <input
-                  [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.fullname!)"
-                  [fluid]="true"
-                  autocomplete="off"
-                  class="ng-dirty"
-                  [formField]="rootField.userProfile!.fullname!"
-                  id="fullname"
-                  pInputText
-                  type="text"
-                />
-                <label for="fullname">
-                  <i class="pi pi-user mr-2"></i>{{ 'hr.user_form.fullname' | translate }}
-                </label>
-              </p-floatlabel>
-            </div>
-            <div class="col-span-12 md:col-span-6">
-              <p-floatlabel variant="on">
-                <input
-                  [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.nickname!)"
-                  [fluid]="true"
-                  autocomplete="off"
-                  class="ng-dirty"
-                  [formField]="$any(rootField.userProfile!.nickname!)"
-                  id="nickname"
-                  pInputText
-                  type="text"
-                />
-                <label for="nickname">
-                  <i class="pi pi-tag mr-2"></i>{{ 'hr.user_form.nickname' | translate }}
-                </label>
-              </p-floatlabel>
-            </div>
-            <div class="col-span-12 md:col-span-6">
-              <p-floatlabel variant="on">
-                <input
-                  [fluid]="true"
-                  autocomplete="off"
-                  class="ng-dirty"
-                  [formField]="$any(rootField.userProfile!.code!)"
-                  id="code"
-                  pInputText
-                  type="text"
-                />
-                <label for="code">
-                  <i class="pi pi-hashtag mr-2"></i>{{ 'hr.user_form.code' | translate }}
-                </label>
-              </p-floatlabel>
-            </div>
-            <div class="col-span-12 md:col-span-6">
-              <p-floatlabel variant="on">
-                <input
-                  [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.phone!)"
-                  [fluid]="true"
-                  autocomplete="off"
-                  class="ng-dirty"
-                  [formField]="$any(rootField.userProfile!.phone!)"
-                  id="phone"
-                  pInputText
-                  type="text"
-                />
-                <label for="phone">
-                  <i class="pi pi-phone mr-2"></i>{{ 'common.label.phone' | translate }}
-                </label>
-              </p-floatlabel>
-            </div>
-            <div class="col-span-12 md:col-span-6">
-              <p-floatlabel variant="on">
-                <p-select
-                  appendTo="body"
-                  [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.gender!)"
-                  [options]="genderOptions()"
-                  class="ng-dirty w-full"
-                  [formField]="$any(rootField.userProfile!.gender!)"
-                  id="gender"
-                ></p-select>
-                <label for="gender">
-                  <i class="pi pi-users mr-2"></i>{{ 'common.label.gender' | translate }}
-                </label>
-              </p-floatlabel>
-            </div>
-          </div>
-        </div>
-
-        <!-- Organization Information -->
-        <div class="mb-2">
-          <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200 dark:border-surface-600">
-            <div class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
-              <i class="pi pi-building text-orange-600 dark:text-orange-400"></i>
-            </div>
-            <h4 class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ 'hr.user_form.section_organization' | translate }}</h4>
-          </div>
-          <div class="grid grid-cols-12 gap-4">
-            <div class="col-span-12 md:col-span-6">
-              <p-floatlabel variant="on">
-                <app-branch-multiselect-form-control
-                  [class.ng-invalid]="isFieldInvalid(rootField.branchId!)"
-                  class="ng-dirty w-full"
-                  [formField]="rootField.branchId!">
-                </app-branch-multiselect-form-control>
-                <label for="branchId">
-                  <i class="pi pi-map-marker mr-2"></i>{{ 'common.label.branch' | translate }}
-                </label>
-              </p-floatlabel>
-            </div>
-            <div class="col-span-12">
-              <label for="allowed_ips" class="block mb-1 font-medium">
-                <i class="pi pi-shield mr-2"></i>{{ 'config.security_audit.allowed_ips_user' | translate }}
-              </label>
-              <textarea
-                [value]="allowedIpsText"
-                (input)="onAllowedIpsInput($event)"
-                id="allowed_ips"
-                rows="2"
-                class="w-full p-2 border rounded"
-                placeholder="203.0.113.0/24, 198.51.100.5"
-              ></textarea>
-              <small class="text-muted-color">{{ 'config.security_audit.allowed_ips_user_hint' | translate }}</small>
-            </div>
-            <div class="col-span-12 grid grid-cols-12 gap-4">
-              <div class="col-span-12 md:col-span-6">
-                <p-floatlabel variant="on">
-                  <department-multiselect-from-control
-                    [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.departmentList!)"
-                    class="ng-dirty"
-                    [formField]="rootField.userProfile!.departmentList!"
-                  ></department-multiselect-from-control>
-                  <label for="departmentList">
-                    <i class="pi pi-sitemap mr-2"></i>{{ 'common.label.department' | translate }}
-                  </label>
-                </p-floatlabel>
-              </div>
-              <div class="col-span-12 md:col-span-6">
-                <p-floatlabel variant="on">
-                  <input
-                    [fluid]="true"
-                    autocomplete="off"
-                    class="ng-dirty"
-                    [formField]="$any(rootField.userProfile!.id_pancake!)"
-                    id="id_pancake"
-                    pInputText
-                    type="text"
-                  />
-                  <label for="id_pancake">
-                    <i class="pi pi-link mr-2"></i>ID Pancake
-                  </label>
-                </p-floatlabel>
-              </div>
-            </div>
-          </div>
-        </div>
-
+        }
       </div>
-    </div>
-  </div>
+    </section>
+
+    <!-- Thông tin cá nhân -->
+    <section class="flex flex-col gap-4">
+      <div class="flex items-center gap-2 pb-2 border-b border-[var(--p-content-border-color)]">
+        <i aria-hidden="true" class="pi pi-id-card text-[#7B3F9E]"></i>
+        <h4 class="text-base font-semibold text-[var(--p-text-color)]">{{ 'hr.user_form.section_personal' | translate }}</h4>
+      </div>
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-12 md:col-span-6">
+          <p-floatlabel variant="on">
+            <input
+              [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.fullname!)"
+              autocomplete="off"
+              class="ng-dirty"
+              [formField]="rootField.userProfile!.fullname!"
+              id="fullname"
+              pInputText
+              type="text"
+            />
+            <label for="fullname">{{ 'hr.user_form.fullname' | translate }}</label>
+          </p-floatlabel>
+        </div>
+        <div class="col-span-12 sm:col-span-6 md:col-span-3">
+          <p-floatlabel variant="on">
+            <input
+              [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.phone!)"
+              autocomplete="off"
+              class="ng-dirty"
+              [formField]="$any(rootField.userProfile!.phone!)"
+              id="phone"
+              pInputText
+              type="text"
+            />
+            <label for="phone">{{ 'common.label.phone' | translate }}</label>
+          </p-floatlabel>
+        </div>
+        <div class="col-span-12 sm:col-span-6 md:col-span-3">
+          <p-floatlabel variant="on">
+            <p-select
+              appendTo="body"
+              [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.gender!)"
+              [options]="genderOptions()"
+              class="ng-dirty"
+              [formField]="$any(rootField.userProfile!.gender!)"
+              id="gender"
+              inputId="gender"
+            ></p-select>
+            <label for="gender">{{ 'common.label.gender' | translate }}</label>
+          </p-floatlabel>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tổ chức & bảo mật -->
+    <section class="flex flex-col gap-4">
+      <div class="flex items-center gap-2 pb-2 border-b border-[var(--p-content-border-color)]">
+        <i aria-hidden="true" class="pi pi-building text-[#7B3F9E]"></i>
+        <h4 class="text-base font-semibold text-[var(--p-text-color)]">{{ 'hr.user_form.section_organization' | translate }}</h4>
+      </div>
+      <div class="grid grid-cols-12 gap-4">
+        <div class="col-span-12 md:col-span-6">
+          <p-floatlabel variant="on">
+            <app-branch-multiselect-form-control
+              [class.ng-invalid]="isFieldInvalid(rootField.branchId!)"
+              class="ng-dirty"
+              [formField]="rootField.branchId!">
+            </app-branch-multiselect-form-control>
+            <label for="branchId">{{ 'common.label.branch' | translate }}</label>
+          </p-floatlabel>
+        </div>
+        <div class="col-span-12 md:col-span-6">
+          <p-floatlabel variant="on">
+            <department-multiselect-from-control
+              [class.ng-invalid]="isFieldInvalid(rootField.userProfile!.departmentList!)"
+              class="ng-dirty"
+              [formField]="rootField.userProfile!.departmentList!"
+            ></department-multiselect-from-control>
+            <label for="departmentList">{{ 'common.label.department' | translate }}</label>
+          </p-floatlabel>
+        </div>
+        <div class="col-span-12 flex flex-col gap-1">
+          <label for="allowed_ips" class="font-medium">{{ 'config.security_audit.allowed_ips_user' | translate }}</label>
+          <textarea
+            pTextarea
+            [value]="allowedIpsText"
+            (input)="onAllowedIpsInput($event)"
+            id="allowed_ips"
+            rows="2"
+            placeholder="203.0.113.0/24, 198.51.100.5"
+          ></textarea>
+          <small class="text-[var(--p-text-muted-color)]">{{ 'config.security_audit.allowed_ips_user_hint' | translate }}</small>
+        </div>
+      </div>
+    </section>
+  </p-fluid>
   <app-dialog-footer [isSubmitting]="isSubmitting()" (cancelForm)="closeForm($event)" (saveForm)="onSubmit()"/>
 </form>

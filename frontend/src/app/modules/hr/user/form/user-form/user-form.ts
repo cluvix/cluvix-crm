@@ -40,11 +40,8 @@ import { UtilsService } from '@/share/services/utils.service';
   templateUrl: './user-form.html',
   styles: [
     `
-      :host ::ng-deep .p-buttongroup {
-        height: 100%;
-      }
       /* Ngăn border đỏ cascade từ formGroupName div (ng-dirty.ng-invalid)
-         xuống các input không có validator (code, id_pancake, nickname...) */
+         xuống các input không có validator */
       :host ::ng-deep .ng-dirty.ng-invalid .p-inputtext:not(.ng-invalid),
       :host ::ng-deep .ng-dirty.ng-invalid .p-select:not(.ng-invalid) {
         border-color: var(--p-inputtext-border-color);
@@ -206,7 +203,9 @@ export class UserForm extends BaseSignalForm<UserModel> {
    * sẽ GHI ĐÈ 12 cột SCALAR thật (email/birthday/about/address/avatar/cover/locale/facebook/telegram/
    * branchOffice_id/branchActive_id/companyActive_id) bằng giá trị round-trip CŨ — race condition/
    * lost-update nếu field nào trong số đó bị đổi ở nơi khác (vd tự đổi avatar) giữa lúc mở dialog và
-   * lúc Lưu. Phải dựng `user_profile` THỦ CÔNG, CHỈ ĐÚNG 8 field gốc — KHÔNG spread toàn bộ. */
+   * lúc Lưu. Phải dựng `user_profile` THỦ CÔNG, CHỈ ĐÚNG các field form sở hữu — KHÔNG spread toàn bộ.
+   * `nickname`/`code`/`id_pancake` đã bỏ khỏi form ⇒ không gửi nữa: BE chỉ ghi key có mặt
+   * (`hrProfileEditableFields`), giá trị đã lưu giữ nguyên. */
   protected override getPayload(): any {
     const raw = extractValue(this.rootField) as any;
     const { userProfile, ...rest } = raw;
@@ -216,11 +215,8 @@ export class UserForm extends BaseSignalForm<UserModel> {
       user_profile: {
         fullname: up.fullname,
         phone: up.phone,
-        nickname: up.nickname,
         gender: up.gender,
         departmentList: up.departmentList,
-        code: up.code,
-        id_pancake: up.id_pancake,
         updated_at: up.updated_at,
       },
     };
