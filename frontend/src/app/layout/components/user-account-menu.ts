@@ -11,8 +11,7 @@ import { AuthService, isSuperUser, userAvatar, userFullname, userId } from '@/co
 import { AvatarWordPipe } from '@/share/pipes/avatar-word/avatar-word.pipe';
 import { DialogWrapperService } from '@/share/services/dialog-wrapper.service';
 import { NotificationService } from '@/share/services/notification.service';
-import { HasPermDirective } from '@/share/directives/has-perm.directive';
-import { PERMISSION_SELECT, POWERED_BY_URL, SOURCE_CODE_URL } from '@/define';
+import { SOURCE_CODE_URL } from '@/define';
 import { SwitchBranch } from '@/modules/utilities/switch-branch/switch-branch';
 import { SwitchLanguage } from '@/modules/utilities/switch-language/switch-language';
 import { BranchHelperService } from '@/indexeddb/config/components/branch';
@@ -28,7 +27,7 @@ import { LayoutService } from '@/layout/service/layout.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-account-menu',
   standalone: true,
-  imports: [RouterLink, TranslatePipe, Avatar, StyleClass, HasPermDirective],
+  imports: [RouterLink, TranslatePipe, Avatar, StyleClass],
   template: `
     <!-- B.19: PHẢI là <button> + có aria-label. Trước đây là <a> KHÔNG href (⇒ ngoài tab order —
          bàn phím không tới được menu đăng xuất/đổi thương hiệu) và accessible name RỖNG (chỉ có
@@ -173,16 +172,6 @@ import { LayoutService } from '@/layout/service/layout.service';
             </a>
           </li>
         }
-        <li>
-          <a
-            [href]="poweredByUrl"
-            target="_blank"
-            class="group cursor-pointer flex items-center gap-3 hover:bg-emphasis hover:text-[#7B3F9E] duration-150 transition-all px-4 py-2"
-          >
-            <i class="pi pi-info-circle tb-mi tb-mi-tools"></i>
-            <span>{{ 'common.label.software_info' | translate }}</span>
-          </a>
-        </li>
         @if (sourceCodeUrl) {
           <li>
             <a
@@ -196,15 +185,6 @@ import { LayoutService } from '@/layout/service/layout.service';
             </a>
           </li>
         }
-        <li *hasPerm="permission.permissionViewHistory">
-          <a
-            routerLink="/log/export"
-            class="group cursor-pointer flex items-center gap-3 hover:bg-emphasis hover:text-[#7B3F9E] duration-150 transition-all px-4 py-2"
-          >
-            <i class="pi pi-history tb-mi tb-mi-tools"></i>
-            <span>{{ 'common.label.history' | translate }}</span>
-          </a>
-        </li>
 
         <li class="my-1 border-t border-surface-200 dark:border-surface-700"></li>
 
@@ -260,8 +240,6 @@ export class UserAccountMenu {
   /** Có ảnh: vòng primary 2px quanh ảnh để nút vẫn nổi bật như trường hợp chưa có ảnh. */
   protected readonly avatarRingStyle = { boxShadow: '0 0 0 2px var(--p-primary-color)' };
   protected readonly isSuperUser = isSuperUser;
-  protected readonly permission = PERMISSION_SELECT;
-  protected readonly poweredByUrl = POWERED_BY_URL;
   /** AGPL-3.0 §13 — rỗng ⇒ ẩn mục "Mã nguồn" (xem brand.define.ts). */
   protected readonly sourceCodeUrl = SOURCE_CODE_URL;
   loggingOut = signal(false);
