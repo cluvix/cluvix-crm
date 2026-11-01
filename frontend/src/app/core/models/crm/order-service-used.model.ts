@@ -7,11 +7,11 @@ import { OrderPlanModel } from '@/core/models/order-plan.model';
 import { AppointmentModel } from '@/core/models/crm/appointment.model';
 
 /**
- * 1 DÒNG dịch vụ bên trong `OrderPlanForm` (Signal Forms) — tương đương đúng 24 control của
- * `fb.group()` trong `addServiceUsed()` bản Reactive Forms cũ, cộng 3 field FE-only.
+ * 1 DÒNG dịch vụ bên trong `OrderPlanForm` (Signal Forms) — tương đương các control của
+ * `fb.group()` trong `addServiceUsed()` bản Reactive Forms cũ (trừ `discount`/`expires_at` đã bỏ),
+ * cộng 3 field FE-only.
  *
- * KHÁC `OrderServiceUsedModel` (shape BE): ở đây `expires_at` là `Date` (p-datepicker) chứ không phải
- * epoch, và có thêm `unitName`/`min_price`/`max_price` (hiển thị). Payload gửi BE vẫn giữ nguyên tập
+ * KHÁC `OrderServiceUsedModel` (shape BE): có thêm `unitName`/`min_price`/`max_price` (hiển thị). Payload gửi BE vẫn giữ nguyên tập
  * key như bản cũ — 3 field FE-only dưới đây bị loại ở `getPayload()`.
  *
  * Mọi field seed giá trị CỤ THỂ (`null`/`[]`/`''`), KHÔNG `undefined` — Signal Forms không bind được
@@ -31,13 +31,11 @@ export interface OrderServiceUsedRow {
   unit_price: number | null;
   quantity: number | null;
   discount_other: number | null;
-  discount: number | null;
   min_price: number | null;
   max_price: number | null;
   updated_at: number | null;
   discountServiceLock: number | null;
   unitName: string | null;
-  expires_at: Date | null;
   rank_discount_percent: number | null;
 
   // ===== FE-only, KHÔNG gửi BE (loại ở getPayload) =====
@@ -66,7 +64,6 @@ export interface OrderServiceUsedModel extends Identifiable {
   unit_price?: number;
   service_discount_type?: number;
   service_discount?: number; // Giảm trừ trên dịch vụ
-  discount?: number; // Giảm trừ chiết khẩu coupon
   discount_other?: number; // Giảm trừ khác
   note_discount?: string;
   ListApiResponse?: number;
@@ -84,7 +81,6 @@ export interface OrderServiceUsedModel extends Identifiable {
   treatmentPlanCode?: string;
   /** Ngày bắt đầu điều trị. // ⚠ SAU afterLoad là `Date`, không còn là số giây (BaseApiService.unixTimesTampFields) */
   activated_at?: number;
-  expires_at?: number; // Ngày hiệu lực còn hạn
   dayComplete?: number; // Ngày dịch vụ hoàn thành
   /** Ngày có thể tái khai thác. // ⚠ SAU afterLoad là `Date`, không còn là số giây (BaseApiService.unixTimesTampFields) */
   dayReExploitation?: number;
@@ -112,7 +108,6 @@ export interface OrderServiceUsedModel extends Identifiable {
   // Chuỗi ngày giờ đã format sẵn (`addFormattedTimestampFields`)
   created_dayFormatted?: string;
   dayCompleteFormatted?: string;
-  expires_atFormatted?: string;
   created_atFormatted?: string;
   updated_atFormatted?: string;
 

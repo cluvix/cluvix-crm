@@ -122,14 +122,12 @@ func (h *Handler) ListTreatmentService(c *gin.Context) {
 
 	// Aggregates — simple raw query with same WHERE conditions
 	var agg struct {
-		TotalDiscount      decimal.Decimal `gorm:"column:totalDiscount"`
 		TotalDiscountOther decimal.Decimal `gorm:"column:totalDiscountOther"`
 		TotalTotalEnd      decimal.Decimal `gorm:"column:totalTotalEnd"`
 		TotalThanhtoan     decimal.Decimal `gorm:"column:totalThanhtoan"`
 	}
 	h.buildTreatmentServiceQuery(c).
-		Select(`COALESCE(SUM(order_service_used.discount), 0) as totalDiscount,
-			COALESCE(SUM(order_service_used.discount_other), 0) as totalDiscountOther,
+		Select(`COALESCE(SUM(order_service_used.discount_other), 0) as totalDiscountOther,
 			COALESCE(SUM(order_service_used.totalEnd), 0) as totalTotalEnd,
 			COALESCE(SUM(order_service_used.payment), 0) as totalThanhtoan`).
 		Offset(-1).Limit(-1).
@@ -142,12 +140,12 @@ func (h *Handler) ListTreatmentService(c *gin.Context) {
 		order_service_used.order_plan_id, order_service_used.service_id,
 		order_service_used.listRevenues, order_service_used.source_id,
 		order_service_used.quantity,
-		order_service_used.unit_price, order_service_used.discount,
+		order_service_used.unit_price,
 		order_service_used.service_discount, order_service_used.service_discount_type,
 		order_service_used.discount_other, order_service_used.rank_discount_amount,
 		order_service_used.totalEnd, order_service_used.payment,
 		order_service_used.payment_status, order_service_used.dayComplete,
-		order_service_used.created_day, order_service_used.expires_at,
+		order_service_used.created_day,
 		order_service_used.isLock,
 		order_service_used.created_by, order_service_used.created_at,
 		order_service_used.updated_by, order_service_used.updated_at`)
@@ -217,7 +215,6 @@ func (h *Handler) ListTreatmentService(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"object":             result,
-		"totalDiscount":      agg.TotalDiscount,
 		"totalDiscountOther": agg.TotalDiscountOther,
 		"totalTotalEnd":      agg.TotalTotalEnd,
 		"totalThanhtoan":     agg.TotalThanhtoan,
@@ -337,7 +334,7 @@ func (h *Handler) ListServiceUsedWithAppointment(c *gin.Context) {
 		order_service_used.order_plan_id, order_service_used.service_id,
 		order_service_used.listRevenues, order_service_used.source_id,
 		order_service_used.quantity,
-		order_service_used.unit_price, order_service_used.discount,
+		order_service_used.unit_price,
 		order_service_used.service_discount, order_service_used.service_discount_type,
 		order_service_used.discount_other, order_service_used.totalEnd, order_service_used.payment,
 		order_service_used.payment_status, order_service_used.created_day,
@@ -390,11 +387,11 @@ func (h *Handler) ListServiceUsedWithAppointment(c *gin.Context) {
 // riêng có gác quyền, đừng nới chuỗi này.
 const treatmentServiceDetailColumns = `id, code, customer_id, service_id, branch_id,
 	quantity,
-	unit_price, service_discount, service_discount_type, discount, discount_other,
+	unit_price, service_discount, service_discount_type, discount_other,
 	rank_discount_amount, discountServiceLock,
 	totalEnd, payment, refundServiceUsed,
 	isLock, installment_config, note, note_discount,
-	created_day, activated_at, expires_at, dayComplete, dayReExploitation,
+	created_day, activated_at, dayComplete, dayReExploitation,
 	created_by, created_at, updated_by, updated_at`
 
 // GetTreatmentService GET /crm/order-service-used/:id

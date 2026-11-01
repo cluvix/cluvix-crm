@@ -148,7 +148,7 @@ func (h *Handler) PrintPayment(c *gin.Context) {
 	if suID := helpers.ToInt64(payment["serviceUsed_id"]); suID > 0 {
 		var osu map[string]interface{}
 		tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
-			Select("order_service_used.id, order_service_used.code, order_service_used.service_id, order_service_used.quantity, order_service_used.unit_price, order_service_used.service_discount_type, order_service_used.service_discount, order_service_used.discount, order_service_used.discount_other, order_service_used.totalEnd, order_service_used.payment, order_service_used.refundServiceUsed, service.name AS service_name").
+			Select("order_service_used.id, order_service_used.code, order_service_used.service_id, order_service_used.quantity, order_service_used.unit_price, order_service_used.service_discount_type, order_service_used.service_discount, order_service_used.discount_other, order_service_used.totalEnd, order_service_used.payment, order_service_used.refundServiceUsed, service.name AS service_name").
 			Joins("LEFT JOIN service ON service.id = order_service_used.service_id").
 			Where("order_service_used.id = ?", suID).Limit(1).Scan(&osu)
 		if pagination.IsQueryError(tx.Error) {
@@ -158,7 +158,7 @@ func (h *Handler) PrintPayment(c *gin.Context) {
 		if len(osu) > 0 {
 			osu["service"] = map[string]interface{}{"name": osu["service_name"]}
 			delete(osu, "service_name")
-			helpers.ParseDecimalFields(osu, "unit_price", "service_discount", "discount", "discount_other", "totalEnd", "payment", "refundServiceUsed")
+			helpers.ParseDecimalFields(osu, "unit_price", "service_discount", "discount_other", "totalEnd", "payment", "refundServiceUsed")
 			helpers.ParseJSONFieldForTable(osu, "order_service_used")
 			payment["orderServiceUsed"] = osu
 		}
@@ -352,7 +352,7 @@ func (h *Handler) PrintRefundService(c *gin.Context) {
 	if suID := helpers.ToInt64(item["serviceUsed_id"]); suID > 0 {
 		var osu map[string]interface{}
 		tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
-			Select("order_service_used.id, order_service_used.code, order_service_used.quantity, order_service_used.unit_price, order_service_used.service_discount_type, order_service_used.service_discount, order_service_used.discount, order_service_used.discount_other, order_service_used.totalEnd, service.name AS service_name").
+			Select("order_service_used.id, order_service_used.code, order_service_used.quantity, order_service_used.unit_price, order_service_used.service_discount_type, order_service_used.service_discount, order_service_used.discount_other, order_service_used.totalEnd, service.name AS service_name").
 			Joins("LEFT JOIN service ON service.id = order_service_used.service_id").
 			Where("order_service_used.id = ?", suID).Limit(1).Scan(&osu)
 		if pagination.IsQueryError(tx.Error) {
@@ -362,7 +362,7 @@ func (h *Handler) PrintRefundService(c *gin.Context) {
 		if len(osu) > 0 {
 			osu["service"] = map[string]interface{}{"name": osu["service_name"]}
 			delete(osu, "service_name")
-			helpers.ParseDecimalFields(osu, "unit_price", "service_discount", "discount", "discount_other", "totalEnd")
+			helpers.ParseDecimalFields(osu, "unit_price", "service_discount", "discount_other", "totalEnd")
 			helpers.ParseJSONFieldForTable(osu, "order_service_used")
 			// Tinh total = quantity * unit_price - service_discount
 			qty := helpers.ToDecimal(osu["quantity"])

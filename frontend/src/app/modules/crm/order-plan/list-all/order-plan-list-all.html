@@ -391,15 +391,14 @@
                   {{ 'common.label.unit_price' | translate }}<i class="pCalculator block">(2)</i>
                 </th>
                 <th class="min-w-[100px]">{{ 'common.label.discount' | translate }}<i class="pCalculator block">(3)</i></th>
-                <th class="min-w-[120px]">{{ 'common.label.coupon_discount' | translate }}<i class="pCalculator block">(4)</i></th>
                 <th class="min-w-[100px]">
-                  {{ 'common.label.other_discount' | translate }}<i class="pCalculator block">(5)</i>
+                  {{ 'common.label.other_discount' | translate }}<i class="pCalculator block">(4)</i>
                 </th>
                 <th class="min-w-[100px]">
-                  {{ 'common.label.membership_rank_discount' | translate }}<i class="pCalculator block">(6)</i>
+                  {{ 'common.label.membership_rank_discount' | translate }}<i class="pCalculator block">(5)</i>
                 </th>
                 <th class="min-w-[120px]">
-                  {{ 'common.label.subtotal' | translate }}<i class="pCalculator block">(1)x(2)-(3)-(4)-(5)-(6)</i>
+                  {{ 'common.label.subtotal' | translate }}<i class="pCalculator block">(1)x(2)-(3)-(4)-(5)</i>
                 </th>
               </tr>
             </ng-template>
@@ -416,7 +415,6 @@
                 </td>
                 <td class="text-blue-500">{{ subModel.unit_price | currencyFormat }}</td>
                 <td class="text-blue-500">{{ subModel.service_discount | currencyFormat }}</td>
-                <td class="text-blue-500">{{ subModel.discount | currencyFormat }}</td>
                 <td class="text-blue-500">{{ subModel.discount_other | currencyFormat }}</td>
                 <td class="text-blue-500">{{ subModel.rank_discount_amount | currencyFormat }}</td>
                 <td class="text-blue-500">{{ subModel.totalEnd | currencyFormat }}</td>

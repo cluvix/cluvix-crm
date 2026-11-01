@@ -78,7 +78,6 @@ var crmDecimalCases = []DecimalCase{
 		NumberFields: []string{
 			"items.*.totalEnd",
 			"items.*.payment",
-			"items.*.discount",
 			"items.*.discount_other",
 			"items.*.rank_discount_amount",
 			"items.*.refundServiceUsed",
@@ -99,7 +98,6 @@ var crmDecimalCases = []DecimalCase{
 			"object.items.*.service_discount_amount",
 			"object.items.*.totalEnd",
 			"object.items.*.payment",
-			"object.items.*.discount",
 			"object.items.*.discount_other",
 			"object.items.*.rank_discount_amount",
 			"object.items.*.refundServiceUsed",
@@ -155,7 +153,6 @@ func seedOrderPlan(t *testing.T, db *gorm.DB, tenant *testhelpers.TestTenant) ui
 		"code":           "OTP" + suffix[:10],
 		"customer_id":    tenant.CustomerID,
 		"orderPlanType":  1,
-		"discount":       "300000.00",
 		"discount_other": "120000.00",
 		// KHÔNG seed `total`: cột thật đã bị DROP (migration 20260601221056); trong response
 		// nó là alias COALESCE(SUM(osu.totalEnd),0) tính từ order_service_used.
@@ -196,7 +193,6 @@ func seedOrderServiceUsed(t *testing.T, db *gorm.DB, tenant *testhelpers.TestTen
 		"total":                 "9000000.00",
 		"totalEnd":              "8100000.00",
 		"payment":               "3000000.00",
-		"discount":              "500000.00",
 		"discount_other":        "200000.00",
 		"service_discount":      "150000.00",
 		"service_discount_type": 1,

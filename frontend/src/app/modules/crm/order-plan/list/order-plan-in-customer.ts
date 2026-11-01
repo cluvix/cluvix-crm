@@ -82,7 +82,6 @@ export class OrderPlanInCustomer extends BaseListV2<OrderServiceUsedModel> imple
     { label: 'Nguồn khách hàng', labelKey: 'common.label.source', value: 'source' },
     { label: 'Đơn hàng mới/cũ', labelKey: 'crm.order_plan.order_type', value: 'orderPlanType' },
     { label: 'Ngày lên đơn', labelKey: 'common.label.order_date', value: 'created_time' },
-    { label: 'Hiệu lực đến', labelKey: 'common.label.expires_at', value: 'expires_at' },
     { label: 'Người tạo', labelKey: 'common.label.user_created', value: 'userCreated' },
     { label: 'Ngày tạo', labelKey: 'common.label.created_at', value: 'created_at' },
     { label: 'Người cập nhật', labelKey: 'common.label.user_updated', value: 'updated_by' },

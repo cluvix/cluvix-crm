@@ -42,7 +42,6 @@ export class OrderPlanService extends BaseApiService<OrderPlanModel> {
       listRevenues: [],
       broker_id: null as any,
       source_id: null as any,
-      discount: 0,
       discount_other: 0,
       total: 0,
       coupon: '',

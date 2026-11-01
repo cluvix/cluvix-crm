@@ -28,7 +28,6 @@ export class CrmReportServiceType extends BaseListV2<any> implements OnInit {
     { label: 'Doanh số', labelKey: 'common.label.revenue', value: 'totalTotalEnd' },
     { label: 'Thực thu', labelKey: 'common.label.actual_revenue', value: 'totalPayment' },
     { label: 'Giảm dịch vụ', labelKey: 'common.label.service_discount', value: 'totalDiscountService' },
-    { label: 'Giảm KM', labelKey: 'common.label.promotion_discount', value: 'totalDiscount' },
     { label: 'Giảm khác', labelKey: 'common.label.other_discount', value: 'totalDiscountOther' },
     { label: 'Hạng TV', labelKey: 'common.label.member_rank', value: 'rank_discount_amount' },
     { label: 'Hoàn DV', labelKey: 'common.label.service_refund', value: 'totalRefundServiceUsed' },
@@ -38,7 +37,7 @@ export class CrmReportServiceType extends BaseListV2<any> implements OnInit {
   override selectedColumns = signal([
     'customerCount', 'numService', 'quantity',
     'totalTotalEnd', 'totalPayment', 'totalDiscountService',
-    'totalDiscount', 'totalDiscountOther', 'totalRefundServiceUsed', 'mediumService',
+    'totalDiscountOther', 'totalRefundServiceUsed', 'mediumService',
   ]);
 
   customerCount = signal(0);
@@ -47,7 +46,6 @@ export class CrmReportServiceType extends BaseListV2<any> implements OnInit {
   totalTotalEnd = signal(0);
   totalPayment = signal(0);
   totalDiscountService = signal(0);
-  totalDiscount = signal(0);
   totalDiscountOther = signal(0);
   totalRankDiscountAmount = signal(0);
   totalRefundServiceUsed = signal(0);
@@ -95,7 +93,6 @@ export class CrmReportServiceType extends BaseListV2<any> implements OnInit {
         this.totalTotalEnd.set(+t.totalEnd || 0);
         this.totalPayment.set(+t.payment || 0);
         this.totalDiscountService.set(+t.service_discount_amount || 0);
-        this.totalDiscount.set(+t.discount || 0);
         this.totalDiscountOther.set(+t.discount_other || 0);
         this.totalRankDiscountAmount.set(+t.rank_discount_amount || 0);
         this.totalRefundServiceUsed.set(+t.refundServiceUsed || 0);

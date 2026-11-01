@@ -119,9 +119,6 @@
       @if (isColVisible('totalDiscountService')()) {
         <th class="min-w-[130px]">{{ 'common.label.service_discount' | translate }}</th>
       }
-      @if (isColVisible('totalDiscount')()) {
-        <th class="min-w-[130px]">{{ 'common.label.promotion_discount' | translate }}</th>
-      }
       @if (isColVisible('totalDiscountOther')()) {
         <th class="min-w-[130px]">{{ 'common.label.other_discount' | translate }}</th>
       }
@@ -183,9 +180,6 @@
       @if (isColVisible('totalDiscountService')()) {
         <td class="text-blue-500">{{ model.service_discount_amount | currencyFormat }}</td>
       }
-      @if (isColVisible('totalDiscount')()) {
-        <td class="text-blue-500">{{ model.discount | currencyFormat }}</td>
-      }
       @if (isColVisible('totalDiscountOther')()) {
         <td class="text-blue-500">{{ model.discount_other | currencyFormat }}</td>
       }
@@ -222,9 +216,6 @@
       }
       @if (isColVisible('totalDiscountService')()) {
         <td><b class="text-blue-500">{{ totalDiscountService() | currencyFormat }}</b></td>
-      }
-      @if (isColVisible('totalDiscount')()) {
-        <td><b class="text-blue-500">{{ totalDiscount() | currencyFormat }}</b></td>
       }
       @if (isColVisible('totalDiscountOther')()) {
         <td><b class="text-blue-500">{{ totalDiscountOther() | currencyFormat }}</b></td>

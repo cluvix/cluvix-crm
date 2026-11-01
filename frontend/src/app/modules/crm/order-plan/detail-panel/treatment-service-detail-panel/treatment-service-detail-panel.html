@@ -97,11 +97,6 @@
           −{{ model().service_discount | currencyFormat }}
         </app-slide-over-row>
       }
-      @if (model().discount) {
-        <app-slide-over-row label="common.label.coupon_discount">
-          −{{ model().discount | currencyFormat }}
-        </app-slide-over-row>
-      }
       @if (model().discount_other) {
         <app-slide-over-row label="common.label.other_discount">
           −{{ model().discount_other | currencyFormat }}
@@ -138,11 +133,6 @@
     @if (model().activated_at; as activatedAt) {
       <app-slide-over-row label="common.label.start_date_2">
         {{ activatedAt | date: 'dd/MM/yyyy' }}
-      </app-slide-over-row>
-    }
-    @if (model().expires_at) {
-      <app-slide-over-row label="common.label.expires_at">
-        {{ model().expires_atFormatted || '—' }}
       </app-slide-over-row>
     }
     @if (model().dayComplete) {

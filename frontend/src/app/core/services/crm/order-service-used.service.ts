@@ -31,7 +31,6 @@ export class OrderServiceUsedService extends BaseApiService<OrderServiceUsedMode
     'dayComplete',
     'dayReExploitation',
     'activated_at',
-    'expires_at',
     'created_at',
     'updated_at',
   ];
@@ -218,7 +217,6 @@ export class OrderServiceUsedService extends BaseApiService<OrderServiceUsedMode
     const itemWithDates = this.addFormattedTimestampFields(item, [
       'created_day',
       'dayComplete',
-      'expires_at',
       'created_at',
       'updated_at',
     ]);

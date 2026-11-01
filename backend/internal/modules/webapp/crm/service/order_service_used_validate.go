@@ -15,8 +15,8 @@ import (
 //
 //	luôn thuộc 1 OrderPlan trong flow này).
 //
-// Cross-field: expires_at > activated_at, payment <= totalEnd.
-// Number min 0: unit_price, discount, service_discount, discount_other, total,
+// Cross-field: payment <= totalEnd.
+// Number min 0: unit_price, service_discount, discount_other, total,
 //
 //	discountServiceLock, rank_discount_percent, rank_discount_amount, totalEnd, payment.
 //
@@ -37,7 +37,6 @@ func validateOrderServiceUsed(svc *crmServiceDao.OrderServiceUsed) error {
 	}
 
 	checkOSUDecimalNonNeg(v, svc.UnitPrice, "Đơn giá")
-	checkOSUDecimalNonNeg(v, svc.Discount, "Chiết khấu")
 	checkOSUDecimalNonNeg(v, svc.ServiceDiscount, "Chiết khấu dịch vụ")
 	checkOSUDecimalNonNeg(v, svc.DiscountOther, "Giảm giá khác")
 	checkOSUDecimalNonNeg(v, svc.Total, "Tổng tiền")
@@ -47,9 +46,6 @@ func validateOrderServiceUsed(svc *crmServiceDao.OrderServiceUsed) error {
 	checkOSUDecimalNonNeg(v, svc.TotalEnd, "Tổng tiền cuối")
 	checkOSUDecimalNonNeg(v, svc.Payment, "Đã thanh toán")
 
-	if svc.ActivatedAt != nil && svc.ExpiresAt != nil && *svc.ExpiresAt <= *svc.ActivatedAt {
-		v.Add("Ngày hết hạn phải lớn hơn ngày bắt đầu hiệu lực")
-	}
 	if svc.Payment != nil && svc.TotalEnd != nil && svc.Payment.Cmp(*svc.TotalEnd) > 0 {
 		v.Add("Thanh toán vượt quá giá trị dịch vụ")
 	}
@@ -82,7 +78,7 @@ var serviceMoneyTolerance = decimal.NewFromInt(1)
 // `totalTotalService`:
 //
 //	gross    = đơn giá × số lượng
-//	total    = round(gross − chiết khấu dịch vụ (VND, hoặc round(% × gross)) − discount)
+//	total    = round(gross − chiết khấu dịch vụ (VND, hoặc round(% × gross)))
 //	totalEnd = round(total − giảm khác − giảm trừ khoá dịch vụ)
 //
 // (rank_discount_amount KHÔNG trừ vào totalEnd — server tính riêng.)
@@ -102,9 +98,6 @@ func expectedServiceUsedMoney(svc *crmServiceDao.OrderServiceUsed) (total, total
 		if svcDisc.IsPositive() {
 			total = total.Sub(svcDisc)
 		}
-		if d := derefDec(svc.Discount); d.IsPositive() {
-			total = total.Sub(d)
-		}
 		total = total.Round(0)
 	}
 	totalEnd = total.Sub(derefDec(svc.DiscountOther)).Sub(svc.DiscountServiceLock).Round(0)
@@ -121,7 +114,7 @@ func derefDec(d *decimal.Decimal) decimal.Decimal {
 // serviceUsedMoneyChanged — dòng cũ có trường tiền nào đổi so với bản đang lưu không.
 func serviceUsedMoneyChanged(svc, prev *crmServiceDao.OrderServiceUsed) bool {
 	decs := [][2]*decimal.Decimal{
-		{svc.UnitPrice, prev.UnitPrice}, {svc.ServiceDiscount, prev.ServiceDiscount}, {svc.Discount, prev.Discount},
+		{svc.UnitPrice, prev.UnitPrice}, {svc.ServiceDiscount, prev.ServiceDiscount},
 		{svc.DiscountOther, prev.DiscountOther}, {svc.Total, prev.Total}, {svc.TotalEnd, prev.TotalEnd},
 	}
 	for _, p := range decs {

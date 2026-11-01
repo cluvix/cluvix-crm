@@ -78,11 +78,9 @@
             <th class="w-[72px]">{{ 'common.label.unit' | translate }}</th>
             <th class="w-[130px] text-right">{{ 'common.label.unit_price' | translate }} <i class="pCalculator block font-normal">(2)</i></th>
             <th class="w-[150px] text-right">{{ 'common.label.service_discount' | translate }} <i class="pCalculator block font-normal">(3)</i></th>
-            <th class="w-[110px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_coupon' | translate" tooltipPosition="top">{{ 'common.label.coupon_discount' | translate }} <i class="pCalculator block font-normal">(4)</i></th>
-            <th class="w-[120px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_subtotal' | translate" tooltipPosition="top">{{ 'common.label.subtotal' | translate }} <i class="pCalculator block font-normal">(5)</i></th>
-            <th class="w-[130px] text-right">{{ 'common.label.other_discount' | translate }} <i class="pCalculator block font-normal">(6)</i></th>
-            <th class="w-[130px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_total' | translate" tooltipPosition="top">{{ 'crm.order_plan.form.total_to_pay' | translate }} <i class="pCalculator block font-normal">(7)</i></th>
-            <th class="w-[120px]">{{ 'crm.order_plan.form.expires_at' | translate }}</th>
+            <th class="w-[120px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_subtotal' | translate" tooltipPosition="top">{{ 'common.label.subtotal' | translate }} <i class="pCalculator block font-normal">(4)</i></th>
+            <th class="w-[130px] text-right">{{ 'common.label.other_discount' | translate }} <i class="pCalculator block font-normal">(5)</i></th>
+            <th class="w-[130px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_total' | translate" tooltipPosition="top">{{ 'crm.order_plan.form.total_to_pay' | translate }} <i class="pCalculator block font-normal">(6)</i></th>
             @if ((model().services_used ?? []).length > 1) {
               <th class="w-[44px] min-w-[44px] text-center">#</th>
             }
@@ -193,15 +191,6 @@
                     }}</span></button>
                 </p-inputgroup>
               </td>
-              <td>
-                <p-inputnumber
-                  [readonly]="true"
-                  [formField]="$any(row.discount!)"
-                  id="discount"
-                  placeholder="0"
-                  inputStyleClass="text-right"
-                ></p-inputnumber>
-              </td>
               <td class="text-right tabular-nums">{{ row.total!().value() || 0 | numberFormat }}</td>
               <td>
                 <p-inputnumber
@@ -213,15 +202,6 @@
                 ></p-inputnumber>
               </td>
               <td class="text-right tabular-nums font-semibold">{{ row.totalEnd!().value() || 0 | numberFormat }}</td>
-              <td>
-                <p-datepicker
-                  appendTo="body"
-                  class="ng-dirty"
-                  dateFormat="dd/mm/yy"
-                  [formField]="$any(row.expires_at!)"
-                  id="expires_at"
-                ></p-datepicker>
-              </td>
               @if ((model().services_used ?? []).length > 1) {
                 <td class="text-center">
                   <button
@@ -244,7 +224,7 @@
         </ng-template>
         <ng-template #footer>
           <tr>
-            <td [attr.colspan]="(model().services_used ?? []).length > 1 ? 12 : 11" class="!p-2">
+            <td [attr.colspan]="(model().services_used ?? []).length > 1 ? 9 : 8" class="!p-2">
               <button
                 pButton
                 (click)="addServiceUsed()"

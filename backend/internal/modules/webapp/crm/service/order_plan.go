@@ -12,7 +12,7 @@
 //
 // story-10 (crm-standalone): gỡ mã giảm giá / CTV / điểm tích luỹ — đơn không còn nhận mã giảm
 // giá, không gán CTV, không ghi sổ hoa hồng CTV, không tích/trừ điểm. Các bước tính tiền còn lại
-// (rank_discount_amount, discount 1 dịch vụ, debtsPlan, totalRevenue/totalDebt) giữ nguyên thứ tự.
+// (rank_discount_amount, debtsPlan, totalRevenue/totalDebt) giữ nguyên thứ tự.
 package service
 
 import (
@@ -481,17 +481,14 @@ func (s *OrderPlanService) parseListRevenues(order *orderPlanDao.OrderPlan) {
 //     a. Nếu existing → selective merge (giữ ID, base fields). Nếu mới → json.Unmarshal
 //     b. Set fields kế thừa từ order (branch, appointment, revenue, source...)
 //     c. Tính rank_discount_amount server-side = totalEnd * rank_discount_percent / 100
-//     d. Auto-calculate discount cho create: 1 svc → order.discount
-//     e. GORM Create hoặc Save
-//     f. Xử lý installment: có config → tạo/update kỳ trả góp; không có → xoá hết
+//     d. GORM Create hoặc Save
+//     e. Xử lý installment: có config → tạo/update kỳ trả góp; không có → xoá hết
 //  3. Delete orphan services (chỉ update): check payment + isLock trước khi xoá
 func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.OrderPlan, servicesData []map[string]interface{}, isUpdate bool, userID uint) error {
 	var oldIDs []uint
 	if isUpdate {
 		oldIDs, _ = s.repo.OrderServiceUsedIDs(tx, order.ID)
 	}
-
-	serviceCount := len(servicesData)
 
 	// Batch load existing services (tránh N+1 query)
 	existingSvcMap := map[uint]crmServiceDao.OrderServiceUsed{}
@@ -631,14 +628,6 @@ func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.Order
 			svc.RankDiscountAmount = new(helpers.DerefDecimal(svc.TotalEnd).Mul(rankPct).Div(decimal.NewFromInt(100)))
 		} else {
 			svc.RankDiscountAmount = new(decimal.Zero)
-		}
-
-		// Auto-calculate discount cho create (giống PHP)
-		if !isUpdate && svc.ID == 0 {
-			if serviceCount == 1 {
-				// 1 service → discount = order.discount
-				svc.Discount = order.Discount
-			}
 		}
 
 		if err := validateOrderServiceUsed(&svc); err != nil {
@@ -972,9 +961,6 @@ func mergeServiceData(svc *crmServiceDao.OrderServiceUsed, data map[string]inter
 	if v, ok := data["unit_price"]; ok {
 		svc.UnitPrice = new(helpers.ToDecimal(v))
 	}
-	if v, ok := data["discount"]; ok {
-		svc.Discount = new(helpers.ToDecimal(v))
-	}
 	if v, ok := data["service_discount"]; ok {
 		svc.ServiceDiscount = new(helpers.ToDecimal(v))
 	}
@@ -1002,14 +988,6 @@ func mergeServiceData(svc *crmServiceDao.OrderServiceUsed, data map[string]inter
 	if v, ok := data["note"]; ok {
 		svc.Note, _ = v.(string)
 	}
-	if v, ok := data["expires_at"]; ok {
-		if v == nil {
-			svc.ExpiresAt = nil
-		} else {
-			n := helpers.ToInt64(v)
-			svc.ExpiresAt = &n
-		}
-	}
 	if v, ok := data["installment_config"]; ok {
 		if v == nil {
 			svc.InstallmentConfig = nil
@@ -1032,9 +1010,6 @@ func (s *OrderPlanService) mergeOrder(dst *orderPlanDao.OrderPlan, src *orderPla
 		dst.BranchId = src.BranchId
 	}
 
-	if src.Discount != nil {
-		dst.Discount = src.Discount
-	}
 	if src.DiscountOther != nil {
 		dst.DiscountOther = src.DiscountOther
 	}

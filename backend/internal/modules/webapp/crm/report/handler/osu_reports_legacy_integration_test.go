@@ -37,7 +37,6 @@ func (h *Handler) legacyBuildReportServiceUsedQuery(c *gin.Context) *gorm.DB {
 			SUM(totalEnd) as totalEnd,
 			SUM(payment) as payment,
 			SUM(CASE WHEN service_discount_type = 2 THEN (service_discount * unit_price * quantity / 100) ELSE service_discount END) as service_discount_amount,
-			SUM(discount) as discount,
 			SUM(discount_other) as discount_other,
 			SUM(rank_discount_amount) as rank_discount_amount,
 			SUM(refundServiceUsed) as refundServiceUsed`).
@@ -136,7 +135,6 @@ func (h *Handler) legacyReportServiceUsed(c *gin.Context) {
 		TotalEnd           decimal.Decimal `gorm:"column:totalEnd"`
 		Payment            decimal.Decimal `gorm:"column:payment"`
 		ServiceDiscount    decimal.Decimal `gorm:"column:service_discount_amount"`
-		Discount           decimal.Decimal `gorm:"column:discount"`
 		DiscountOther      decimal.Decimal `gorm:"column:discount_other"`
 		RankDiscountAmount decimal.Decimal `gorm:"column:rank_discount_amount"`
 		RefundServiceUsed  decimal.Decimal `gorm:"column:refundServiceUsed"`
@@ -170,7 +168,6 @@ func (h *Handler) legacyReportServiceUsed(c *gin.Context) {
 		SUM(totalEnd) as totalEnd,
 		SUM(payment) as payment,
 		SUM(CASE WHEN service_discount_type = 2 THEN (service_discount * unit_price * quantity / 100) ELSE service_discount END) as service_discount_amount,
-		SUM(discount) as discount,
 		SUM(discount_other) as discount_other,
 		SUM(rank_discount_amount) as rank_discount_amount,
 		SUM(refundServiceUsed) as refundServiceUsed,
@@ -193,7 +190,7 @@ func (h *Handler) legacyReportServiceUsed(c *gin.Context) {
 	// `pagination.Paginate` chỉ parse decimal theo TÊN CỘT của bảng (extractTables →
 	// ParseDecimalFieldsForTables). `service_discount_amount` là alias của biểu thức CASE,
 	// KHÔNG phải cột của bảng nào ⇒ vẫn ra JSON string nếu không gọi tay.
-	// Các alias tiền còn lại (totalEnd, payment, discount, discount_other,
+	// Các alias tiền còn lại (totalEnd, payment, discount_other,
 	// rank_discount_amount, refundServiceUsed) TRÙNG tên cột `order_service_used` nên đã được
 	// Paginate phủ; `quantity` = SUM(int) — MySQL vẫn trả DECIMAL cho SUM() dù cột gốc INT, và vì
 	// `ParseDecimalFieldsForTables` tra theo SCHEMA thật (quantity là INT, không phải decimal) nên
@@ -223,7 +220,6 @@ func (h *Handler) legacyReportServiceUsed(c *gin.Context) {
 			"totalTotalEnd":           totals.TotalEnd,
 			"totalPayment":            totals.Payment,
 			"totalDiscountService":    totals.ServiceDiscount,
-			"totalDiscount":           totals.Discount,
 			"totalDiscountOther":      totals.DiscountOther,
 			"totalRankDiscountAmount": totals.RankDiscountAmount,
 			"totalRefundServiceUsed":  totals.RefundServiceUsed,
@@ -250,7 +246,6 @@ func (h *Handler) legacyServiceTypeStatistics(c *gin.Context) {
 			SUM(osu.totalEnd) AS totalEnd,
 			SUM(osu.payment) AS payment,
 			SUM(CASE WHEN osu.service_discount_type = 2 THEN (osu.service_discount * osu.unit_price * osu.quantity / 100) ELSE osu.service_discount END) AS service_discount_amount,
-			SUM(osu.discount) AS discount,
 			SUM(osu.discount_other) AS discount_other,
 			SUM(osu.rank_discount_amount) AS rank_discount_amount,
 			SUM(osu.refundServiceUsed) AS refundServiceUsed`).
@@ -268,7 +263,7 @@ func (h *Handler) legacyServiceTypeStatistics(c *gin.Context) {
 	// numService/customerCount = COUNT thuần → BIGINT, không cần parse.
 	for _, r := range rows {
 		helpers.ParseDecimalFields(r, "totalEnd", "payment", "service_discount_amount",
-			"discount", "discount_other", "rank_discount_amount", "refundServiceUsed", "quantity")
+			"discount_other", "rank_discount_amount", "refundServiceUsed", "quantity")
 	}
 
 	// customerCount total — riêng biệt để tránh double-count khách mua nhiều loại DV
@@ -278,14 +273,13 @@ func (h *Handler) legacyServiceTypeStatistics(c *gin.Context) {
 		Scan(&tCustomerCount)
 
 	var tNumService, tQuantity int64
-	var tTotalEnd, tPayment, tDiscountService, tDiscount, tDiscountOther, tRankDiscount, tRefund decimal.Decimal
+	var tTotalEnd, tPayment, tDiscountService, tDiscountOther, tRankDiscount, tRefund decimal.Decimal
 	for _, r := range rows {
 		tNumService += helpers.ToInt64(r["numService"])
 		tQuantity += helpers.ToInt64(r["quantity"])
 		tTotalEnd = tTotalEnd.Add(helpers.ToDecimal(r["totalEnd"]))
 		tPayment = tPayment.Add(helpers.ToDecimal(r["payment"]))
 		tDiscountService = tDiscountService.Add(helpers.ToDecimal(r["service_discount_amount"]))
-		tDiscount = tDiscount.Add(helpers.ToDecimal(r["discount"]))
 		tDiscountOther = tDiscountOther.Add(helpers.ToDecimal(r["discount_other"]))
 		tRankDiscount = tRankDiscount.Add(helpers.ToDecimal(r["rank_discount_amount"]))
 		tRefund = tRefund.Add(helpers.ToDecimal(r["refundServiceUsed"]))
@@ -328,7 +322,6 @@ func (h *Handler) legacyServiceTypeStatistics(c *gin.Context) {
 			"totalEnd":                tTotalEnd,
 			"payment":                 tPayment,
 			"service_discount_amount": tDiscountService,
-			"discount":                tDiscount,
 			"discount_other":          tDiscountOther,
 			"rank_discount_amount":    tRankDiscount,
 			"refundServiceUsed":       tRefund,

@@ -36,7 +36,6 @@ type OrderServiceUsed struct {
 	SourceId            *int             ` gorm:"column:source_id;index;comment:Dịch vụ về từ nguồn nào" json:"source_id"`
 	Quantity            *int             ` gorm:"comment:Số lượng sản" json:"quantity"`
 	UnitPrice           *decimal.Decimal ` gorm:"column:unit_price;type:decimal(20,2);default:0.00;comment:Đơn giá sản phẩm" json:"unit_price"`
-	Discount            *decimal.Decimal ` gorm:"type:decimal(20,2);comment:Tổng chiết khấu của dịch vụ" json:"discount"`
 	ServiceDiscount     *decimal.Decimal ` gorm:"column:service_discount;type:decimal(20,2);default:0.00;comment:Chiết khấu theo dịch vụ" json:"service_discount"`
 	ServiceDiscountType *int             ` gorm:"column:service_discount_type;default:1;comment:Loại chiết khấu theo dịch vụ" json:"service_discount_type"`
 	DiscountOther       *decimal.Decimal ` gorm:"column:discount_other;type:decimal(20,2);default:0.00;comment:Giảm giá khác" json:"discount_other"`
@@ -47,12 +46,11 @@ type OrderServiceUsed struct {
 	RankDiscountPercent *decimal.Decimal ` gorm:"column:rank_discount_percent;type:decimal(5,2);default:0.00;comment:Giảm trừ theo hạng thành viên" json:"rank_discount_percent"`
 	RankDiscountAmount  *decimal.Decimal ` gorm:"column:rank_discount_amount;type:decimal(20,2);default:0.00;comment:Số tiền giảm trừ theo hạng thành viên" json:"rank_discount_amount"`
 	InstallmentConfig   datatypes.JSON   `gorm:"column:installment_config;type:json;comment:Cấu hình trả góp (JSON)" json:"installment_config"`
-	TotalEnd            *decimal.Decimal ` gorm:"column:totalEnd;type:decimal(20,2);default:0.00;comment:Tổng tiền sau khi khấu trừ service_discount, discount, discount_other" json:"totalEnd"`
+	TotalEnd            *decimal.Decimal ` gorm:"column:totalEnd;type:decimal(20,2);default:0.00;comment:Tổng tiền sau khi khấu trừ service_discount, discount_other" json:"totalEnd"`
 	Payment             *decimal.Decimal ` gorm:"type:decimal(20,2);default:0.00;comment:Số tiền đã thanh toán" json:"payment"`
 	Note                string           ` gorm:"comment:Ghi chú" json:"note"`
 	PaymentStatus       *int             ` gorm:"column:payment_status;default:1;comment:Trạng thái thanh toán" json:"payment_status"`
 	ActivatedAt         *int64           ` gorm:"column:activated_at;comment:Thời điểm dịch vụ bắt đầu có hiệu lực" json:"activated_at"`
-	ExpiresAt           *int64           ` gorm:"column:expires_at;comment:Thời điểm hết hiệu lực của dịch vụ" json:"expires_at"`
 	DayComplete         *int64           ` gorm:"column:dayComplete;comment:Ngày hoàn thành dịch vụ" json:"dayComplete"`
 	DayReExploitation   *int64           ` gorm:"column:dayReExploitation;comment:Ngày tái khai thác" json:"dayReExploitation"`
 	CreatedDay          *int64           ` gorm:"column:created_day;index;comment:Thời gian tạo - Có thể chỉnh sửa" json:"created_day"`

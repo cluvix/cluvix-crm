@@ -74,8 +74,7 @@
                       item.payment?.orderServiceUsed?.unit_price *
                       (item.payment?.orderServiceUsed?.service_discount / 100)
                     ) +
-                    +item.payment?.orderServiceUsed?.discount_other +
-                    +item.payment?.orderServiceUsed?.discount | numberFormat
+                    +item.payment?.orderServiceUsed?.discount_other | numberFormat
                   }}
               </span>
               }
@@ -85,8 +84,7 @@
                 >
                 {{
                     +item.payment?.orderServiceUsed?.service_discount +
-                    +item.payment?.orderServiceUsed?.discount_other +
-                    +item.payment?.orderServiceUsed?.discount | numberFormat
+                    +item.payment?.orderServiceUsed?.discount_other | numberFormat
                   }}
               </span>
               }

@@ -21,7 +21,7 @@ import (
 // Tổng tiền đơn tính từ tổng `totalEnd` của các dịch vụ con, xem `total` trong response.
 const orderPlanDetailColumns = `id, code, old_code, orderPlanType, customer_id, appointment_id,
 	branch_id, source_id,
-	discount, discount_other, paymentPlan, debtsPlan,
+	discount_other, paymentPlan, debtsPlan,
 	listRevenues,
 	status, note, created_time,
 	created_by, created_at, updated_by, updated_at`
@@ -32,10 +32,10 @@ const orderPlanDetailColumns = `id, code, old_code, orderPlanType, customer_id, 
 // trong response là rò rỉ tỷ lệ hoa hồng cho mọi người xem được đơn.
 const orderPlanServiceColumns = `id, code, service_id,
 	quantity,
-	unit_price, service_discount, discount, discount_other,
+	unit_price, service_discount, discount_other,
 	rank_discount_amount, discountServiceLock,
 	totalEnd, payment, refundServiceUsed,
-	isLock, expires_at,
+	isLock,
 	listRevenues`
 
 // GetOrderPlanDetail GET /crm/order-plan/:id/detail

@@ -161,11 +161,6 @@
           {{ 'common.label.order_date' | translate }}
         </th>
       }
-      @if (isColVisible('expires_at')()) {
-        <th class="min-w-[140px]">
-          {{ 'common.label.expires_at' | translate }}
-        </th>
-      }
       @if (isColVisible('userCreated')()) {
         <th class="min-w-[200px]">{{ 'common.label.user_created' | translate }}</th>
       }
@@ -389,11 +384,6 @@
           {{ model.created_dayFormatted }}
         </td>
       }
-      @if (isColVisible('expires_at')()) {
-        <td>
-          {{ model.expires_atFormatted || '—' }}
-        </td>
-      }
       @if (isColVisible('userCreated')() && rowgroup) {
         <td [attr.rowspan]="rowspan">
           <p-chip label="{{model.createdByInfo?.fullname}}" image="{{ model.createdByInfo?.avatar }}"
@@ -472,9 +462,6 @@
         <td></td>
       }
       @if (isColVisible('created_time')()) {
-        <td></td>
-      }
-      @if (isColVisible('expires_at')()) {
         <td></td>
       }
       @if (isColVisible('note')()) {

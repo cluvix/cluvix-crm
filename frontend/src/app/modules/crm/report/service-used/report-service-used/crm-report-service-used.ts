@@ -37,7 +37,6 @@ export class CrmReportServiceUsed extends BaseListV2<any> implements OnInit {
     {label: 'Doanh số', labelKey: 'common.label.revenue', value: 'totalTotalEnd'},
     {label: this.translate.instant('crm.order_plan.form.total_to_pay'), value: 'totalPayment'},
     {label: 'Giảm dịch vụ', labelKey: 'common.label.service_discount', value: 'totalDiscountService'},
-    {label: 'Giảm khuyến mại', labelKey: 'common.label.promotion_discount', value: 'totalDiscount'},
     {label: 'Giảm khác', labelKey: 'common.label.other_discount', value: 'totalDiscountOther'},
     {label: 'Hạng thành viên', labelKey: 'common.label.member_rank', value: 'rank_discount_amount'},
     {label: 'Hoàn dịch vụ', labelKey: 'common.label.service_refund', value: 'totalRefundServiceUsed'},
@@ -51,7 +50,6 @@ export class CrmReportServiceUsed extends BaseListV2<any> implements OnInit {
     'totalTotalEnd',
     'totalPayment',
     'totalDiscountService',
-    'totalDiscount',
     'totalDiscountOther',
     'totalRefundServiceUsed',
     'mediumService',
@@ -62,7 +60,6 @@ export class CrmReportServiceUsed extends BaseListV2<any> implements OnInit {
   totalTotalEnd = signal(0);
   totalPayment = signal(0);
   totalDiscountService = signal(0);
-  totalDiscount = signal(0);
   totalDiscountOther = signal(0);
   totalRankDiscountAmount = signal(0);
   totalRefundServiceUsed = signal(0);
@@ -126,7 +123,6 @@ export class CrmReportServiceUsed extends BaseListV2<any> implements OnInit {
         this.totalTotalEnd.set(totals.totalTotalEnd ?? 0);
         this.totalPayment.set(totals.totalPayment ?? 0);
         this.totalDiscountService.set(totals.totalDiscountService ?? 0);
-        this.totalDiscount.set(totals.totalDiscount ?? 0);
         this.totalDiscountOther.set(totals.totalDiscountOther ?? 0);
         this.totalRankDiscountAmount.set(totals.totalRankDiscountAmount ?? 0);
         this.totalRefundServiceUsed.set(totals.totalRefundServiceUsed ?? 0);

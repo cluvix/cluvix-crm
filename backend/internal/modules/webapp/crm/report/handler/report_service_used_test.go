@@ -76,8 +76,8 @@ func seedReportServiceUsed(t *testing.T) {
 		if err := testDB.Exec(`INSERT INTO order_service_used
 			(id, code, customer_id, order_plan_id, service_id, branch_id, isLock,
 			 quantity, totalEnd, payment, service_discount_type, service_discount, unit_price,
-			 discount, discount_other, rank_discount_amount, refundServiceUsed, created_day)
-			VALUES (?, ?, ?, 0, ?, ?, ?, 1, 100, 50, 1, 10, 100, 0, 0, 0, 0, 1788195700)`,
+			 discount_other, rank_discount_amount, refundServiceUsed, created_day)
+			VALUES (?, ?, ?, 0, ?, ?, ?, 1, 100, 50, 1, 10, 100, 0, 0, 0, 1788195700)`,
 			r.id, fmt.Sprintf("OSU%d", r.id), r.customer, r.service, r.branch, r.isLock).Error; err != nil {
 			t.Fatalf("seed osu %d: %v", r.id, err)
 		}

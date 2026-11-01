@@ -111,7 +111,7 @@ func (h *Handler) ListServiceUsedCustomer(c *gin.Context) {
 		order_service_used.totalEnd, order_service_used.payment,
 		order_service_used.refundServiceUsed,
 		order_service_used.isLock,
-		order_service_used.created_day, order_service_used.expires_at,
+		order_service_used.created_day,
 		order_service_used.created_by, order_service_used.created_at,
 		order_service_used.updated_by, order_service_used.updated_at`)
 

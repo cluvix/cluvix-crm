@@ -108,8 +108,7 @@
                 >
                 {{
                     +(value.quantity * value.unit_price * (value.service_discount / 100)) +
-                    +value?.discount_other +
-                    +value?.discount | numberFormat
+                    +value?.discount_other | numberFormat
                   }}
               </span>
               }
@@ -117,7 +116,7 @@
                 <span
                 >
                 {{
-                    +value.service_discount + +value?.discount_other + +value?.discount | numberFormat
+                    +value.service_discount + +value?.discount_other | numberFormat
                   }}
               </span>
               }

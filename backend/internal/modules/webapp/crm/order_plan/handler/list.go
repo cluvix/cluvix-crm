@@ -112,7 +112,7 @@ func (h *Handler) ListOrderPlan(c *gin.Context) {
 		Select(`order_plan.id, order_plan.code, order_plan.orderPlanType,
 			order_plan.customer_id, order_plan.appointment_id, order_plan.branch_id,
 			COALESCE((SELECT SUM(osu.totalEnd) FROM order_service_used osu WHERE osu.order_plan_id = order_plan.id), 0) AS total,
-			order_plan.discount, order_plan.discount_other,
+			order_plan.discount_other,
 			order_plan.paymentPlan, order_plan.debtsPlan,
 			order_plan.listRevenues, order_plan.source_id,
 			order_plan.note, order_plan.created_time, order_plan.status,
@@ -144,7 +144,7 @@ func (h *Handler) ListOrderPlan(c *gin.Context) {
 			// cùng đơn có thể ở chi nhánh khác; đơn đã qua branch scope ở trên.
 			var svcRows []map[string]interface{}
 			tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
-				Select(`id, order_plan_id, service_id, quantity, unit_price, service_discount, discount,
+				Select(`id, order_plan_id, service_id, quantity, unit_price, service_discount,
 					discount_other, rank_discount_amount, totalEnd, payment, status, isLock`).
 				Where("order_plan_id IN ?", ids).Order("id ASC").Find(&svcRows)
 			if pagination.IsQueryError(tx.Error) {

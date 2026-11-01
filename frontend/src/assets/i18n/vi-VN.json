@@ -1150,8 +1150,8 @@
         "total_to_pay": "Thanh toán",
         "outstanding_balance": "Số tiền còn lại",
         "tooltip_col_coupon": "(4) = Giảm giá dòng dịch vụ (giá trị lịch sử)",
-        "tooltip_col_subtotal": "(5) = (1)×(2)−(3)−(4)",
-        "tooltip_col_total": "(7) = (5)−(6)"
+        "tooltip_col_subtotal": "(4) = (1)×(2)−(3)",
+        "tooltip_col_total": "(6) = (4)−(5)"
       },
       "order_type": "Đơn hàng mới/cũ",
       "change_service": {

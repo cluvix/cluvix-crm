@@ -57,13 +57,11 @@ function emptyServiceRow(seed?: Partial<OrderServiceUsedRow>): OrderServiceUsedR
     unit_price: null,
     quantity: null,
     discount_other: null,
-    discount: 0,
     min_price: 0,
     max_price: 0,
     updated_at: null,
     discountServiceLock: 0,
     unitName: null,
-    expires_at: null,
     rank_discount_percent: 0,
     _uid: ++rowUidCounter,
     unitPriceLocked: false,
@@ -84,7 +82,6 @@ function emptyOrderPlanModel(): OrderPlanModel {
     appointment_id: null as any,
     branch_id: null as any,
     listRevenues: [],
-    discount: 0,
     discount_other: 0,
     total: 0,
     created_time: null,
@@ -320,13 +317,11 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       unit_price: orderServiceItem?.unit_price ?? null,
       quantity: orderServiceItem?.quantity ?? null,
       discount_other: orderServiceItem?.discount_other ?? null,
-      discount: orderServiceItem?.discount || 0,
       min_price: orderServiceItem?.serviceInfo?.min_price ?? 0,
       max_price: orderServiceItem?.serviceInfo?.max_price ?? 0,
       updated_at: orderServiceItem?.updated_at ?? null,
       discountServiceLock: orderServiceItem?.discountServiceLock || 0,
       unitName: this.unitHelper.getLabel(orderServiceItem?.serviceInfo?.unit_id) ?? null,
-      expires_at: this.fromEpoch(orderServiceItem?.expires_at),
       rank_discount_percent: orderServiceItem?.rank_discount_percent || 0,
       serviceLocked: rowLocked,
       unitPriceLocked: false,
@@ -367,8 +362,8 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
    * [CRITICAL] Toàn bộ recalculation tiền gom vào effect key theo CHUỖI SERIALIZE các field ĐIỀU KHIỂN
    * (`service_discount`/`unit_price`/`quantity`/`discount_other`/`service_id`).
    *
-   * Field bị GHI (`discount`/`total`/`totalEnd`/`rank_discount_percent` cấp dòng và
-   * `total`/`discount`/`discount_other` cấp form) TUYỆT ĐỐI KHÔNG được có mặt trong key — nếu không sẽ
+   * Field bị GHI (`total`/`totalEnd`/`rank_discount_percent` cấp dòng và
+   * `total`/`discount_other` cấp form) TUYỆT ĐỐI KHÔNG được có mặt trong key — nếu không sẽ
    * lặp vô hạn. Mọi lệnh ghi bọc `untracked()`.
    */
   private _registerRecalcEffects(): void {
@@ -497,10 +492,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       const unitPrice = Number(row.unit_price) || 0;
       const serviceDiscount = Number(row.service_discount) || 0;
 
-      // Coupon đã bỏ (story-19) — cột `discount` (tiền lịch sử, BE vẫn giữ) không còn nguồn nào
-      // ghi ở FE nữa, luôn 0.
-      const discountValue = 0;
-
       // Rank discount percent
       let rankDiscountPercent = 0;
       if (customerRankId && row.service_id) {
@@ -526,7 +517,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         quantity,
         serviceDiscount,
         row.service_discount_type,
-        discountValue,
       );
 
       let totalEnd = Math.round(total - (Number(row.discount_other) || 0));
@@ -536,14 +526,12 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         totalEnd -= discountServiceLock;
       }
 
-      const nextDiscount = Math.round(discountValue);
       const nextTotal = Math.round(total);
       const nextTotalEnd = Math.round(totalEnd);
-      // Giữ NGUYÊN tham chiếu khi 4 field tính ra không đổi — mỗi phím gõ đều chạy qua đây, tạo object
+      // Giữ NGUYÊN tham chiếu khi 3 field tính ra không đổi — mỗi phím gõ đều chạy qua đây, tạo object
       // mới cho cả mảng làm mọi binding trong bảng phải so lại (và trước khi có `[rowTrackBy]` thì còn
       // dựng lại DOM). Chỉ dòng thực sự đổi số mới cần object mới.
       if (
-        row.discount === nextDiscount &&
         row.total === nextTotal &&
         row.totalEnd === nextTotalEnd &&
         row.rank_discount_percent === rankDiscountPercent
@@ -553,7 +541,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       rowsChanged = true;
       return {
         ...row,
-        discount: nextDiscount,
         total: nextTotal,
         totalEnd: nextTotalEnd,
         rank_discount_percent: rankDiscountPercent,
@@ -564,7 +551,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     // cộng `totalEnd * phần trăm dòng / 100` cho dòng có totalEnd > 0).
     let totalRankDiscount = 0;
     let total = 0;
-    let discount = 0;
     let discountOther = 0;
     updated.forEach((row) => {
       const rowTotalEnd = Number(row.totalEnd) || 0;
@@ -573,13 +559,11 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         totalRankDiscount += (rowTotalEnd * pct) / 100;
       }
       total += rowTotalEnd;
-      discount += Number(row.discount) || 0;
       discountOther += Number(row.discount_other) || 0;
     });
 
     this.totalRankDiscount.set(totalRankDiscount);
     const nextTotal = Math.round(total - totalRankDiscount);
-    const nextDiscount = Math.round(discount);
     const nextDiscountOther = Math.round(discountOther);
     const current = this.model();
     // Không ghi lại `model` khi KHÔNG có gì đổi — mỗi lần `update()` sinh object model mới, kéo theo
@@ -587,14 +571,12 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     if (
       rowsChanged ||
       current.total !== nextTotal ||
-      current.discount !== nextDiscount ||
       current.discount_other !== nextDiscountOther
     ) {
       this.model.update(m => ({
         ...m,
         services_used: rowsChanged ? updated : m.services_used,
         total: nextTotal,
-        discount: nextDiscount,
         discount_other: nextDiscountOther,
       }));
     }
@@ -605,7 +587,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     quantity: any = 0,
     discountSerivce: any = 0,
     discountType: number | null,
-    discount: number,
   ) {
     let total = 0;
     if (!unitPrice || !quantity) {
@@ -618,9 +599,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     }
     if (Number(lastDiscount) > 0) {
       total -= Number(lastDiscount);
-    }
-    if (Number(discount) > 0) {
-      total -= Number(discount);
     }
     return Math.round(total);
   }
@@ -777,15 +755,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       return;
     }
 
-    const toEpoch = (v: Date | string | number | null | undefined): number | null => {
-      if (v == null || v === '') return null;
-      if (typeof v === 'number') return v < 1e12 ? v : Math.floor(v / 1000);
-      const d = v instanceof Date ? v : new Date(v);
-      const t = d.getTime();
-      if (Number.isNaN(t)) return null;
-      return Math.floor(t / 1000);
-    };
-
     const payload = {
       ...raw,
       services_used: (raw.services_used ?? []).map((s: any) => {
@@ -795,7 +764,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         return {
           ...s,
           totalEnd: finalTotalEnd,
-          expires_at: toEpoch(s.expires_at),
           installment_config: null,
         };
       }),
@@ -841,7 +809,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       appointment_id: m.appointment_id,
       branch_id: m.branch_id,
       listRevenues: m.listRevenues,
-      discount: m.discount,
       discount_other: m.discount_other,
       total: m.total,
       created_time: m.created_time,
@@ -862,13 +829,11 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         unit_price: r.unit_price,
         quantity: r.quantity,
         discount_other: r.discount_other,
-        discount: r.discount,
         min_price: r.min_price,
         max_price: r.max_price,
         updated_at: r.updated_at,
         discountServiceLock: r.discountServiceLock,
         unitName: r.unitName,
-        expires_at: r.expires_at,
         rank_discount_percent: r.rank_discount_percent,
       })),
     };
@@ -945,7 +910,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     unit_price: 'common.label.unit_price',
     service_discount: 'common.label.service_discount',
     discount_other: 'common.label.other_discount',
-    expires_at: 'crm.order_plan.form.expires_at',
   };
 
   /** Field top-level có validator — dùng để quét invalid (Signal Forms không liệt kê control động được). */
@@ -995,12 +959,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   /** Tiền đã thanh toán của đơn — snapshot lúc mở dialog (xem `originalPayment`). */
   get paidAmount(): number {
     return this.originalPayment;
-  }
-
-  private fromEpoch(epoch?: number | null): Date | null {
-    if (epoch == null) return null;
-    const ms = epoch < 1e12 ? epoch * 1000 : epoch;
-    return new Date(ms);
   }
 
   private setTooltipFlag(uid: number, v: boolean) {

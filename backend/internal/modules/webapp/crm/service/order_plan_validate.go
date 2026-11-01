@@ -9,7 +9,7 @@ import (
 
 // validateOrderPlan — port từ be/common/models/OrderPlan.php::rules()
 // Required: customer_id, created_time, branch_id (company_id auto-derive từ customer).
-// Number min 0: total, discount, paymentPlan, debtsPlan.
+// Number min 0: total, paymentPlan, debtsPlan.
 // String: note max 300, code max 255.
 func validateOrderPlan(o *orderPlanDao.OrderPlan) error {
 	v := validation.New()
@@ -17,7 +17,6 @@ func validateOrderPlan(o *orderPlanDao.OrderPlan) error {
 	v.Required(o.BranchId, "Chi nhánh")
 	v.Required(o.CreatedTime, "Ngày nhập đơn hàng")
 
-	checkOrderPlanDecimalNonNeg(v, o.Discount, "Tổng giảm")
 	checkOrderPlanDecimalNonNeg(v, o.PaymentPlan, "Tổng thanh toán")
 	checkOrderPlanDecimalNonNeg(v, o.DebtsPlan, "Công nợ đơn hàng")
 

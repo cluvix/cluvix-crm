@@ -14,7 +14,6 @@ type OrderPlan struct {
 	CustomerId    int              ` gorm:"column:customer_id;index;not null;comment:Khách hàng" json:"customer_id"`
 	AppointmentId *int             ` gorm:"column:appointment_id;comment:Lịch hẹn" json:"appointment_id"`
 	BranchId      *int             ` gorm:"column:branch_id;index;comment:Chi nhánh" json:"branch_id"`
-	Discount      *decimal.Decimal ` gorm:"type:decimal(20,2);default:0.00;comment:Tổng giảm coupon" json:"discount"`
 	DiscountOther *decimal.Decimal ` gorm:"column:discount_other;type:decimal(20,2);default:0.00;comment:Giảm giá khác của đơn hàng" json:"discount_other"`
 	PaymentPlan   *decimal.Decimal ` gorm:"column:paymentPlan;type:decimal(20,2);default:0.00;comment:Tổng thanh toán cho đơn hàng" json:"paymentPlan"`
 	DebtsPlan     *decimal.Decimal ` gorm:"column:debtsPlan;type:decimal(20,2);default:0.00;comment:Công nợ đơn hàng" json:"debtsPlan"`

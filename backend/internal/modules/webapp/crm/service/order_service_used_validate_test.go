@@ -41,3 +41,30 @@ func TestValidateOrderServiceUsed_Basic(t *testing.T) {
 		t.Fatal("quantity < 1 phải bị chặn")
 	}
 }
+
+// Công thức tiền dòng sau khi bỏ giảm giá dòng (`discount`):
+// total = đơn giá × số lượng − chiết khấu dịch vụ; totalEnd = total − giảm khác − giảm trừ khoá dịch vụ.
+func TestExpectedServiceUsedMoney_NoLineDiscount(t *testing.T) {
+	d := decimal.NewFromInt
+	pct, vnd := 2, 1
+	cases := []struct {
+		name                 string
+		unit, sd, oth        int64
+		qty, sdt             int
+		wantTotal, wantTotEn int64
+	}{
+		{"chiết khấu dịch vụ 10%", 500_000, 10, 50_000, 2, pct, 900_000, 850_000},
+		{"chiết khấu dịch vụ VND", 1_000_000, 100_000, 0, 1, vnd, 900_000, 900_000},
+		{"không chiết khấu", 300_000, 0, 0, 1, vnd, 300_000, 300_000},
+	}
+	for _, tc := range cases {
+		svc := baseValidOSU()
+		unit, sd, oth := d(tc.unit), d(tc.sd), d(tc.oth)
+		qty, sdt := tc.qty, tc.sdt
+		svc.UnitPrice, svc.Quantity, svc.ServiceDiscount, svc.ServiceDiscountType, svc.DiscountOther = &unit, &qty, &sd, &sdt, &oth
+		total, totalEnd := expectedServiceUsedMoney(svc)
+		if !total.Equal(d(tc.wantTotal)) || !totalEnd.Equal(d(tc.wantTotEn)) {
+			t.Fatalf("%s: muốn total=%d totalEnd=%d, có total=%s totalEnd=%s", tc.name, tc.wantTotal, tc.wantTotEn, total, totalEnd)
+		}
+	}
+}

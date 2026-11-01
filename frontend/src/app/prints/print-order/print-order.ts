@@ -54,7 +54,6 @@ export class PrintOrder extends BasePrint implements OnInit {
     (orderPlan?.orderServiceUseds ?? []).forEach((item: any) => {
       this.totalPrice += +item.unit_price * +item.quantity;
       this.totalDiscount += +item.discount_other;
-      this.totalDiscount += +item.discount;
       if (item.service_discount_type === SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_PERCENT) {
         this.totalDiscount += item.quantity * item.unit_price * (item.service_discount / 100);
       } else {

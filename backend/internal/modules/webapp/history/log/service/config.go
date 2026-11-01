@@ -44,12 +44,12 @@ var PaymentDeleteFields = withDeleteIdentity(PaymentIncludeFields)
 
 var OrderServiceUsedIncludeFields = []string{
 	"service_id", "quantity", "unit_price",
-	"service_discount", "service_discount_type", "discount", "discount_other", "totalEnd",
-	"expires_at", "note", "branch_id", "created_day",
+	"service_discount", "service_discount_type", "discount_other", "totalEnd",
+	"note", "branch_id", "created_day",
 	"appointment_id", "source_id", "listRevenues",
 }
 var OrderServiceUsedSkipNullFields = []string{
-	"appointment_id", "source_id", "expires_at", "note", "listRevenues",
+	"appointment_id", "source_id", "note", "listRevenues",
 }
 var OrderServiceUsedDeleteFields = withDeleteIdentity(OrderServiceUsedIncludeFields)
 

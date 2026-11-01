@@ -81,31 +81,31 @@ func seedOsuParity(t *testing.T) osuParityFix {
 		qty       int
 		unit      int
 		sdt, sd   int
-		disc, oth int
+		oth       int
 		rank, ref int
 		end, pay  int
 	}{
-		{9201, 9301, b1, 1, opDayIn, 1, 1000, 1, 100, 50, 10, 5, 0, 835, 835},
-		{9201, 9302, b1, 1, opDayIn + 3600, 2, 500, 2, 10, 0, 0, 0, 0, 900, 400},
-		{9202, 9301, b2, 1, opDayIn + 7200, 1, 300, 1, 0, 0, 0, 0, 100, 200, 0},
-		{9203, 9303, nil, 1, opDayIn + 86400, 3, 100, 2, 5, 0, 0, 0, 0, 285, 285},
-		{9203, 9301, b1, 1, opDayOut, 1, 700, 1, 0, 0, 0, 0, 0, 700, 100}, // ngoài dải tháng
-		{9204, 9302, b1, 1, opDayIn, 1, 50, 1, 0, 0, 0, 0, 0, 50, 0},      // dịch vụ không loại
-		{9201, 9303, b1, 2, opDayIn, 1, 999, 1, 0, 0, 0, 0, 0, 999, 999},  // isLock=2
-		{9202, 9304, b1, 3, opDayIn, 1, 400, 1, 0, 0, 0, 0, 0, 400, 100},  // isLock=3
-		{9201, 9304, b3, 1, opDayIn, 1, 111, 1, 0, 0, 0, 0, 0, 111, 0},    // chi nhánh ngoài phạm vi
-		{9205, 9302, b2, 1, opDayIn, 1, 80, 1, 0, 0, 0, 0, 0, 80, 80},
-		{9202, 9302, b2, 1, opDayIn + 60, 4, 250, 2, 20, 0, 0, 0, 0, 800, 300},
-		{9203, 9302, nil, 1, opDayOut + 60, 2, 10, 1, 0, 0, 0, 0, 0, 20, 5}, // NULL branch ngoài dải tháng
+		{9201, 9301, b1, 1, opDayIn, 1, 1000, 1, 100, 10, 5, 0, 835, 835},
+		{9201, 9302, b1, 1, opDayIn + 3600, 2, 500, 2, 10, 0, 0, 0, 900, 400},
+		{9202, 9301, b2, 1, opDayIn + 7200, 1, 300, 1, 0, 0, 0, 100, 200, 0},
+		{9203, 9303, nil, 1, opDayIn + 86400, 3, 100, 2, 5, 0, 0, 0, 285, 285},
+		{9203, 9301, b1, 1, opDayOut, 1, 700, 1, 0, 0, 0, 0, 700, 100}, // ngoài dải tháng
+		{9204, 9302, b1, 1, opDayIn, 1, 50, 1, 0, 0, 0, 0, 50, 0},      // dịch vụ không loại
+		{9201, 9303, b1, 2, opDayIn, 1, 999, 1, 0, 0, 0, 0, 999, 999},  // isLock=2
+		{9202, 9304, b1, 3, opDayIn, 1, 400, 1, 0, 0, 0, 0, 400, 100},  // isLock=3
+		{9201, 9304, b3, 1, opDayIn, 1, 111, 1, 0, 0, 0, 0, 111, 0},    // chi nhánh ngoài phạm vi
+		{9205, 9302, b2, 1, opDayIn, 1, 80, 1, 0, 0, 0, 0, 80, 80},
+		{9202, 9302, b2, 1, opDayIn + 60, 4, 250, 2, 20, 0, 0, 0, 800, 300},
+		{9203, 9302, nil, 1, opDayOut + 60, 2, 10, 1, 0, 0, 0, 0, 20, 5}, // NULL branch ngoài dải tháng
 	}
 	for i, r := range rows {
 		exec(`INSERT INTO order_service_used
 			(code, customer_id, order_plan_id, service_id, branch_id, isLock, created_day,
-			 quantity, unit_price, service_discount_type, service_discount, discount, discount_other,
+			 quantity, unit_price, service_discount_type, service_discount, discount_other,
 			 rank_discount_amount, refundServiceUsed, totalEnd, payment)
-			VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			fmt.Sprintf("OP%d", 9400+i), r.cust, r.svc, r.branch, r.isLock, r.day,
-			r.qty, r.unit, r.sdt, r.sd, r.disc, r.oth, r.rank, r.ref, r.end, r.pay)
+			r.qty, r.unit, r.sdt, r.sd, r.oth, r.rank, r.ref, r.end, r.pay)
 	}
 	return f
 }
@@ -322,7 +322,7 @@ func TestReportServiceUsed_ExportQueryParity(t *testing.T) {
 				COUNT(order_service_used.id) as numService,
 				SUM(quantity) as quantity, SUM(totalEnd) as totalEnd, SUM(payment) as payment,
 				SUM(CASE WHEN service_discount_type = 2 THEN (service_discount * unit_price * quantity / 100) ELSE service_discount END) as service_discount_amount,
-				SUM(discount) as discount, SUM(discount_other) as discount_other,
+				SUM(discount_other) as discount_other,
 				SUM(rank_discount_amount) as rank_discount_amount, SUM(refundServiceUsed) as refundServiceUsed`).
 			Group("order_service_used.service_id").Find(&rows)
 		if tx.Error != nil {

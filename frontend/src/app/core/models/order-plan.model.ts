@@ -23,7 +23,6 @@ export interface OrderPlanModel extends Identifiable {
   source_id?: number;
   broker_id?: number; // CTV giới thiệu (từ customer.affiliate_id hoặc coupon, staff override được)
   status?: number;
-  discount?: number;
   payment?: number;
   total?: number;
   promotion?: number;
