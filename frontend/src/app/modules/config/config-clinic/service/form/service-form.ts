@@ -1,6 +1,5 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, untracked } from '@angular/core';
 import {
-  disabled,
   FormField,
   max,
   min,
@@ -16,15 +15,11 @@ import { ServiceService } from '@/core/services/config/clinic/service.service';
 import { BaseSignalForm } from '@/share/base/base-signal-form';
 import { FormShareImports } from '@/share/import/form-share-imports';
 import {
-  NUM_TREATMENT_DEFAULT,
   SERVICE_CATEGORY_OPTIONS,
   SERVICE_CATEGORY_SELECT,
   SERVICE_DISCOUNT_TYPE_SELECT,
-  SERVICE_FOR_OPTIONS,
-  SERVICE_FOR_SELECT,
   UNIT_CATEGORY_SELECT,
 } from '@/define';
-import { translateOptions } from '@/share/utils/translate-options.util';
 
 /**
  * Signal Forms cần KEY tồn tại thật trên object model để dựng sub-field (`rootField.x` trả `undefined`,
@@ -46,10 +41,8 @@ function emptyServiceModel(): ServiceModel {
   // `<input type="text">` có giá trị hiện tại là `null` là field SỐ, ép `Number(text)` mỗi lần gõ —
   // gõ chữ luôn lỗi `parse`, gõ số mất số 0 đầu. `''` giữ đúng `typeof === 'string'`, tránh nhánh đó.
   return {
-    name: '', code_old: '', numTreatment: null, min_price: null, max_price: null,
+    name: '', code_old: '', min_price: null, max_price: null,
     unit_id: null, serviceCategory_id: null, service_type_id: null,
-    child: null,
-    is_installment: null, installment_config: null,
     status: null, time_reminder: null,
     commission_telesale: null, commission_telesale_new: null, commission_telesale_type: null,
   } as unknown as ServiceModel;
@@ -115,6 +108,11 @@ const NON_SUBMIT_KEYS = [
   // nếu lọt vào payload sẽ gây lỗi "unknown column".
   'unitLabel',
   'serviceTypeLabel',
+  // Form không còn quản lý nhóm tuổi + trả góp — không gửi để giữ nguyên giá trị đã lưu (sửa) /
+  // nhận default của DB (tạo mới: `child` = 0 không phân biệt, `is_installment` = 0).
+  'child',
+  'is_installment',
+  'installment_config',
 ] as const;
 
 @Component({
@@ -128,20 +126,9 @@ const NON_SUBMIT_KEYS = [
   standalone: true,
 })
 export class ServiceForm extends BaseSignalForm<ServiceModel> {
-  readonly activeTab = signal('0');
   modelService = inject(ServiceService);
-  readonly INSTALLMENT_PERIOD_OPTIONS = translateOptions([
-    { label: '3 kỳ', labelKey: 'config.service_form.installment.p3', value: 3 },
-    { label: '6 kỳ', labelKey: 'config.service_form.installment.p6', value: 6 },
-    { label: '9 kỳ', labelKey: 'config.service_form.installment.p9', value: 9 },
-    { label: '12 kỳ', labelKey: 'config.service_form.installment.p12', value: 12 },
-    { label: '15 kỳ', labelKey: 'config.service_form.installment.p15', value: 15 },
-    { label: '18 kỳ', labelKey: 'config.service_form.installment.p18', value: 18 },
-    { label: '24 kỳ', labelKey: 'config.service_form.installment.p24', value: 24 },
-  ]);
   protected readonly UNIT_CATEGORY_SELECT = UNIT_CATEGORY_SELECT;
   protected readonly SERVICE_CATEGORY_OPTIONS = SERVICE_CATEGORY_OPTIONS;
-  protected readonly SERVICE_FOR_OPTIONS = SERVICE_FOR_OPTIONS;
   protected readonly SERVICE_DISCOUNT_TYPE_SELECT = SERVICE_DISCOUNT_TYPE_SELECT;
 
   constructor() {
@@ -168,30 +155,16 @@ export class ServiceForm extends BaseSignalForm<ServiceModel> {
     } else {
       const seeded: Partial<ServiceModel> = {
         ...this.initialValue,
-        child: SERVICE_FOR_SELECT.SERVICE_FOR_ADULT || null,
         serviceCategory_id: SERVICE_CATEGORY_SELECT.SERVICE_CATEGORY_SERVICE || null,
-        numTreatment: NUM_TREATMENT_DEFAULT,
       };
       const obj = { ...this.modelService.getInitialObject(), ...seeded } as ServiceModel;
       this._applyModel(obj);
     }
   }
 
-  /** Chuẩn hoá model trước khi set vào FieldTree — parse installment_config JSON. */
+  /** Bù đủ key cho FieldTree trước khi set model (xem `emptyServiceModel`). */
   private _applyModel(model: ServiceModel): void {
-    let installmentConfig = model.installment_config;
-    if (typeof installmentConfig === 'string') {
-      try {
-        installmentConfig = JSON.parse(installmentConfig);
-      } catch {
-        installmentConfig = undefined;
-      }
-    }
-    if (!installmentConfig) {
-      installmentConfig = { periods: [3, 6, 12], min_deposit_percent: 0, interest_rate: 0, period_interval_days: 30 };
-    }
-
-    const merged = { ...emptyServiceModel(), ...model, installment_config: installmentConfig };
+    const merged = { ...emptyServiceModel(), ...model };
 
     this.model.set(merged);
   }
@@ -203,19 +176,9 @@ export class ServiceForm extends BaseSignalForm<ServiceModel> {
     required(p.unit_id!);
     required(p.serviceCategory_id!);
     required(p.service_type_id!);
-    required(p.child!);
 
     wireCommissionRules(p.commission_telesale!, p.commission_telesale_type!);
     wireCommissionRules(p.commission_telesale_new!, p.commission_telesale_type!);
-
-    // Disable 4 field cấu hình trả góp khi is_installment=0 — thay [disabled] template binding
-    // (Hard Rule B.x cấm [disabled] trên element có formControlName cho Reactive Forms; ở đây dùng
-    // đường declarative của Signal Forms, [formField] tự sync setDisabledState qua CVA-compat).
-    const installmentOff = ({ valueOf }: { valueOf: <PV>(path: SchemaPath<PV>) => PV }) => valueOf(p.is_installment!) === 0;
-    disabled(p.installment_config!.periods, { when: installmentOff });
-    disabled(p.installment_config!.min_deposit_percent, { when: installmentOff });
-    disabled(p.installment_config!.interest_rate, { when: installmentOff });
-    disabled(p.installment_config!.period_interval_days, { when: installmentOff });
   }
 
   /**

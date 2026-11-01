@@ -37,7 +37,6 @@ export class ServicesHelperService {
       max_price: service?.max_price ?? null,
       child: service?.child ?? '',
       servicePosition: service?.servicePosition ?? null,
-      numTreatment: service?.numTreatment ?? null,
       department_type: service?.department_type ?? null,
       serviceCategory_id: service?.serviceCategory_id ?? null,
       is_installment: service?.is_installment ?? null,

@@ -21,7 +21,6 @@ export interface ServiceModel extends Identifiable {
   name?: string;
   code?: string;
   code_old?: string;
-  numTreatment?: number; // Tiến trình điều trị
   min_price?: number;
   max_price?: number;
   unit_id?: number;

@@ -281,12 +281,14 @@ var serviceListSelectFields = []string{
 }
 
 // removedServicePayloadKeys — key của các cột đã xoá khỏi bảng `service` (ảnh/mô tả/nội dung/điểm…
-// của Zalo Mini App cũ) cùng field FE chưa từng có cột (`time_expired_*`) và file upload `fileImage`.
+// của Zalo Mini App cũ) cùng field FE chưa từng có cột (`time_expired_*`, `numTreatment` — bảng
+// keep-set CRM không có cột này) và file upload `fileImage`.
 // FE bản cũ còn cache (PWA) vẫn có thể gửi các key này trong payload dạng map — bỏ đi để không lỗi
 // 1054 (unknown column), cùng cách xử lý key `company_id`.
 var removedServicePayloadKeys = []string{
 	"image", "fileImage", "desc", "content", "treatment_duration", "validity_days",
 	"companion_expired_at", "companion_expired_type", "point", "time_expired_at", "time_expired_type",
+	"numTreatment",
 }
 
 func (h *Handler) ListService(c *gin.Context) {

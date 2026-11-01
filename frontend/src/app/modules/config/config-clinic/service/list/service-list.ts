@@ -10,9 +10,8 @@ import { ServiceService } from '@/core/services/config/clinic/service.service';
 import { BaseListV2 } from '@/share/base/base-list-v2';
 import { FilterFieldDef } from '@/share/base/list-filter.model';
 import { ListApiResponse } from '@/share/models/list-api-response';
-import { PERMISSION_SELECT, SERVICE_CATEGORY_OPTIONS, SERVICE_FOR_OPTIONS } from '@/define';
+import { PERMISSION_SELECT, SERVICE_CATEGORY_OPTIONS } from '@/define';
 import { ListShareImports } from '@/share/import/list-share-imports';
-import { ServiceAdultChildPipe } from '@/share/pipes/service-adult-child.pipe';
 import { FillHeightDirective } from '@/share/directive/fill-height.directive';
 
 @Component({
@@ -29,7 +28,7 @@ import { FillHeightDirective } from '@/share/directive/fill-height.directive';
       }
     `,
   ],
-  imports: [FillHeightDirective, ...ListShareImports, ServiceAdultChildPipe],
+  imports: [FillHeightDirective, ...ListShareImports],
   standalone: true,
 })
 export class ServiceList extends BaseListV2<ServiceModel> implements OnInit {
@@ -47,8 +46,6 @@ export class ServiceList extends BaseListV2<ServiceModel> implements OnInit {
     { labelKey: 'common.label.sort_order', value: 'SortOrder' },
     { labelKey: 'common.label.price_info_min_max', value: 'min_price' },
     { labelKey: 'common.label.re_engagement', value: 'time_reminder' },
-    { labelKey: 'common.label.age_group', value: 'child' },
-    { labelKey: 'common.label.treatment_progress', value: 'numTreatment' },
     { labelKey: 'common.label.unit', value: 'unit' },
     { labelKey: 'common.label.telesale_commission', value: 'commission_telesale' },
     { labelKey: 'common.label.status', value: 'status' },
@@ -63,7 +60,6 @@ export class ServiceList extends BaseListV2<ServiceModel> implements OnInit {
   ]);
   protected override LS_SELECTED_COLUMNS_KEY = '/config/service';
   protected override URL_STATE_PREFIX = 'se';
-  protected readonly SERVICE_FOR_OPTIONS = SERVICE_FOR_OPTIONS;
   protected readonly SERVICE_CATEGORY_OPTIONS = SERVICE_CATEGORY_OPTIONS;
 
   constructor() {
@@ -81,7 +77,7 @@ export class ServiceList extends BaseListV2<ServiceModel> implements OnInit {
   /**
    * Khai báo filter — base tự sinh FormGroup, đấu valueChanges → dt.filter(),
    * dựng filters khởi tạo cho p-table, lo clearFilter() và đồng bộ URL.
-   * Cả 4 field đều là multiselect thật trong V1 (fb.control([]) mặc định mảng rỗng,
+   * `service_type_id`/`serviceCategory_id` là multiselect thật trong V1 (fb.control([]) mặc định mảng rỗng,
    * control component/`p-select [multiple]="true"`) → giữ nguyên `kind: 'in'`.
    */
   protected filterFields(): FilterFieldDef[] {
@@ -89,7 +85,6 @@ export class ServiceList extends BaseListV2<ServiceModel> implements OnInit {
       {name: '_keyword', kind: 'text'},
       {name: 'service_type_id', kind: 'in'},
       {name: 'serviceCategory_id', kind: 'in'},
-      {name: 'child', kind: 'equals'},
     ];
   }
 

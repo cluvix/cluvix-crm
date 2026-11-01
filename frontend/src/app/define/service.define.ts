@@ -1,5 +1,3 @@
-export const NUM_TREATMENT_DEFAULT = 1;
-
 export const COMMISSION_TYPE_OPTIONS = [
   { value: 1, label: 'Số tiền', labelKey: 'define.commission_type.amount' },
   { value: 2, label: '%', labelKey: 'common.label.item' },

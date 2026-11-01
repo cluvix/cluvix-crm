@@ -93,21 +93,6 @@
                   <label for="service_type_id">{{ 'common.label.service_group' | translate }}</label>
                 </p-floatlabel>
               </div>
-              <div class="col-span-12">
-                <p-floatlabel variant="on">
-                  <p-select
-                    [options]="SERVICE_FOR_OPTIONS"
-                    [showClear]="true"
-                    appendTo="body"
-                    class="w-full"
-                    [emptyFilterMessage]="'common.label.no_results' | translate"
-                    formControlName="child"
-                    id="child"
-                  >
-                  </p-select>
-                  <label for="child">{{ 'common.label.age_group' | translate }}</label>
-                </p-floatlabel>
-              </div>
             </div>
           </p-popover>
           <div class="flex items-center gap-2 w-full">
@@ -207,12 +192,6 @@
       @if (isColVisible('time_reminder')()) {
         <th class="min-w-[100px]">{{ 'common.label.re_engagement' | translate }}</th>
       }
-      @if (isColVisible('child')()) {
-        <th class="min-w-[120px]">{{ 'common.label.age_group' | translate }}</th>
-      }
-      @if (isColVisible('numTreatment')()) {
-        <th class="min-w-[130px]">{{ 'common.label.treatment_progress' | translate }}</th>
-      }
       @if (isColVisible('unit')()) {
         <th class="min-w-[120px]">{{ 'common.label.unit' | translate }}</th>
       }
@@ -274,25 +253,6 @@
       @if (isColVisible('time_reminder')()) {
         <td>
           {{ model.time_reminder ? ('config.config_clinic.service.after_n_days' | translate: { days: model.time_reminder }) : ('common.label.no_text' | translate) }}
-        </td>
-      }
-      @if (isColVisible('child')()) {
-        <td>
-          @if (model.child) {
-            {{ model.child | adultOrChild }}
-          } @else {
-            {{ model.child || '—' }}
-          }
-        </td>
-      }
-      @if (isColVisible('numTreatment')()) {
-        <td>
-          @if (model.numTreatment === -1) {
-            <label class="text-red-500">{{ 'common.label.unlimited' | translate }}</label>
-          }
-          @if (model.numTreatment !== -1 && model.numTreatment) {
-            <p-badge [value]="model.numTreatment"/>
-          }
         </td>
       }
       @if (isColVisible('unit')()) {

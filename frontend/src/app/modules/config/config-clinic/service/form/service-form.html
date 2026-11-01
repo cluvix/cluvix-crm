@@ -1,359 +1,183 @@
 <form novalidate>
-  <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($any($event))">
-    <p-tablist>
-      <p-tab value="0">
-        <i class="pi pi-file-o mr-1"></i>
-        <span class="whitespace-nowrap">{{ 'common.label.information' | translate }}</span>
-        @if (isFieldInvalid(rootField.name!) ||
-        isFieldInvalid(rootField.min_price!) ||
-        isFieldInvalid(rootField.max_price!) ||
-        isFieldInvalid(rootField.unit_id!) ||
-        isFieldInvalid(rootField.service_type_id!) ||
-        isFieldInvalid(rootField.child!) ||
-        isFieldInvalid(rootField.serviceCategory_id!)) {
-          <span class="text-red-500" [pTooltip]="'config.config_clinic.service.required_fields_tooltip' | translate"
-                tooltipPosition="top">!</span>
-        }
-      </p-tab>
-      <p-tab value="2">
-        <i aria-hidden="true" class="pi pi-percentage mr-1 text-[#FF5722]"></i>
-        <span class="whitespace-nowrap">{{ 'common.label.service_commission' | translate }}</span>
-      </p-tab>
-      <p-tab value="4">
-        <i aria-hidden="true" class="pi pi-credit-card mr-1 text-[#7B3F9E]"></i>
-        <span class="whitespace-nowrap">{{ 'common.label.installment' | translate }}</span>
-      </p-tab>
-      <p-tab value="6">
-        <i aria-hidden="true" class="pi pi-cog mr-1 text-[#6B7280]"></i>
-        <span class="whitespace-nowrap">{{ 'common.label.other' | translate }}</span>
-      </p-tab>
-    </p-tablist>
-    <p-tabpanels>
-      <p-tabpanel value="0">
-        <p-fluid
-          class="grid grid-cols-12 gap-6 h-[400px] content-start flex-wrap p-fluid pt-6 overflow-auto tab-fade-content"
+  <p-fluid class="grid grid-cols-12 gap-6 content-start p-fluid pt-2">
+    <div class="col-span-12 lg:col-span-4">
+      <p-floatlabel variant="on">
+        <p-select
+          appendTo="body"
+          [class.ng-invalid]="isFieldInvalid(rootField.serviceCategory_id!)"
+          [options]="SERVICE_CATEGORY_OPTIONS"
+          [resetFilterOnHide]="true"
+          class="ng-dirty"
+          emptyFilterMessage="{{ 'common.message.no_data' | translate }}"
+          [emptyFilterMessage]="'common.label.no_results' | translate"
+          [formField]="rootField.serviceCategory_id!"
+          id="serviceCategory_id"
+          inputId="serviceCategory_id"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+        <label for="serviceCategory_id">{{ 'common.label.category' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    <div class="col-span-12 lg:col-span-4">
+      <p-floatlabel variant="on">
+        <app-service-type-form-control
+          [class.ng-invalid]="isFieldInvalid(rootField.service_type_id!)"
+          [activeOnly]="true"
+          class="ng-dirty"
+          [formField]="rootField.service_type_id!"
+        />
+        <label for="service_type_id">{{ 'common.label.service_group' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    <div class="col-span-12 lg:col-span-8">
+      <p-floatlabel variant="on">
+        <input
+          [autofocus]="true"
+          [class.ng-invalid]="isFieldInvalid(rootField.name!)"
+          autocomplete="off"
+          class="ng-dirty"
+          [formField]="rootField.name!"
+          id="name"
+          pInputText
+          type="text"
+        />
+        <label for="name">{{ 'config.config_clinic.service.service_name' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    <div class="col-span-12 lg:col-span-4">
+      <p-floatlabel variant="on">
+        <app-unit-form-control
+          [class.ng-invalid]="isFieldInvalid(rootField.unit_id!)"
+          [activeOnly]="true"
+          [category]="UNIT_CATEGORY_SELECT.UNIT_CATEGORY_SERVICE"
+          [formField]="rootField.unit_id!"
+          class="w-full ng-dirty"
+        />
+        <label for="unit_id">{{ 'common.label.unit' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    <div class="col-span-12 lg:col-span-4">
+      <p-inputgroup>
+        <p-floatlabel variant="on">
+          <p-inputnumber
+            [class.ng-invalid]="isFieldInvalid(rootField.min_price!)"
+            [min]="0"
+            class="ng-dirty"
+            [formField]="rootField.min_price!"
+            id="min_price"
+          ></p-inputnumber>
+          <label for="min_price">{{ 'config.config_clinic.service.min_price' | translate }}</label>
+        </p-floatlabel>
+        <p-floatlabel variant="on">
+          <p-inputnumber
+            [class.ng-invalid]="isFieldInvalid(rootField.max_price!)"
+            [min]="rootField.min_price!().value() || 0"
+            class="ng-dirty"
+            [formField]="rootField.max_price!"
+            id="max_price"
+          ></p-inputnumber>
+          <label for="max_price">{{ 'config.config_clinic.service.max_price' | translate }}</label>
+        </p-floatlabel>
+      </p-inputgroup>
+    </div>
+    <div class="col-span-12 lg:col-span-4">
+      <p-floatlabel variant="on">
+        <input
+          [class.ng-invalid]="isFieldInvalid(rootField.code_old!)"
+          autocomplete="off"
+          class="ng-dirty"
+          [formField]="rootField.code_old!"
+          id="code_old"
+          pInputText
+          type="text"
+        />
+        <label for="code_old">{{ 'common.label.old_service_code' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    <div class="col-span-12 lg:col-span-4">
+      <p-floatlabel variant="on">
+        <p-inputnumber
+          [class.ng-invalid]="isFieldInvalid(rootField.time_reminder!)"
+          autocomplete="off"
+          class="ng-dirty"
+          [formField]="rootField.time_reminder!"
+          id="time_reminder"
+          inputId="time_reminder"
+          [pTooltip]="'config.config_clinic.service.time_reminder_tooltip' | translate"
+          tooltipPosition="top"
+        ></p-inputnumber>
+        <label for="time_reminder">{{ 'common.label.re_engagement' | translate }}</label>
+      </p-floatlabel>
+      <small class="text-red-500">{{ 'config.config_clinic.service.in_days' | translate }}</small>
+    </div>
+    <div class="col-span-12">
+      <b>{{ 'config.config_clinic.service.commission_consulting_section' | translate }}</b>
+    </div>
+    <div class="col-span-12 lg:col-span-6">
+      <div class="mb-2">{{ 'common.label.telesale_commission' | translate }}</div>
+      <p-inputgroup>
+        <p-floatlabel variant="on">
+          <p-inputnumber
+            [class.ng-invalid]="isFieldInvalid(rootField.commission_telesale!)"
+            class="ng-dirty"
+            [min]="0"
+            [max]="getMaxCommissionByType('commission_telesale_type')"
+            [formField]="rootField.commission_telesale!"
+            id="commission_telesale"
+            [maxFractionDigits]="2"
+          ></p-inputnumber>
+          <label for="commission_telesale">{{ 'config.config_clinic.service.customer_old' | translate }}</label>
+        </p-floatlabel>
+        <p-floatlabel variant="on">
+          <p-inputnumber
+            [class.ng-invalid]="isFieldInvalid(rootField.commission_telesale_new!)"
+            class="ng-dirty"
+            [min]="0"
+            [max]="getMaxCommissionByType('commission_telesale_type')"
+            [formField]="rootField.commission_telesale_new!"
+            id="commission_telesale_new"
+            [maxFractionDigits]="2"
+          ></p-inputnumber>
+          <label
+            for="commission_telesale_new">{{ 'config.config_clinic.service.customer_new' | translate }}</label>
+        </p-floatlabel>
+        <button
+          pButton
+          (click)="changeCommissionType('commission_telesale_type', 'commission_telesale', 'commission_telesale_new')"
+          [pTooltip]="'config.config_clinic.service.vnd_or_percent_tooltip' | translate"
+          severity="success"
+          tooltipPosition="top"
+          type="button"
+          class="w-16 min-w-[60px]"
         >
-          <div class="col-span-12 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <p-select
-                appendTo="body"
-                [class.ng-invalid]="isFieldInvalid(rootField.serviceCategory_id!)"
-                [options]="SERVICE_CATEGORY_OPTIONS"
-                [resetFilterOnHide]="true"
-                class="ng-dirty"
-                emptyFilterMessage="{{ 'common.message.no_data' | translate }}"
-                [emptyFilterMessage]="'common.label.no_results' | translate"
-                [formField]="rootField.serviceCategory_id!"
-                id="serviceCategory_id"
-                inputId="serviceCategory_id"
-                optionLabel="label"
-                optionValue="value"
-              ></p-select>
-              <label for="serviceCategory_id">{{ 'common.label.category' | translate }}</label>
-            </p-floatlabel>
-          </div>
-          <div class="col-span-12 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <p-select
-                appendTo="body"
-                [class.ng-invalid]="isFieldInvalid(rootField.child!)"
-                [options]="SERVICE_FOR_OPTIONS"
-                [resetFilterOnHide]="true"
-                class="ng-dirty"
-                [emptyFilterMessage]="'common.label.no_results' | translate"
-                [formField]="rootField.child!"
-                id="child"
-                inputId="child"
-                optionLabel="label"
-                optionValue="value"
-              ></p-select>
-              <label for="child">{{ 'common.label.age_group' | translate }}</label>
-            </p-floatlabel>
-          </div>
-          <div class="col-span-12 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <app-service-type-form-control
-                [class.ng-invalid]="isFieldInvalid(rootField.service_type_id!)"
-                [activeOnly]="true"
-                class="ng-dirty"
-                [formField]="rootField.service_type_id!"
-              />
-              <label for="service_type_id">{{ 'common.label.service_group' | translate }}</label>
-            </p-floatlabel>
-          </div>
-          <div class="col-span-12 lg:col-span-8">
-            <p-floatlabel variant="on">
-              <input
-                [autofocus]="true"
-                [class.ng-invalid]="isFieldInvalid(rootField.name!)"
-                autocomplete="off"
-                class="ng-dirty"
-                [formField]="rootField.name!"
-                id="name"
-                pInputText
-                type="text"
-              />
-              <label for="name">{{ 'config.config_clinic.service.service_name' | translate }}</label>
-            </p-floatlabel>
-          </div>
-          <div class="col-span-12 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <p-inputnumber
-                [class.ng-invalid]="isFieldInvalid(rootField.numTreatment!)"
-                class="ng-dirty"
-                [formField]="rootField.numTreatment!"
-                id="numTreatment"
-              ></p-inputnumber>
-              <label for="numTreatment">{{ 'common.label.treatment_progress' | translate }}</label>
-            </p-floatlabel>
-            <small
-              class="text-red-500">{{ 'config.config_clinic.service.num_treatment_unlimited' | translate }}</small>
-          </div>
-          <div class="col-span-12 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <app-unit-form-control
-                [class.ng-invalid]="isFieldInvalid(rootField.unit_id!)"
-                [activeOnly]="true"
-                [category]="UNIT_CATEGORY_SELECT.UNIT_CATEGORY_SERVICE"
-                [formField]="rootField.unit_id!"
-                class="w-full ng-dirty"
-              />
-              <label for="unit_id">{{ 'common.label.unit' | translate }}</label>
-            </p-floatlabel>
-          </div>
-          <div class="col-span-12 lg:col-span-4">
-            <p-inputgroup>
-              <p-floatlabel variant="on">
-                <p-inputnumber
-                  [class.ng-invalid]="isFieldInvalid(rootField.min_price!)"
-                  [min]="0"
-                  class="ng-dirty"
-                  [formField]="rootField.min_price!"
-                  id="min_price"
-                ></p-inputnumber>
-                <label for="min_price">{{ 'config.config_clinic.service.min_price' | translate }}</label>
-              </p-floatlabel>
-              <p-floatlabel variant="on">
-                <p-inputnumber
-                  [class.ng-invalid]="isFieldInvalid(rootField.max_price!)"
-                  [min]="rootField.min_price!().value() || 0"
-                  class="ng-dirty"
-                  [formField]="rootField.max_price!"
-                  id="max_price"
-                ></p-inputnumber>
-                <label for="max_price">{{ 'config.config_clinic.service.max_price' | translate }}</label>
-              </p-floatlabel>
-            </p-inputgroup>
-          </div>
-          <div class="col-span-12 grid grid-cols-12 gap-4">
-            <div class="col-span-12 md:col-span-3 inline-flex items-center gap-2">
-              <p-toggleswitch
-                [trueValue]="1" [falseValue]="0"
-                [formField]="rootField.status!"
-                id="status"
-              ></p-toggleswitch>
-              <label for="status"
-                     class="min-w-32">{{ (rootField.status!().value() === 1 ? 'common.label.visible' : 'common.label.hidden') | translate }}</label>
-            </div>
-          </div>
-          <div class="col-span-12">
-            <p-divider></p-divider>
-            <b>{{ 'common.label.note' | translate }}</b>
-            <p>{{ 'config.config_clinic.service.note_min_max' | translate }}</p>
-            <p>{{ 'config.config_clinic.service.note_num_treatment' | translate }}</p>
-          </div>
-        </p-fluid>
-      </p-tabpanel>
-      <p-tabpanel value="2">
-        @defer (when activeTab() === '2') {
-        <p-fluid
-          class="grid grid-cols-12 gap-8 h-[400px] content-start flex-wrap p-fluid pt-6 overflow-auto tab-fade-content">
-          <div class="col-span-12">
-            <b>{{ 'config.config_clinic.service.commission_consulting_section' | translate }}</b>
-          </div>
-          <div class="col-span-12 lg:col-span-6">
-            <div class="mb-2">{{ 'common.label.telesale_commission' | translate }}</div>
-            <p-inputgroup>
-              <p-floatlabel variant="on">
-                <p-inputnumber
-                  [class.ng-invalid]="isFieldInvalid(rootField.commission_telesale!)"
-                  class="ng-dirty"
-                  [min]="0"
-                  [max]="getMaxCommissionByType('commission_telesale_type')"
-                  [formField]="rootField.commission_telesale!"
-                  id="commission_telesale"
-                  [maxFractionDigits]="2"
-                ></p-inputnumber>
-                <label for="commission_telesale">{{ 'config.config_clinic.service.customer_old' | translate }}</label>
-              </p-floatlabel>
-              <p-floatlabel variant="on">
-                <p-inputnumber
-                  [class.ng-invalid]="isFieldInvalid(rootField.commission_telesale_new!)"
-                  class="ng-dirty"
-                  [min]="0"
-                  [max]="getMaxCommissionByType('commission_telesale_type')"
-                  [formField]="rootField.commission_telesale_new!"
-                  id="commission_telesale_new"
-                  [maxFractionDigits]="2"
-                ></p-inputnumber>
-                <label
-                  for="commission_telesale_new">{{ 'config.config_clinic.service.customer_new' | translate }}</label>
-              </p-floatlabel>
-              <button
-                pButton
-                (click)="changeCommissionType('commission_telesale_type', 'commission_telesale', 'commission_telesale_new')"
-                [pTooltip]="'config.config_clinic.service.vnd_or_percent_tooltip' | translate"
-                severity="success"
-                tooltipPosition="top"
-                type="button"
-                class="w-16 min-w-[60px]"
-              >
-                {{
-                  rootField.commission_telesale_type!().value() ===
-                  SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY
-                    ? 'VND'
-                    : '%'
-                }}
-              </button>
-            </p-inputgroup>
-            <small class="text-gray-500">{{ 'config.config_clinic.service.telesale_commission_tooltip' | translate }}</small>
-          </div>
-        </p-fluid>
-        }
-      </p-tabpanel>
-      <p-tabpanel value="4">
-        @defer (when activeTab() === '4') {
-        <p-fluid
-          class="grid grid-cols-12 gap-6 h-[400px] content-start flex-wrap p-fluid pt-6 overflow-auto tab-fade-content"
-        >
-          <div class="col-span-12 inline-flex items-center gap-2">
-            <p-toggleswitch
-              [trueValue]="1" [falseValue]="0"
-              [formField]="rootField.is_installment!"
-              id="is_installment"
-              [pTooltip]="(rootField.is_installment!().value() ? 'common.label.yes' : 'common.label.no_text') | translate"
-            ></p-toggleswitch>
-            <label for="is_installment"
-            >{{ (rootField.is_installment!().value() ? 'config.config_clinic.service.is_installment_yes' : 'config.config_clinic.service.is_installment_no') | translate }}
-            </label>
-          </div>
-          <div class="col-span-12 grid grid-cols-12 gap-4 p-4 rounded-lg"
-               [class.bg-gray-50]="rootField.is_installment!().value() === 1"
-               [class.bg-gray-100]="rootField.is_installment!().value() === 0">
-            <div class="col-span-12">
-              <label class="font-semibold text-sm">{{ 'common.label.installment_configuration' | translate }}</label>
-            </div>
-            <div class="col-span-12 md:col-span-3">
-              <p-floatlabel variant="on">
-                <p-multiselect
-                  [options]="INSTALLMENT_PERIOD_OPTIONS()"
-                  [formField]="rootField.installment_config!.periods"
-                  optionLabel="label"
-                  optionValue="value"
-                  [placeholder]="'config.config_clinic.service.select_periods' | translate"
-                  display="chip"
-                  id="periods"
-                ></p-multiselect>
-                <label for="periods">{{ 'config.config_clinic.service.allowed_periods' | translate }}</label>
-              </p-floatlabel>
-            </div>
-            <div class="col-span-12 md:col-span-3">
-              <p-floatlabel variant="on">
-                <p-inputnumber
-                  [formField]="rootField.installment_config!.min_deposit_percent"
-                  [min]="0"
-                  [max]="100"
-                  suffix="%"
-                  id="min_deposit_percent"
-                ></p-inputnumber>
-                <label
-                  for="min_deposit_percent">{{ 'config.config_clinic.service.min_deposit_percent' | translate }}</label>
-              </p-floatlabel>
-            </div>
-            <div class="col-span-12 md:col-span-3">
-              <p-floatlabel variant="on">
-                <p-inputnumber
-                  [formField]="rootField.installment_config!.interest_rate"
-                  [min]="0"
-                  [max]="100"
-                  [minFractionDigits]="0"
-                  [maxFractionDigits]="2"
-                  suffix="%"
-                  id="interest_rate"
-                ></p-inputnumber>
-                <label for="interest_rate">{{ 'config.config_clinic.service.interest_rate' | translate }}</label>
-              </p-floatlabel>
-            </div>
-            <div class="col-span-12 md:col-span-3">
-              <p-floatlabel variant="on">
-                <p-inputnumber
-                  [formField]="rootField.installment_config!.period_interval_days"
-                  [min]="1"
-                  [max]="365"
-                  [suffix]="'config.config_clinic.service.days_suffix' | translate"
-                  id="period_interval_days"
-                ></p-inputnumber>
-                <label
-                  for="period_interval_days">{{ 'config.config_clinic.service.period_interval_days' | translate }}</label>
-              </p-floatlabel>
-            </div>
-          </div>
-          <div class="col-span-12">
-            <p-divider></p-divider>
-            <b>{{ 'config.config_clinic.service.installment_note_title' | translate }}</b>
-            <p>{{ 'config.config_clinic.service.installment_note_periods' | translate }}</p>
-            <p>{{ 'config.config_clinic.service.installment_note_min_deposit' | translate }}</p>
-            <p>{{ 'config.config_clinic.service.installment_note_interest' | translate }}</p>
-            <p
-              class="text-orange-600 font-semibold">{{ 'config.config_clinic.service.installment_warning' | translate }}</p>
-          </div>
-        </p-fluid>
-        }
-      </p-tabpanel>
-      <p-tabpanel value="6">
-        @defer (when activeTab() === '6') {
-        <p-fluid
-          class="grid grid-cols-12 gap-6 h-[400px] content-start flex-wrap p-fluid pt-6 overflow-auto tab-fade-content"
-        >
-          <div class="col-span-12 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <input
-                [class.ng-invalid]="isFieldInvalid(rootField.code_old!)"
-                autocomplete="off"
-                class="ng-dirty"
-                [formField]="rootField.code_old!"
-                id="code_old"
-                pInputText
-                type="text"
-              />
-              <label for="code_old">{{ 'common.label.old_service_code' | translate }}</label>
-            </p-floatlabel>
-          </div>
-          <div class="col-span-12 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <p-inputnumber
-                [class.ng-invalid]="isFieldInvalid(rootField.time_reminder!)"
-                autocomplete="off"
-                class="ng-dirty"
-                [formField]="rootField.time_reminder!"
-                id="time_reminder"
-                inputId="time_reminder"
-                [pTooltip]="'config.config_clinic.service.time_reminder_tooltip' | translate"
-                tooltipPosition="top"
-              ></p-inputnumber>
-              <label for="time_reminder">{{ 'common.label.re_engagement' | translate }}</label>
-            </p-floatlabel>
-            <small class="text-red-500">{{ 'config.config_clinic.service.in_days' | translate }}</small>
-          </div>
-          <div class="col-span-12">
-            <p-divider></p-divider>
-            <b>{{ 'common.label.note' | translate }}</b>
-            <p>{{ 'config.config_clinic.service.note_time_reminder' | translate }}</p>
-          </div>
-        </p-fluid>
-        }
-      </p-tabpanel>
-    </p-tabpanels>
-  </p-tabs>
+          {{
+            rootField.commission_telesale_type!().value() ===
+            SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY
+              ? 'VND'
+              : '%'
+          }}
+        </button>
+      </p-inputgroup>
+      <small class="text-gray-500">{{ 'config.config_clinic.service.telesale_commission_tooltip' | translate }}</small>
+    </div>
+    <div class="col-span-12 grid grid-cols-12 gap-4">
+      <div class="col-span-12 md:col-span-3 inline-flex items-center gap-2">
+        <p-toggleswitch
+          [trueValue]="1" [falseValue]="0"
+          [formField]="rootField.status!"
+          id="status"
+        ></p-toggleswitch>
+        <label for="status"
+               class="min-w-32">{{ (rootField.status!().value() === 1 ? 'common.label.visible' : 'common.label.hidden') | translate }}</label>
+      </div>
+    </div>
+    <div class="col-span-12">
+      <p-divider></p-divider>
+      <b>{{ 'common.label.note' | translate }}</b>
+      <p>{{ 'config.config_clinic.service.note_min_max' | translate }}</p>
+      <p>{{ 'config.config_clinic.service.note_time_reminder' | translate }}</p>
+    </div>
+  </p-fluid>
   <app-dialog-footer [isSubmitting]="isSubmitting()" (cancelForm)="closeForm($event)" (saveForm)="onSubmit()"/>
 </form>
