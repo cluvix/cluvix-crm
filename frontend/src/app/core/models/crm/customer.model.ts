@@ -34,8 +34,6 @@ export interface CustomerModel extends Identifiable {
   totalBonus?: number;
   refundDeposit?: number;
   refundService?: number;
-  consignment?: number;
-  refundConsignment?: number;
   province_id?: number;
   country_id?: any;
   ward_id?: number;

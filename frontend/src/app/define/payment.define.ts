@@ -1,13 +1,11 @@
 export const TYPE_DEPOSIT_SELECT = {
   TYPE_DEPOSIT_PROMOTION: 1,
   TYPE_DEPOSIT_TEMP: 2,
-  TYPE_DEPOSIT_CONSIGMENT: 3,
 };
 
 export const TYPE_DEPOSIT_OPTION = [
   { value: TYPE_DEPOSIT_SELECT.TYPE_DEPOSIT_PROMOTION, label: 'Cọc khuyến mại', labelKey: 'define.payment.type_deposit.promotion' },
   { value: TYPE_DEPOSIT_SELECT.TYPE_DEPOSIT_TEMP, label: 'Cọc tạm', labelKey: 'common.label.temporary_deposit' },
-  { value: TYPE_DEPOSIT_SELECT.TYPE_DEPOSIT_CONSIGMENT, label: 'Cọc ký gửi', labelKey: 'define.payment.type_deposit.consignment' },
 ];
 
 export const TYPE_DEPOSIT_MAP = TYPE_DEPOSIT_OPTION.reduce(
@@ -24,7 +22,6 @@ export const PAYMENT_FOR = {
   DEPOSIT: 3,
   ORDER: 4,
   TRANSFER_DEPOSIT: 5,
-  CONSIGNMENT_REFUND: 6,
   FOR_CLINIC_INCOME: 7,
   FOR_CLINIC_EXPENSE: 8,
 } as const;
@@ -35,7 +32,6 @@ export const PAYMENT_FOR_OPTION = [
   { value: PAYMENT_FOR.DEPOSIT, label: 'Đặt cọc', labelKey: 'common.label.deposit' },
   { value: PAYMENT_FOR.ORDER, label: 'Thanh toán dịch vụ', labelKey: 'define.payment_for.order' },
   { value: PAYMENT_FOR.TRANSFER_DEPOSIT, label: 'Chuyển cọc', labelKey: 'common.label.transfer_deposit' },
-  { value: PAYMENT_FOR.CONSIGNMENT_REFUND, label: 'Hoàn ký gửi', labelKey: 'define.payment_for.consignment_refund' },
   { value: PAYMENT_FOR.FOR_CLINIC_INCOME, label: 'Thu tiền chi nhánh', labelKey: 'common.label.clinic_income' },
   { value: PAYMENT_FOR.FOR_CLINIC_EXPENSE, label: 'Chi tiền chi nhánh', labelKey: 'common.label.clinic_expense' },
 ];

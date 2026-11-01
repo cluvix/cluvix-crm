@@ -7,12 +7,6 @@ export default [
     loadComponent: () => import('@/prints/print-order/print-order').then((c) => c.PrintOrder),
   },
   {
-    // In ký gửi
-    path: 'refund-consignment/:id',
-    loadComponent: () =>
-      import('./refund-consignment/refund-consignment').then((c) => c.RefundConsignment),
-  },
-  {
     // In đặt cọc
     path: 'print-deposit/:id',
     loadComponent: () => import('@/prints/print-deposit/print-deposit').then((c) => c.PrintDeposit),

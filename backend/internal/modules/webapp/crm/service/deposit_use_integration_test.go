@@ -2,7 +2,7 @@
 
 package service
 
-// Phiếu DÙNG cọc (hoàn cọc, hoàn ký gửi, trả dịch vụ bằng cọc) chỉ được dùng cọc của chính khách đó,
+// Phiếu DÙNG cọc (hoàn cọc, trả dịch vụ bằng cọc) chỉ được dùng cọc của chính khách đó,
 // dòng dịch vụ được trả cũng phải của khách đó (validateDepositUse). Và khi xoá khách mà
 // dữ liệu CŨ có phiếu dùng cọc của khách khác, cách xoá gom (deferredPaymentRecalc) vẫn phải tính lại
 // deposit_after của cọc khách kia — không bỏ như cọc bị xoá cùng loạt.
@@ -58,9 +58,6 @@ func TestValidateDepositUse_RejectsForeignDeposit(t *testing.T) {
 	otherCust := int(testhelpers.CreateScopedCustomer(t, testDB, a, nil))
 	_, err = svc.CreateRefundDepositCustomerFromPayment(refund(&otherCust, dep(depA)), int(f.userID))
 	require.ErrorIs(t, err, errs.ErrDepositCustomerMismatch, "hoàn cọc của khách A cho khách khác")
-
-	_, err = svc.CreateRefundKgCustomerFromPayment(refund(cust(b), dep(depA)), int(f.userID))
-	require.ErrorIs(t, err, errs.ErrDepositCustomerMismatch, "hoàn ký gửi bằng cọc của khách khác")
 
 	_, err = svc.CreateRefundDepositCustomerFromPayment(refund(cust(a), dep(orderPay)), int(f.userID))
 	require.ErrorIs(t, err, errs.ErrDepositNotFound, "deposit_id trỏ tới phiếu KHÔNG phải cọc")

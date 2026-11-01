@@ -1,6 +1,6 @@
 package handler
 
-// Danh sách phiếu (6 màn: thanh toán, thu/chi, đặt cọc, ký gửi, hoàn cọc, hoàn dịch vụ) — port từ ERP
+// Danh sách phiếu (5 màn: thanh toán, thu/chi, đặt cọc, hoàn cọc, hoàn dịch vụ) — port từ ERP
 // `accountant/payment/handler/payment.go`. Khác ERP có chủ đích:
 //   - 1 thương hiệu/DB (D15): không còn `company_id` ở select/filter/index hint.
 //   - Không có `customer.search_text` (ngram) ⇒ `_keyword` là LIKE thô trên customer/đơn/mã phiếu
@@ -131,16 +131,6 @@ var (
 		sumFields:  map[string]string{"totalSumDeposit": "sum", "totalSumDepositAfter": "deposit_after"},
 		exportFunc: exportHandlers.ExportPaymentDeposit,
 	}
-	paymentListConsignmentSpec = paymentListSpec{
-		conds: func(q *gorm.DB) *gorm.DB {
-			return q.Where("payment.payment_for = ?", define.PaymentForDeposit).
-				Where("payment.deposit_type = ?", define.PaymentTypeDepositKG).
-				Where("payment.deposit_after > 0")
-		},
-		sumSelect:  ", COALESCE(SUM(payment.amount), 0) AS total_sum, COALESCE(SUM(payment.deposit_after), 0) AS total_deposit_after",
-		sumFields:  map[string]string{"totalSumDeposit": "sum", "totalSumDepositAfter": "deposit_after"},
-		exportFunc: exportHandlers.ExportPaymentDepositConsignment,
-	}
 	paymentListRefundDepositSpec = paymentListSpec{
 		conds: func(q *gorm.DB) *gorm.DB {
 			return q.Where("payment.payment_for = ?", define.PaymentForRefundDeposit).Where("payment.amount != 0")
@@ -167,9 +157,6 @@ func (h *Handler) ListReceipts(c *gin.Context) { h.listPayments(c, paymentListRe
 
 // ListDeposit GET /crm/payment/list-deposit — phiếu đặt cọc còn dư (không gồm ký gửi).
 func (h *Handler) ListDeposit(c *gin.Context) { h.listPayments(c, paymentListDepositSpec) }
-
-// ListConsignment GET /crm/payment/list-consignment — phiếu ký gửi còn dư.
-func (h *Handler) ListConsignment(c *gin.Context) { h.listPayments(c, paymentListConsignmentSpec) }
 
 // ListRefundDeposit GET /crm/payment/list-refund-deposit — phiếu hoàn cọc.
 func (h *Handler) ListRefundDeposit(c *gin.Context) { h.listPayments(c, paymentListRefundDepositSpec) }

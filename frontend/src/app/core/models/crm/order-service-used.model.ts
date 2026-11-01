@@ -75,7 +75,6 @@ export interface OrderServiceUsedModel extends Identifiable {
   discountServiceLock?: number; // Số tiền giảm trừ vào doanh số do khoá dịch vụ
   rank_discount_percent?: number; // % giảm theo hạng thành viên
   rank_discount_amount?: number; // Số tiền giảm theo hạng thành viên
-  installment_config?: any; // Cấu hình trả góp
   totalEnd?: number; // Tổng tiền cần thanh toán
   payment?: number;
   broker_id?: number; // CTV giới thiệu (copy từ OTP, NULL = không tính hoa hồng)

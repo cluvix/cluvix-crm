@@ -145,7 +145,7 @@ func TestListReceipts_DieuKienVaScope(t *testing.T) {
 	require.Equal(t, idStrs(income), listIDs(t, body))
 }
 
-func TestListDepositConsignment_TachKyGuiVaConLai(t *testing.T) {
+func TestListDeposit_TachKyGuiVaConLai(t *testing.T) {
 	if testDB == nil {
 		t.Fatal("TEST_MYSQL_DSN chưa set — integration test này KHÔNG được skip")
 	}
@@ -155,7 +155,8 @@ func TestListDepositConsignment_TachKyGuiVaConLai(t *testing.T) {
 	depA, _ := seedListPayment(t, tn, listPayRow{branchID: a, amount: 300_000, paymentFor: define.PaymentForDeposit, depositType: intp(1), depositAfter: 120_000})
 	depB, _ := seedListPayment(t, tn, listPayRow{branchID: a, amount: 100_000, paymentFor: define.PaymentForDeposit, depositAfter: 100_000})
 	seedListPayment(t, tn, listPayRow{branchID: a, amount: 80_000, paymentFor: define.PaymentForDeposit, depositType: intp(1), depositAfter: 0}) // dùng hết
-	kg, _ := seedListPayment(t, tn, listPayRow{branchID: a, amount: 500_000, paymentFor: define.PaymentForDeposit, depositType: intp(define.PaymentTypeDepositKG), depositAfter: 400_000})
+	// Phiếu ký gửi (dữ liệu cũ — tính năng ký gửi đã gỡ) không được lọt vào list đặt cọc.
+	seedListPayment(t, tn, listPayRow{branchID: a, amount: 500_000, paymentFor: define.PaymentForDeposit, depositType: intp(define.PaymentTypeDepositKG), depositAfter: 400_000})
 
 	h := New(Deps{DB: testDB})
 	code, body := callPaymentList(t, a, h.ListDeposit, "")
@@ -169,14 +170,9 @@ func TestListDepositConsignment_TachKyGuiVaConLai(t *testing.T) {
 	require.Equal(t, 200, code, "body=%v", body)
 	require.Equal(t, idStrs(depA), listIDs(t, body))
 	require.Equal(t, "120000", fmt.Sprint(body["totalSumDepositAfter"]))
-
-	code, body = callPaymentList(t, a, h.ListConsignment, "")
-	require.Equal(t, 200, code, "body=%v", body)
-	require.Equal(t, idStrs(kg), listIDs(t, body))
-	require.Equal(t, "400000", fmt.Sprint(body["totalSumDepositAfter"]))
 }
 
-// Nhánh `_export=1` của cả 6 list: câu export (hàm có sẵn trong package export) phải chạy được trên
+// Nhánh `_export=1` của cả 5 list: câu export (hàm có sẵn trong package export) phải chạy được trên
 // khung lọc chung — alias JOIN của export (`ose`, `svc`, `otp`…) không được đụng bảng JOIN của khung.
 func TestListPayments_ExportChayDuoc(t *testing.T) {
 	if testDB == nil {
@@ -187,7 +183,6 @@ func TestListPayments_ExportChayDuoc(t *testing.T) {
 	planID, suID := seedPaymentOrderRefs(t, tn)
 	seedPaymentRow(t, tn, planID, suID, 100_000, define.PaymentForOrder)
 	seedListPayment(t, tn, listPayRow{branchID: a, amount: 300_000, paymentFor: define.PaymentForDeposit, depositType: intp(1), depositAfter: 300_000})
-	seedListPayment(t, tn, listPayRow{branchID: a, amount: 300_000, paymentFor: define.PaymentForDeposit, depositType: intp(define.PaymentTypeDepositKG), depositAfter: 300_000})
 	seedListPayment(t, tn, listPayRow{branchID: a, amount: -10_000, paymentFor: define.PaymentForRefundDeposit})
 	seedListPayment(t, tn, listPayRow{branchID: a, amount: -20_000, paymentFor: define.PaymentForRefundService})
 
@@ -202,7 +197,7 @@ func TestListPayments_ExportChayDuoc(t *testing.T) {
 	h := New(Deps{DB: testDB, RbacSvc: &authSvc.RbacService{DB: testDB}})
 	for name, fn := range map[string]gin.HandlerFunc{
 		"payment": h.ListPayment, "receipts": h.ListReceipts, "deposit": h.ListDeposit,
-		"consignment": h.ListConsignment, "refund-deposit": h.ListRefundDeposit, "refund-order-plan": h.ListRefundOrderPlan,
+		"refund-deposit": h.ListRefundDeposit, "refund-order-plan": h.ListRefundOrderPlan,
 	} {
 		r := testhelpers.NewGin()
 		r.Use(testhelpers.AuthMiddleware(a, uid))
@@ -234,7 +229,7 @@ func seedRbacUser(t *testing.T, role string, perms []string) uint {
 	return uid
 }
 
-// Export 6 list phiếu phải có quyền extPayment: không có ⇒ 403 (kể cả có viewPayment), có ⇒ 200.
+// Export 5 list phiếu phải có quyền extPayment: không có ⇒ 403 (kể cả có viewPayment), có ⇒ 200.
 func TestListPayments_ExportCanQuyenExtPayment(t *testing.T) {
 	if testDB == nil {
 		t.Fatal("TEST_MYSQL_DSN chưa set — integration test này KHÔNG được skip")
@@ -245,11 +240,10 @@ func TestListPayments_ExportCanQuyenExtPayment(t *testing.T) {
 	require.NoError(t, os.Chdir(t.TempDir()))
 	t.Cleanup(func() { _ = os.Chdir(wd) })
 
-	// Mỗi list export cần ≥1 dòng (rỗng ⇒ 422 "không có dữ liệu"): seed đủ cho 6 list.
+	// Mỗi list export cần ≥1 dòng (rỗng ⇒ 422 "không có dữ liệu"): seed đủ cho 5 list.
 	planID, suID := seedPaymentOrderRefs(t, tn)
 	seedPaymentRow(t, tn, planID, suID, 100_000, define.PaymentForOrder)
 	seedListPayment(t, tn, listPayRow{branchID: tn.BranchID, amount: 300_000, paymentFor: define.PaymentForDeposit, depositType: intp(1), depositAfter: 300_000})
-	seedListPayment(t, tn, listPayRow{branchID: tn.BranchID, amount: 300_000, paymentFor: define.PaymentForDeposit, depositType: intp(define.PaymentTypeDepositKG), depositAfter: 300_000})
 	seedListPayment(t, tn, listPayRow{branchID: tn.BranchID, amount: -10_000, paymentFor: define.PaymentForRefundDeposit})
 	seedListPayment(t, tn, listPayRow{branchID: tn.BranchID, amount: -20_000, paymentFor: define.PaymentForRefundService})
 
@@ -267,7 +261,7 @@ func TestListPayments_ExportCanQuyenExtPayment(t *testing.T) {
 	}
 	for name, fn := range map[string]gin.HandlerFunc{
 		"payment": h.ListPayment, "receipts": h.ListReceipts, "deposit": h.ListDeposit,
-		"consignment": h.ListConsignment, "refund-deposit": h.ListRefundDeposit, "refund-order-plan": h.ListRefundOrderPlan,
+		"refund-deposit": h.ListRefundDeposit, "refund-order-plan": h.ListRefundOrderPlan,
 	} {
 		w := call(noExt, fn, "_export=1")
 		require.Equal(t, 403, w.Code, "%s thiếu extPayment phải 403: %s", name, w.Body.String())

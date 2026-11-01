@@ -18,29 +18,11 @@ import (
 	"erpCluvix/pkg/query"
 	"erpCluvix/pkg/response"
 	"erpCluvix/pkg/tenant"
-	"erpCluvix/pkg/tz"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
-
-// installmentRow maps a raw SQL result row from InstallmentOfCustomer.
-// Defined at package level to avoid GORM reflection issues with function-local types.
-type installmentRow struct {
-	ID                 int             `gorm:"column:id"`
-	OrderServiceUsedId int             `gorm:"column:order_service_used_id"`
-	PeriodNumber       int             `gorm:"column:period_number"`
-	Amount             decimal.Decimal `gorm:"column:amount"`
-	PaidAmount         decimal.Decimal `gorm:"column:paid_amount"`
-	DueDate            string          `gorm:"column:due_date"`
-	Status             int             `gorm:"column:status"`
-	IsOverdue          int             `gorm:"column:is_overdue"`
-	ServiceName        string          `gorm:"column:service_name"`
-	ServiceUsedCode    string          `gorm:"column:service_used_code"`
-	BranchId           int             `gorm:"column:branch_id"`
-	TotalPeriods       int             `gorm:"column:total_periods"`
-}
 
 func (h *Handler) buildTreatmentServiceQuery(c *gin.Context) *gorm.DB {
 	q := tenant.ScopedDBNullBranch(c, h.DB, "order_service_used").
@@ -599,93 +581,6 @@ func (h *Handler) LockServiceUsed(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, msg)
-}
-
-// InstallmentOfCustomer GET /crm/order-service-used/installment-of-customer?customer_id=xxx
-// Trả về danh sách kỳ trả góp còn mở của khách hàng (chưa thu, trả một phần); kỳ có due_date < hôm
-// nay (timezone thương hiệu) được gắn nhãn quá hạn.
-func (h *Handler) InstallmentOfCustomer(c *gin.Context) {
-	// Parse ra số TRƯỚC khi vào query: MySQL ép '5abc' → 5 và nuốt warning ⇒ đọc trúng khách 5.
-	customerID, err := strconv.ParseUint(c.Query("customer_id"), 10, 64)
-	if err != nil || customerID == 0 {
-		response.Validate(c, i18n.T(c, "customer_id_required"))
-		return
-	}
-	today := tz.LocalDate(tz.LocFromContext(c, h.DB), 0)
-
-	// Story-37 (E6/D15 — 1 thương hiệu/DB): bỏ vế company (osu.company_id / otp.company_id) — endpoint
-	// này trước giờ chỉ lọc company, KHÔNG lọc chi nhánh (kỳ trả góp của khách ở mọi chi nhánh), giữ nguyên.
-
-	sqlStr := `
-		SELECT
-			oi.id, oi.order_service_used_id, oi.period_number,
-			oi.amount, COALESCE(oi.paid_amount, 0) as paid_amount,
-			DATE_FORMAT(oi.due_date, '%d/%m/%Y') as due_date,
-			oi.status,
-			(oi.due_date < ?) as is_overdue,
-			s.name as service_name,
-			osu.code as service_used_code,
-			osu.branch_id,
-			(SELECT COUNT(*) FROM order_installment WHERE order_service_used_id = oi.order_service_used_id AND period_number > 0) as total_periods
-		FROM order_installment oi
-		JOIN order_service_used osu ON osu.id = oi.order_service_used_id
-		JOIN order_plan otp ON otp.id = osu.order_plan_id
-		LEFT JOIN service s ON s.id = osu.service_id
-		WHERE otp.customer_id = ?
-		AND oi.status IN ?
-		AND osu.isLock != ?
-		ORDER BY oi.period_number ASC,
-			is_overdue DESC,
-			oi.due_date ASC`
-
-	// Dịch vụ đã khoá (isLock=2): phần còn lại chuyển sang giảm trừ, kỳ góp chưa thu không còn là nợ —
-	// cùng điều kiện với báo cáo công nợ trả góp (crm/report/debt/installment.go). lens-money M-14.
-	args := []any{today, customerID, define.InstallmentOpenStatuses, define.ServiceUsedIsLock}
-
-	var items []installmentRow
-	if err := h.DB.Raw(sqlStr, args...).Scan(&items).Error; err != nil {
-		response.ServerError(c, err)
-		return
-	}
-
-	result := make([]map[string]interface{}, 0)
-	for _, item := range items {
-		remaining := item.Amount.Sub(item.PaidAmount)
-
-		// Quá hạn là điều kiện NGÀY, ưu tiên trước status. Trước 2026-09-14 map `3 → Quá hạn`,
-		// `4 → Thanh toán 1 phần` — sai: 3 là trả một phần, 4 không tồn tại.
-		var statusText string
-		switch {
-		case item.IsOverdue == 1:
-			statusText = "⚠ Quá hạn"
-		case item.Status == define.InstallmentStatusPartial:
-			statusText = "Thanh toán 1 phần"
-		default:
-			statusText = "Chưa thu"
-		}
-
-		var label string
-		if item.PeriodNumber == 0 {
-			label = fmt.Sprintf("Trả trước - %s (Mã #%s) - Hạn: %s - %s - %s",
-				item.ServiceName, item.ServiceUsedCode, item.DueDate,
-				helpers.FormatDecimal(h.DB, remaining), statusText)
-		} else {
-			label = fmt.Sprintf("Kỳ %d/%d - %s (Mã #%s) - Hạn: %s - %s - %s",
-				item.PeriodNumber, item.TotalPeriods,
-				item.ServiceName, item.ServiceUsedCode, item.DueDate,
-				helpers.FormatDecimal(h.DB, remaining), statusText)
-		}
-
-		result = append(result, map[string]interface{}{
-			"value":                 item.ID,
-			"order_service_used_id": item.OrderServiceUsedId,
-			"label":                 label,
-			"branch_id":             item.BranchId,
-			"amount":                remaining,
-		})
-	}
-
-	c.JSON(http.StatusOK, result)
 }
 
 // formatVND format số tiền VND

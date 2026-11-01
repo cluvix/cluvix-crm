@@ -80,7 +80,6 @@ export class FormDeposit extends BaseSignalForm<DepositFormModel> {
   typeDeposit: any[] = [
     { name: 'Cọc tạm', nameKey: 'common.label.temporary_deposit', value: 2, key: 'cTa' },
     { name: 'Cọc giữ khuyến mại', nameKey: 'crm.payment.form.deposit_keep_promotion', value: 1, key: 'gCh' },
-    { name: 'Ký gửi', nameKey: 'common.label.consignment', value: 3, key: 'kG' },
   ]; // loại đặt cọc
   private userOptionHelper = inject(UserOptionHelperService);
   private paymentTypeCache = inject(PaymentTypeCacheService);

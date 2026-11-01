@@ -32,12 +32,6 @@ export default [
     data: { kind: 'deposit', breadcrumb: 'crm.payment_list.title.deposit', title: 'crm.payment_list.title.deposit' },
   },
   {
-    path: 'consignment',
-    loadComponent: loadPaymentListAll,
-    canActivate: [requirePerm(PERMISSION_SELECT.permissionViewPayment)],
-    data: { kind: 'consignment', breadcrumb: 'crm.payment_list.title.consignment', title: 'crm.payment_list.title.consignment' },
-  },
-  {
     path: 'refund-deposit',
     loadComponent: loadPaymentListAll,
     canActivate: [requirePerm(PERMISSION_SELECT.permissionViewPayment)],

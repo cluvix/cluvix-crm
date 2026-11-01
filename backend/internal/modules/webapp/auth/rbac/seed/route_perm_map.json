@@ -514,15 +514,6 @@
  },
  {
   "method": "GET",
-  "path": "/api/crm/payment/list-consignment",
-  "module": "crm",
-  "perm": "viewPayment",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": "Danh sách phiếu ký gửi còn dư; _export=1 cần extPayment (guard trong handler)"
- },
- {
-  "method": "GET",
   "path": "/api/crm/payment/list-refund-deposit",
   "module": "crm",
   "perm": "viewPayment",
@@ -583,15 +574,6 @@
   "kind": "perm",
   "enforce_phase1": true,
   "note": ""
- },
- {
-  "method": "POST",
-  "path": "/api/crm/payment/create-refund-kg-customer",
-  "module": "crm",
-  "perm": "extPayment",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": "consignment (ky gui) refund; no dedicated key"
  },
  {
   "method": "POST",
@@ -667,15 +649,6 @@
  },
  {
   "method": "DELETE",
-  "path": "/api/crm/payment/:id/delete-refund-consignment",
-  "module": "crm",
-  "perm": "extPayment",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": "consignment refund delete; no dedicated key"
- },
- {
-  "method": "DELETE",
   "path": "/api/crm/payment/:id/delete-refund-order-plan",
   "module": "crm",
   "perm": "extRefundService",
@@ -691,15 +664,6 @@
   "kind": "perm",
   "enforce_phase1": true,
   "note": "order_service_used list"
- },
- {
-  "method": "GET",
-  "path": "/api/crm/order-service-used/installment-of-customer",
-  "module": "crm",
-  "perm": "viewServiceUsed",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": ""
  },
  {
   "method": "GET",
@@ -1069,15 +1033,6 @@
   "kind": "perm",
   "enforce_phase1": true,
   "note": "Công nợ theo đơn hàng (list + _export=1)"
- },
- {
-  "method": "GET",
-  "path": "/api/crm/report/debt/installment",
-  "module": "crm",
-  "perm": "manageCrmReport",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": "Công nợ trả góp (list + _export=1)"
  },
  {
   "method": "GET",
@@ -3367,21 +3322,12 @@
  },
  {
   "method": "GET",
-  "path": "/api/print/refund-consignment/:id",
-  "module": "print",
-  "perm": "viewPayment",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": "print refund consignment; closest view key"
- },
- {
-  "method": "GET",
   "path": "/api/print/refund-deposit/:id",
   "module": "print",
   "perm": "viewPayment",
   "kind": "perm",
   "enforce_phase1": true,
-  "note": "same handler as refund-consignment"
+  "note": "print refund deposit; closest view key"
  },
  {
   "method": "GET",

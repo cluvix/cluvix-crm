@@ -21,11 +21,10 @@ func RegisterRoutes(crm gin.IRouter, d handler.Deps) {
 
 	payment := crm.Group("/payment")
 	{
-		// Danh sách phiếu (6 màn, handler/list.go) — route tĩnh khai TRƯỚC `/:id`. `_export=1` ⇒ Excel.
+		// Danh sách phiếu (5 màn, handler/list.go) — route tĩnh khai TRƯỚC `/:id`. `_export=1` ⇒ Excel.
 		payment.GET("", h.ListPayment)
 		payment.GET("/list-receipts", h.ListReceipts)
 		payment.GET("/list-deposit", h.ListDeposit)
-		payment.GET("/list-consignment", h.ListConsignment)
 		payment.GET("/list-refund-deposit", h.ListRefundDeposit)
 		payment.GET("/list-refund-order-plan", h.ListRefundOrderPlan)
 		payment.GET("/get-order-plan/:id", h.GetOrderPlan)
@@ -38,7 +37,6 @@ func RegisterRoutes(crm gin.IRouter, d handler.Deps) {
 		payment.POST("/create-payment-customer", h.CreatePaymentCustomer)
 		payment.POST("/create-deposit-customer", h.CreateDepositCustomer)
 		payment.POST("/create-refund-deposit-customer", h.CreateRefundDepositCustomer)
-		payment.POST("/create-refund-kg-customer", h.CreateRefundKgCustomer)
 		payment.POST("/create-refund-order-plan", h.CreateRefundOrderPlan)
 		payment.POST("/:id/move-deposit-to-payment", h.MoveDepositToPayment)
 		payment.PUT("/:id/move-deposit-to-payment", h.MoveDepositToPayment)
@@ -47,7 +45,6 @@ func RegisterRoutes(crm gin.IRouter, d handler.Deps) {
 		payment.DELETE("/:id/delete-payment-customer", h.DeletePaymentCustomer)
 		payment.DELETE("/:id/delete-deposit-customer", h.DeleteDepositCustomer)
 		payment.DELETE("/:id/delete-refund-customer", h.DeleteRefundCustomer)
-		payment.DELETE("/:id/delete-refund-consignment", h.DeleteRefundConsignment)
 		payment.DELETE("/:id/delete-refund-order-plan", h.DeleteRefundOrderPlan)
 	}
 }

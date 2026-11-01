@@ -32,8 +32,3 @@ const (
 	InstallmentStatusPaid    = 2
 	InstallmentStatusPartial = 3
 )
-
-// InstallmentOpenStatuses — kỳ trả góp CHƯA thu xong (chưa trả + trả một phần). KHÔNG có status
-// "quá hạn": quá hạn là điều kiện NGÀY `due_date < hôm nay` (timezone company, `tz.LocalDate`) trên
-// kỳ còn mở (user chốt 2026-09-14). Status 4 không nơi nào ghi — đừng thêm vào đây.
-var InstallmentOpenStatuses = []int{InstallmentStatusUnpaid, InstallmentStatusPartial}

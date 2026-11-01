@@ -22,7 +22,6 @@ func TestRoutePermMapStory49RenamedRoutes(t *testing.T) {
 	expected := map[string]string{
 		// group dòng dịch vụ đã dùng (path + quyền đổi tên trung tính ở story-49)
 		"GET /api/crm/order-service-used":                                  "viewPlanOrder",
-		"GET /api/crm/order-service-used/installment-of-customer":          "viewServiceUsed",
 		"GET /api/crm/order-service-used/service-used-with-appointment":    "viewServiceUsed",
 		"GET /api/crm/order-service-used/service-useds":                    "viewServiceUsed",
 		"GET /api/crm/order-service-used/service-used-of-customer":         "viewServiceUsed",

@@ -3,8 +3,7 @@
 package handler
 
 // lens-money M-14 (2026-10-18): khoá dịch vụ (LockServiceUsed) phải tính lại CẢ debtsPlan của đơn (bản cũ chỉ
-// tính khách) và kỳ trả góp của dịch vụ đã khoá không còn hiện là nợ ở InstallmentOfCustomer (dropdown thu
-// tiền theo kỳ). Mở khoá ⇒ mọi thứ quay lại.
+// tính khách). Mở khoá ⇒ mọi thứ quay lại.
 
 import (
 	"bytes"
@@ -23,7 +22,7 @@ import (
 	"erpCluvix/pkg/define"
 )
 
-func TestLockServiceUsed_RecalcOrderDebtAndInstallments(t *testing.T) {
+func TestLockServiceUsed_RecalcOrderDebt(t *testing.T) {
 	if testDB == nil {
 		t.Skip("integration DB not available (set TEST_MYSQL_DSN)")
 	}
@@ -31,7 +30,7 @@ func TestLockServiceUsed_RecalcOrderDebtAndInstallments(t *testing.T) {
 	planID := seedPlanS37(t, tn, tn.BranchID)
 	now := time.Now().Unix()
 
-	// Dịch vụ trả góp 9tr (3 kỳ × 3tr), đã thu 4tr ⇒ nợ 5tr ở khách lẫn đơn.
+	// Dịch vụ 9tr, đã thu 4tr ⇒ nợ 5tr ở khách lẫn đơn.
 	osu := map[string]any{"code": fmt.Sprintf("SV%d", time.Now().UnixNano()), "customer_id": tn.CustomerID,
 		"order_plan_id": planID, "service_id": 1, "branch_id": tn.BranchID, "quantity": 1,
 		"totalEnd": 9_000_000, "payment": 4_000_000, "payment_status": define.ServicePaymentStatusPartly,
@@ -40,20 +39,9 @@ func TestLockServiceUsed_RecalcOrderDebtAndInstallments(t *testing.T) {
 	osuID := testhelpers.LastInsertID(testDB)
 	require.NoError(t, testDB.Exec("INSERT INTO payment (code, customer_id, branch_id, method, amount, payment_for, parent_id, serviceUsed_id, payment_time, payment_of_date, created_at, updated_at) VALUES (?, ?, ?, 1, 4000000, ?, ?, ?, ?, ?, ?, ?)",
 		fmt.Sprintf("TT%d", time.Now().UnixNano()), tn.CustomerID, tn.BranchID, define.PaymentForOrder, planID, osuID, now, now, now, now).Error)
-	for i, paid := range []int64{3_000_000, 1_000_000, 0} {
-		st := define.InstallmentStatusPaid
-		if paid == 0 {
-			st = define.InstallmentStatusUnpaid
-		} else if paid < 3_000_000 {
-			st = define.InstallmentStatusPartial
-		}
-		require.NoError(t, testDB.Exec("INSERT INTO order_installment (order_service_used_id, period_number, amount, paid_amount, status, due_date) VALUES (?, ?, 3000000, ?, ?, CURDATE())",
-			osuID, i, paid, st).Error)
-	}
 	require.NoError(t, testDB.Exec("UPDATE order_plan SET paymentPlan = 4000000, debtsPlan = 5000000 WHERE id = ?", planID).Error)
 	require.NoError(t, testDB.Exec("UPDATE customer SET totalRevenue = 9000000, totalPayment = 4000000, totalDebt = 5000000 WHERE id = ?", tn.CustomerID).Error)
 	t.Cleanup(func() {
-		testDB.Exec("DELETE FROM order_installment WHERE order_service_used_id = ?", osuID)
 		testDB.Exec("DELETE FROM payment WHERE serviceUsed_id = ?", osuID)
 		testDB.Exec("DELETE FROM order_service_used WHERE id = ?", osuID)
 	})
@@ -93,29 +81,16 @@ func TestLockServiceUsed_RecalcOrderDebtAndInstallments(t *testing.T) {
 		t.Helper()
 		require.True(t, got.Equal(decimal.NewFromInt(want)), "%s: muốn %d, có %s", what, want, got)
 	}
-	openInstallments := func() int {
-		t.Helper()
-		c, w := ctx("GET", fmt.Sprintf("/crm/order-service-used/installment-of-customer?customer_id=%d", tn.CustomerID), nil)
-		h.InstallmentOfCustomer(c)
-		require.Equal(t, 200, w.Code, "body: %s", w.Body.String())
-		var items []map[string]any
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &items))
-		return len(items)
-	}
-	require.Equal(t, 2, openInstallments(), "tiền đề: 2 kỳ còn mở (1 phần + chưa thu)")
-
 	// Khoá: totalEnd = 4tr (đã thu), phần còn lại 5tr thành giảm trừ.
 	toggle(define.ServiceUsedNotLock)
 	eq(4_000_000, dec("SELECT totalEnd FROM order_service_used WHERE id = ?", osuID), "khoá: osu.totalEnd")
 	eq(4_000_000, dec("SELECT paymentPlan FROM order_plan WHERE id = ?", planID), "khoá: order.paymentPlan")
 	eq(0, dec("SELECT debtsPlan FROM order_plan WHERE id = ?", planID), "khoá: order.debtsPlan (M-14)")
 	eq(0, dec("SELECT totalDebt FROM customer WHERE id = ?", tn.CustomerID), "khoá: customer.totalDebt")
-	require.Equal(t, 0, openInstallments(), "khoá: kỳ góp của dịch vụ đã khoá không còn là nợ")
 
-	// Mở khoá: quay lại 9tr / nợ 5tr / 2 kỳ mở.
+	// Mở khoá: quay lại 9tr / nợ 5tr.
 	toggle(define.ServiceUsedIsLock)
 	eq(9_000_000, dec("SELECT totalEnd FROM order_service_used WHERE id = ?", osuID), "mở: osu.totalEnd")
 	eq(5_000_000, dec("SELECT debtsPlan FROM order_plan WHERE id = ?", planID), "mở: order.debtsPlan")
 	eq(5_000_000, dec("SELECT totalDebt FROM customer WHERE id = ?", tn.CustomerID), "mở: customer.totalDebt")
-	require.Equal(t, 2, openInstallments(), "mở: 2 kỳ mở trở lại")
 }

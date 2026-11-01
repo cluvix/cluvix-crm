@@ -20,7 +20,6 @@ export class ServiceService extends BaseApiService<ServiceModel> {
   override getInitialObject() {
     return {
       status: 1,
-      is_installment: 0,
       isUpdateMaterial: 0,
     };
   }

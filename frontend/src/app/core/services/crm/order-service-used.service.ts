@@ -57,16 +57,6 @@ export class OrderServiceUsedService extends BaseApiService<OrderServiceUsedMode
     );
   }
 
-  /**
-   * API trả về dịch vụ trả góp của khách hàng
-   * @param customerId
-   */
-  serviceInstallment(customerId: number) {
-    return this.apiService.get(
-      `${this.path}/installment-of-customer?customer_id=${customerId}`,
-    );
-  }
-
 
   reportServiceUsed(params: any = {}): Observable<ListApiResponse<ServiceModel>> {
     params.page = params.page ? (params.page < 1 ? 1 : params.page) : 1;

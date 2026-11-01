@@ -25,7 +25,6 @@ func RegisterRoutes(crm gin.IRouter, d handler.Deps) {
 	ts := crm.Group("/order-service-used")
 	{
 		ts.GET("", exportGuard, h.ListTreatmentService)
-		ts.GET("/installment-of-customer", h.InstallmentOfCustomer)
 		ts.GET("/service-used-with-appointment", exportGuard, h.ListServiceUsedWithAppointment)
 		ts.GET("/service-useds", h.ServiceUseds)
 		ts.GET("/service-used-of-customer", h.ServiceUsedOfCustomer)

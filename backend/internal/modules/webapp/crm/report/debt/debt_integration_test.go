@@ -2,7 +2,7 @@
 
 package debt
 
-// Neo con số của 2 báo cáo công nợ (trả góp, theo đơn) trên DB dùng-một-lần (TEST_MYSQL_DSN, tên *_tmp/*_test).
+// Neo con số của các báo cáo công nợ (theo đơn, theo khách, theo dịch vụ) trên DB dùng-một-lần (TEST_MYSQL_DSN, tên *_tmp/*_test).
 
 import (
 	"encoding/json"
@@ -79,49 +79,6 @@ func seedPlanService(t *testing.T, tn *testhelpers.TestTenant, branchID uint, to
 		"totalEnd": totalEnd, "payment": 0, "created_day": createdDay, "isLock": isLock,
 	})
 	return plan, osu
-}
-
-func TestInstallmentDebts_TotalsOverdueAndScope(t *testing.T) {
-	if testDB == nil {
-		t.Skip("no TEST_MYSQL_DSN")
-	}
-	tn := testhelpers.FreshTenant(t, testDB)
-	other := testhelpers.CreateBranch(t, testDB)
-	now := time.Now().Unix()
-	yesterday := time.Now().AddDate(0, 0, -1).Format(time.DateOnly)
-	tomorrow := time.Now().AddDate(0, 0, 1).Format(time.DateOnly)
-
-	_, osu := seedPlanService(t, tn, tn.BranchID, 1000, now, 1)
-	_, osuLocked := seedPlanService(t, tn, tn.BranchID, 1000, now, define.ServiceUsedIsLock)
-	_, osuOther := seedPlanService(t, tn, other, 1000, now, 1)
-
-	inst := func(osuID uint, period int, amount, paid int64, due string, status int) {
-		seedRow(t, "order_installment", map[string]any{
-			"order_service_used_id": osuID, "period_number": period, "amount": amount,
-			"paid_amount": paid, "due_date": due, "status": status,
-		})
-	}
-	inst(osu, 1, 100, 0, yesterday, define.InstallmentStatusUnpaid)       // quá hạn
-	inst(osu, 2, 200, 50, tomorrow, define.InstallmentStatusPartial)      // còn mở
-	inst(osu, 3, 300, 300, tomorrow, define.InstallmentStatusPaid)        // đã thu ⇒ loại
-	inst(osuLocked, 1, 999, 0, yesterday, define.InstallmentStatusUnpaid) // dịch vụ khoá ⇒ loại
-	inst(osuOther, 1, 777, 0, yesterday, define.InstallmentStatusUnpaid)  // chi nhánh khác ⇒ loại
-
-	body := getJSON(t, tn.BranchID, "/crm/report/debt/installment")
-	total := body["total"].(map[string]any)
-	requireMoney(t, 300, total["totalAmount"], "totalAmount")
-	requireMoney(t, 50, total["totalPaid"], "totalPaid")
-	requireMoney(t, 250, total["totalRemaining"], "totalRemaining")
-	items := body["items"].([]any)
-	require.Len(t, items, 2)
-	first := items[0].(map[string]any)
-	require.EqualValues(t, 1, first["is_overdue"], "kỳ quá hạn phải lên đầu")
-	require.EqualValues(t, 3, first["total_periods"])
-	require.EqualValues(t, tn.CustomerID, first["customer"].(map[string]any)["id"])
-
-	// Lọc status chỉ còn kỳ trả một phần.
-	body = getJSON(t, tn.BranchID, fmt.Sprintf("/crm/report/debt/installment?filter[status][]=%d", define.InstallmentStatusPartial))
-	requireMoney(t, 200, body["total"].(map[string]any)["totalAmount"], "totalAmount(partial)")
 }
 
 func TestOrderPlanDebts_PeriodMathIgnoresRefund(t *testing.T) {

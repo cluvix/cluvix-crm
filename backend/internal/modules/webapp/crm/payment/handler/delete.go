@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 5 delete variants: customer payment, deposit, refund (3 sub-types).
+// 4 delete variants: customer payment, deposit, refund (2 sub-types: hoàn cọc, hoàn dịch vụ).
 // Mọi endpoint verifyPaymentOwnership trước khi gọi service (chống IDOR), rồi truyền db ĐÃ scope tenant
 // xuống service để service tra lại phiếu + kiểm đúng payment_for của endpoint (lens-money M-6).
 
@@ -42,10 +42,6 @@ func (h *Handler) DeleteDepositCustomer(c *gin.Context) {
 
 func (h *Handler) DeleteRefundCustomer(c *gin.Context) {
 	h.deletePaymentKind(c, h.PaymentSvc.DeleteRefundCustomer)
-}
-
-func (h *Handler) DeleteRefundConsignment(c *gin.Context) {
-	h.deletePaymentKind(c, h.PaymentSvc.DeleteRefundConsignment)
 }
 
 func (h *Handler) DeleteRefundOrderPlan(c *gin.Context) {

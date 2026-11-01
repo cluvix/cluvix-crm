@@ -1,5 +1,5 @@
-// Package debt — nhóm báo cáo CÔNG NỢ của CRM (port từ ERP accountant/{customer,order_plan,installment,
-// treatment}_debts, 2026-10-17). Endpoint dưới /api/crm/report/debt/*.
+// Package debt — nhóm báo cáo CÔNG NỢ của CRM (port từ ERP accountant/{customer,order_plan,treatment}_debts,
+// 2026-10-17). Endpoint dưới /api/crm/report/debt/*. Báo cáo công nợ trả góp đã gỡ cùng tính năng trả góp.
 //
 // Khác ERP (cố ý):
 //   - 1 thương hiệu/DB ⇒ bỏ mọi vế company_id; phạm vi chỉ còn branch qua tenant.ScopedDBNullBranch.
@@ -36,6 +36,5 @@ func Register(rg *gin.RouterGroup, d *deps.Deps) {
 	g := rg.Group("/report/debt", middleware.RequireExportPerm(d.RbacSvc, define.PermManageCrmReport))
 	g.GET("/customer", h.CustomerDebts)
 	g.GET("/order-plan", h.OrderPlanDebts)
-	g.GET("/installment", h.InstallmentDebts)
 	g.GET("/service", h.ServiceDebts)
 }

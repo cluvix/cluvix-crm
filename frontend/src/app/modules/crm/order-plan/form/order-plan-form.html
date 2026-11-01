@@ -1,477 +1,316 @@
 <form novalidate>
-  <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($any($event))">
-    <p-tablist>
-      <p-tab value="0">
-        <i aria-hidden="true" class="pi pi-info-circle mr-1"></i>
-        <span class="whitespace-nowrap">{{ 'crm.order_plan.form.tab_info' | translate }}</span>
-      </p-tab>
-      <p-tab value="1">
-        <i aria-hidden="true" class="pi pi-gift mr-1"></i>
-        <span class="whitespace-nowrap">{{ 'crm.order_plan.form.tab_expand' | translate }}</span>
-      </p-tab>
-    </p-tablist>
-    <p-tabpanels>
-      <p-tabpanel value="0">
-        <p-fluid class="grid grid-cols-12 gap-4 flex-wrap p-fluid pt-4 content-start tab-fade-content">
-          <!-- Branch -->
-          <div class="col-span-12 md:col-span-6 lg:col-span-3">
-            <p-floatlabel variant="on">
-              <app-branch-form-control
-                [class.ng-invalid]="isFieldInvalid(rootField.branch_id!)"
-                [activeOnly]="true"
-                class="ng-dirty"
-                [formField]="rootField.branch_id!"/>
-              <label for="branch_id" [class.text-red-500]="isFieldInvalid(rootField.branch_id!)">{{ 'common.label.branch' | translate }} *</label>
-            </p-floatlabel>
-            @if (isFieldInvalid(rootField.branch_id!)) {
-              <small class="text-red-500">{{ 'common.message.field_required' | translate }}</small>
+  <p-fluid class="grid grid-cols-12 gap-4 flex-wrap p-fluid pt-4 content-start">
+    <!-- Branch -->
+    <div class="col-span-12 md:col-span-6 lg:col-span-3">
+      <p-floatlabel variant="on">
+        <app-branch-form-control
+          [class.ng-invalid]="isFieldInvalid(rootField.branch_id!)"
+          [activeOnly]="true"
+          class="ng-dirty"
+          [formField]="rootField.branch_id!"/>
+        <label for="branch_id" [class.text-red-500]="isFieldInvalid(rootField.branch_id!)">{{ 'common.label.branch' | translate }} *</label>
+      </p-floatlabel>
+      @if (isFieldInvalid(rootField.branch_id!)) {
+        <small class="text-red-500">{{ 'common.message.field_required' | translate }}</small>
+      }
+    </div>
+    <!-- Date -->
+    <div class="col-span-12 md:col-span-6 lg:col-span-3">
+      <p-floatlabel variant="on">
+        <p-datepicker
+          [class.ng-invalid]="isFieldInvalid(rootField.created_time!)"
+          [maxDate]="maxDate"
+          [minDate]="minDate"
+          [showTime]="true"
+          appendTo="body"
+          class="ng-dirty"
+          dateFormat="dd/mm/yy"
+          [formField]="$any(rootField.created_time!)"
+          id="created_time"
+          showIcon="true"
+        ></p-datepicker>
+        <label for="created_time" [class.text-red-500]="isFieldInvalid(rootField.created_time!)">{{ 'common.label.order_date' | translate }} *</label>
+      </p-floatlabel>
+      @if (isFieldInvalid(rootField.created_time!)) {
+        <small class="text-red-500">{{ 'common.message.field_required' | translate }}</small>
+      }
+    </div>
+    <!-- Source -->
+    <div class="col-span-12 md:col-span-6 lg:col-span-3">
+      <p-floatlabel variant="on">
+        <app-source-autocomplete-form-control
+          class="ng-dirty"
+          [formField]="$any(rootField.source_id!)"
+        />
+        <label for="source_id">{{ 'common.label.source' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    <div class="col-span-12 md:col-span-6 lg:col-span-3">
+      <p-floatlabel variant="on">
+        <app-user-multiselect-form-control
+          [activeOnly]="!isEditMode()"
+          [branchId]="currentBranchId()"
+          [formField]="$any(rootField.listRevenues!)"
+        ></app-user-multiselect-form-control>
+        <label for="listRevenues">{{ 'common.label.consultant' | translate }}</label>
+      </p-floatlabel>
+    </div>
+
+    <!-- Services table -->
+    <div class="col-span-12 content-start">
+      <p-table
+        [lazy]="true"
+        [paginator]="false"
+        [rowHover]="true"
+        [scrollable]="true"
+        [showLoader]="false"
+        [tableStyle]="{ 'min-width': '90rem' }"
+        [value]="model().services_used ?? []"
+        [rowTrackBy]="rowTrackBy"
+        dataKey="_uid"
+        filterDelay="300"
+        class="services-used-table"
+      >
+        <ng-template #header>
+          <tr>
+            <th class="min-w-[250px]">{{ 'common.label.service' | translate }} </th>
+            <th class="w-[72px] text-right" pTooltip="{{ 'common.label.quantity' | translate }}" tooltipPosition="top">{{ 'common.label.quantity' | translate }}  <i class="pCalculator block font-normal">(1)</i></th>
+            <th class="w-[72px]">{{ 'common.label.unit' | translate }}</th>
+            <th class="w-[130px] text-right">{{ 'common.label.unit_price' | translate }} <i class="pCalculator block font-normal">(2)</i></th>
+            <th class="w-[150px] text-right">{{ 'common.label.service_discount' | translate }} <i class="pCalculator block font-normal">(3)</i></th>
+            <th class="w-[110px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_coupon' | translate" tooltipPosition="top">{{ 'common.label.coupon_discount' | translate }} <i class="pCalculator block font-normal">(4)</i></th>
+            <th class="w-[120px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_subtotal' | translate" tooltipPosition="top">{{ 'common.label.subtotal' | translate }} <i class="pCalculator block font-normal">(5)</i></th>
+            <th class="w-[130px] text-right">{{ 'common.label.other_discount' | translate }} <i class="pCalculator block font-normal">(6)</i></th>
+            <th class="w-[130px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_total' | translate" tooltipPosition="top">{{ 'crm.order_plan.form.total_to_pay' | translate }} <i class="pCalculator block font-normal">(7)</i></th>
+            <th class="w-[120px]">{{ 'crm.order_plan.form.expires_at' | translate }}</th>
+            @if ((model().services_used ?? []).length > 1) {
+              <th class="w-[44px] min-w-[44px] text-center">#</th>
             }
-          </div>
-          <!-- Date -->
-          <div class="col-span-12 md:col-span-6 lg:col-span-3">
-            <p-floatlabel variant="on">
-              <p-datepicker
-                [class.ng-invalid]="isFieldInvalid(rootField.created_time!)"
-                [maxDate]="maxDate"
-                [minDate]="minDate"
-                [showTime]="true"
-                appendTo="body"
-                class="ng-dirty"
-                dateFormat="dd/mm/yy"
-                [formField]="$any(rootField.created_time!)"
-                id="created_time"
-                showIcon="true"
-              ></p-datepicker>
-              <label for="created_time" [class.text-red-500]="isFieldInvalid(rootField.created_time!)">{{ 'common.label.order_date' | translate }} *</label>
-            </p-floatlabel>
-            @if (isFieldInvalid(rootField.created_time!)) {
-              <small class="text-red-500">{{ 'common.message.field_required' | translate }}</small>
-            }
-          </div>
-          <!-- Appointment -->
-          <div class="col-span-12 md:col-span-6 lg:col-span-3">
-            <p-floatlabel variant="on">
-              <p-select
-                appendTo="body"
-                [class.ng-invalid]="isFieldInvalid(rootField.appointment_id!)"
-                [options]="dropdownsWithAppointment()"
-                [filter]="dropdownsWithAppointment().length >= 5"
-                [optionLabel]="'label'"
-                [showClear]="true"
-                class="ng-dirty"
-                emptyFilterMessage="{{ 'common.message.no_data' | translate }}"
-                filterBy="label"
-                [formField]="$any(rootField.appointment_id!)"
-                id="appointment_id"
-                inputId="appointment_id"
-                optionLabel="label"
-                optionValue="value"
-                resetFilterOnHide="true"
-              ></p-select>
-              <label for="appointment_id" [class.text-red-500]="isFieldInvalid(rootField.appointment_id!)">{{ 'common.label.appointment' | translate }}</label>
-            </p-floatlabel>
-            @if (isFieldInvalid(rootField.appointment_id!)) {
-              <small class="text-red-500">{{ 'common.message.field_required' | translate }}</small>
-            }
-          </div>
-
-          <!-- Services table -->
-          <div class="col-span-12 content-start">
-            <p-table
-              [lazy]="true"
-              [paginator]="false"
-              [rowHover]="true"
-              [scrollable]="true"
-              [showLoader]="false"
-              [tableStyle]="{ 'min-width': '90rem' }"
-              [value]="model().services_used ?? []"
-              [rowTrackBy]="rowTrackBy"
-              dataKey="_uid"
-              filterDelay="300"
-              class="services-used-table"
-            >
-              <ng-template #header>
-                <tr>
-                  <th class="min-w-[250px]">{{ 'common.label.service' | translate }} </th>
-                  <th class="w-[72px] text-right" pTooltip="{{ 'common.label.quantity' | translate }}" tooltipPosition="top">{{ 'common.label.quantity' | translate }}  <i class="pCalculator block font-normal">(1)</i></th>
-                  <th class="w-[72px]">{{ 'common.label.unit' | translate }}</th>
-                  <th class="w-[130px] text-right">{{ 'common.label.unit_price' | translate }} <i class="pCalculator block font-normal">(2)</i></th>
-                  <th class="w-[150px] text-right">{{ 'common.label.service_discount' | translate }} <i class="pCalculator block font-normal">(3)</i></th>
-                  <th class="w-[110px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_coupon' | translate" tooltipPosition="top">{{ 'common.label.coupon_discount' | translate }} <i class="pCalculator block font-normal">(4)</i></th>
-                  <th class="w-[120px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_subtotal' | translate" tooltipPosition="top">{{ 'common.label.subtotal' | translate }} <i class="pCalculator block font-normal">(5)</i></th>
-                  <th class="w-[130px] text-right">{{ 'common.label.other_discount' | translate }} <i class="pCalculator block font-normal">(6)</i></th>
-                  <th class="w-[130px] text-right" [pTooltip]="'crm.order_plan.form.tooltip_col_total' | translate" tooltipPosition="top">{{ 'crm.order_plan.form.total_to_pay' | translate }} <i class="pCalculator block font-normal">(7)</i></th>
-                  <th class="w-[120px]">{{ 'crm.order_plan.form.expires_at' | translate }}</th>
-                  @if ((model().services_used ?? []).length > 1) {
-                    <th class="w-[44px] min-w-[44px] text-center">#</th>
-                  }
-                </tr>
-              </ng-template>
-              <ng-template let-index="rowIndex" let-serviceUsed #body>
-                @if (rootField.services_used![index]; as row) {
-                  <!-- Khoá ổn định của dòng: MỌI side-state (tooltip, trả góp…) tra theo `uid`,
-                       KHÔNG theo `index` — xoá dòng giữa bảng làm index dịch, uid thì không. -->
-                  @let uid = $any(serviceUsed)?._uid;
-                  <tr>
-                    <td>
-                      <app-services-autocomplete-form-control
-                        [index]="index"
-                        [placeholder]="'crm.order_plan.form.pick_service_placeholder' | translate"
-                        [class.ng-invalid]="isFieldInvalid(row.service_id!)"
-                        (selectService)="onSelectService($event.value, $event.index)"
-                        [formField]="$any(row.service_id!)"
-                      />
-                      @if (changedFromServiceName().has(uid)) {
-                        <div class="text-xs text-[var(--p-text-muted-color)] mt-1">
-                          {{ 'crm.order_plan.change_service.changed_from' | translate: { name: changedFromServiceName().get(uid) } }}
-                        </div>
-                      }
-                      @if (canChangeService(serviceUsed)) {
-                        <button
-                          pButton
-                          type="button"
-                          [text]="true"
-                          severity="secondary"
-                          size="small"
-                          class="!px-2 !py-1 !text-xs mt-1"
-                          (click)="openChangeServiceDialog(index)"
-                          [pTooltip]="'crm.order_plan.change_service.action' | translate"
-                          tooltipPosition="top"
-                        ><i class="pi pi-sync mr-1"></i>{{ 'crm.order_plan.change_service.action' | translate }}</button>
-                      }
-                    </td>
-                    <td>
-                      <!-- ⚠ Khoá ô KHÔNG khai bằng `[readonly]`/`[disabled]` trên control có
-                           `[formField]`: directive FormField ghi đè 2 input đó bằng trạng thái field
-                           (xem `order-plan-row-lock.ts`). Khoá thật nằm trong `serviceRowSchema`. -->
-                      <p-inputnumber
-                        [class.ng-invalid]="isFieldInvalid(row.quantity!)"
-                        class="ng-dirty"
-                        [formField]="$any(row.quantity!)"
-                        id="quantity"
-                        placeholder="0"
-                      ></p-inputnumber>
-                      @if (isFieldInvalid(row.quantity!)) {
-                        <small class="text-red-500 block whitespace-nowrap">{{ 'common.message.field_required' | translate }}</small>
-                      }
-                    </td>
-                    <td class="text-[var(--p-text-muted-color)]">{{ row.unitName!().value() }}</td>
-                    <td>
-                      <p-inputnumber
-                        [max]="$any(row.max_price!().value())"
-                        [min]="$any(row.min_price!().value())"
-                        [pTooltip]="
-                          (displayPTooltipUnitPrice().get(uid))
-                            ? ('crm.order_plan.form.edit_price_in_range' | translate) + ' ' +
-                              (row.min_price!().value() | currencyFormat) +
-                              '-' +
-                              (row.max_price!().value() | currencyFormat)
-                            : ('crm.order_plan.form.price_not_editable' | translate)
-                        "
-                        class="ng-dirty"
-                        [formField]="$any(row.unit_price!)"
-                        id="unit_price"
-                        tooltipPosition="top"
-                        inputStyleClass="text-right"
-                      ></p-inputnumber>
-                    </td>
-                    <td>
-                      <p-inputgroup>
-                        <p-inputnumber
-                          [max]="
-                            row.service_discount_type!().value() ===
-                            SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY
-                              ? $any(row.quantity!().value()) * $any(row.unit_price!().value())
-                              : 100
-                          "
-                          [min]="0"
-                          [formField]="$any(row.service_discount!)"
-                          id="service_discount"
-                          placeholder="0"
-                          inputStyleClass="text-right"
-                        ></p-inputnumber>
-                        <button
-                          pButton
-                          (click)="
-                            changeDiscountType(
-                              row.service_discount_type!().value() ===
-                                SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY
-                                ? SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_PERCENT
-                                : SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY,
-                              index
-                            )
-                          "
-                          class="min-w-[3rem]"
-                          severity="success"
-                          type="button"
-                        ><span>{{
-                            row.service_discount_type!().value() ===
-                            SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY
-                              ? '$'
-                              : '%'
-                          }}</span></button>
-                      </p-inputgroup>
-                    </td>
-                    <td>
-                      <p-inputnumber
-                        [readonly]="true"
-                        [formField]="$any(row.discount!)"
-                        id="discount"
-                        placeholder="0"
-                        inputStyleClass="text-right"
-                      ></p-inputnumber>
-                    </td>
-                    <td class="text-right tabular-nums">{{ row.total!().value() || 0 | numberFormat }}</td>
-                    <td>
-                      <p-inputnumber
-                        [max]="$any(row.total!().value())"
-                        [formField]="$any(row.discount_other!)"
-                        id="discount_other"
-                        placeholder="0"
-                        inputStyleClass="text-right"
-                      ></p-inputnumber>
-                    </td>
-                    <td class="text-right tabular-nums font-semibold">{{ row.totalEnd!().value() || 0 | numberFormat }}</td>
-                    <td>
-                      <p-datepicker
-                        appendTo="body"
-                        class="ng-dirty"
-                        dateFormat="dd/mm/yy"
-                        [formField]="$any(row.expires_at!)"
-                        id="expires_at"
-                      ></p-datepicker>
-                    </td>
-                    @if ((model().services_used ?? []).length > 1) {
-                      <td class="text-center">
-                        <button
-                          pButton
-                          [iconOnly]="true"
-                          (click)="deleteServiceUsed(index)"
-                          [attr.aria-label]="'common.action.delete' | translate"
-                          severity="danger"
-                          [rounded]="true"
-                          [text]="true"
-                          size="small"
-                          [pTooltip]="'common.action.delete' | translate"
-                          tooltipPosition="top"
-                          type="button"
-                        ><i class="pi pi-trash"></i></button>
-                      </td>
-                    }
-                  </tr>
-                }
-              </ng-template>
-              <ng-template #footer>
-                <tr>
-                  <td [attr.colspan]="(model().services_used ?? []).length > 1 ? 12 : 11" class="!p-2">
-                    <button
-                      pButton
-                      (click)="addServiceUsed()"
-                      severity="success"
-                      [text]="true"
-                      size="small"
-                      type="button"
-                      class="!w-auto"
-                    ><span>{{ 'common.label.add' | translate }}</span></button>
-                  </td>
-                </tr>
-              </ng-template>
-            </p-table>
-          </div>
-
-          <!-- Note + coupon + totals -->
-          <div class="col-span-12">
-            <div class="flex flex-col md:flex-row gap-6">
-              <div class="basis-1/2 md:basis-1/2 w-full">
-                <p-floatlabel variant="on" class="w-full">
-                  <textarea
-                    [rows]="4"
-                    pTextarea
-                    class="ng-dirty w-full"
-                    [formField]="$any(rootField.note!)"
-                    id="note"
-                  ></textarea>
-                  <label for="note">{{ 'common.label.note' | translate }}</label>
-                </p-floatlabel>
-              </div>
-
-              <div class="basis-1/2 md:basis-1/2 w-full">
-                <div class="grid grid-cols-1 gap-4 items-start">
-                  <div class="w-full">
-                    <div class="sub-total border border-[var(--p-content-border-color)] rounded-md p-4 bg-[var(--p-content-hover-background)] space-y-1">
-                      @if (totalRankDiscount() > 0) {
-                        <div class="flex items-center justify-between text-sm">
-                          <span class="text-[var(--p-text-muted-color)]">{{ 'crm.order_plan.form.total_service' | translate }}</span>
-                          <span class="tabular-nums">{{ ($any(rootField.total!().value()) + totalRankDiscount()) | numberFormat }}</span>
-                        </div>
-                        <div class="flex items-center justify-between text-sm">
-                          <span class="text-[var(--p-text-muted-color)]">{{ 'common.label.membership_rank_discount' | translate }}</span>
-                          <span class="text-[#10B981] tabular-nums">-{{ totalRankDiscount() | numberFormat }}</span>
-                        </div>
-                      }
-                      <div class="flex items-center justify-between">
-                        <span class="font-semibold">{{ 'crm.order_plan.form.total_payment' | translate }}</span>
-                        <span class="text-[#E53935] font-semibold tabular-nums">{{ rootField.total!().value() | numberFormat }}</span>
-                      </div>
-                      @if (isEditMode()) {
-                        <div class="flex items-center justify-between text-sm">
-                          <span class="text-[var(--p-text-muted-color)]">{{ 'common.status.paid' | translate }}</span>
-                          <span class="tabular-nums">{{ paidAmount ? (paidAmount | numberFormat) : 0 }}</span>
-                        </div>
-                        <div class="flex items-center justify-between bg-[#E539351A] -mx-4 mt-2 px-4 py-2 border-y border-[#E5393540]">
-                          <span class="font-bold text-[#E53935]">{{ 'crm.order_plan.form.outstanding_balance' | translate }}</span>
-                          <span class="text-[#E53935] text-lg font-bold tabular-nums">{{ (($any(rootField.total!().value()) ?? 0) - paidAmount) | numberFormat }}</span>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </p-fluid>
-      </p-tabpanel>
-
-      <p-tabpanel value="1">
-        @defer (when activeTab() === '1'; on idle) {
-        <p-fluid class="grid grid-cols-12 gap-4 flex-wrap p-fluid pt-4 content-start tab-fade-content">
-          <!-- Source -->
-          <div class="col-span-12 md:col-span-6 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <app-source-autocomplete-form-control
-                class="ng-dirty"
-                [formField]="$any(rootField.source_id!)"
-              />
-              <label for="source_id">{{ 'common.label.source' | translate }}</label>
-            </p-floatlabel>
-          </div>
-          <div class="col-span-12 md:col-span-6 lg:col-span-4">
-            <p-floatlabel variant="on">
-              <app-user-multiselect-form-control
-                [activeOnly]="!isEditMode()"
-                [branchId]="currentBranchId()"
-                [formField]="$any(rootField.listRevenues!)"
-              ></app-user-multiselect-form-control>
-              <label for="listRevenues">{{ 'common.label.consultant' | translate }}</label>
-            </p-floatlabel>
-          </div>
-          <!-- Installment config -->
-          <div class="col-span-12">
-            <p-divider>
-              <span class="text-sm font-semibold text-[var(--p-text-color)]">
-                <i class="pi pi-credit-card mr-2 text-[var(--p-primary-color)]"></i>
-                {{ 'common.label.installment_configuration' | translate }}
-              </span>
-            </p-divider>
-          </div>
-
-          @if (hasInstallmentServices()) {
-            <div class="col-span-12 bg-[color-mix(in_srgb,var(--p-primary-color)_8%,var(--p-content-background))] border border-[color-mix(in_srgb,var(--p-primary-color)_25%,transparent)] rounded-lg p-4">
-              <div class="grid grid-cols-12 gap-4">
-                @for (service of installmentServicesList(); track service.uid) {
-                  <div class="col-span-12 border-b border-[color-mix(in_srgb,var(--p-primary-color)_25%,transparent)] pb-4 last:border-b-0 last:pb-0">
-                    <div class="flex flex-wrap items-start gap-4">
-                      <div class="flex-1">
-                        <div class="font-semibold text-[var(--p-text-color)] mb-2">
-                          <i class="pi pi-check-circle text-[#10B981] mr-2"></i>
-                          {{ service.name }}
-                        </div>
-                        <div class="text-sm text-[var(--p-text-muted-color)]">
-                          {{ 'common.label.total_amount' | translate }}: <span class="font-semibold text-[var(--p-primary-color)]">{{ service.totalAmount | numberFormat }}</span>
-                        </div>
-                      </div>
-
-                      <div class="flex items-center gap-2">
-                        <p-checkbox
-                          [(ngModel)]="service.enableInstallment"
-                          [ngModelOptions]="{standalone: true}"
-                          [binary]="true"
-                          (ngModelChange)="onInstallmentToggle(service.uid, $event)"
-                          inputId="enable_installment_{{service.uid}}"
-                        ></p-checkbox>
-                        <label for="enable_installment_{{service.uid}}" class="cursor-pointer">{{ 'common.label.installment' | translate }}</label>
-                      </div>
-
-                      <div class="w-full sm:w-48">
-                        <p-floatlabel variant="on">
-                          <p-select
-                           appendTo="body"
-                                                          [options]="service.availablePeriods"
-                            [(ngModel)]="service.selectedPeriod"
-                            [ngModelOptions]="{standalone: true}"
-                            [disabled]="!service.enableInstallment"
-                            (ngModelChange)="onInstallmentPeriodChange(service.uid, $event)"
-                            optionLabel="label"
-                            optionValue="value"
-                            class="w-full"
-                          ></p-select>
-                          <label>{{ 'crm.order_plan.form.installment_period' | translate }}</label>
-                        </p-floatlabel>
-                      </div>
-
-                      <div class="w-full sm:w-48">
-                        <p-floatlabel variant="on">
-                          <p-inputnumber
-                            [(ngModel)]="service.depositAmount"
-                            [ngModelOptions]="{standalone: true}"
-                            [disabled]="!service.enableInstallment"
-                            [min]="service.minDeposit"
-                            [max]="service.totalAmount"
-                            (ngModelChange)="onDepositAmountChange(service.uid, $event)"
-                            class="w-full"
-                          ></p-inputnumber>
-                          <label>{{ 'crm.order_plan.form.deposit_min' | translate }} {{ service.minDepositPercent }}%)</label>
-                        </p-floatlabel>
-                      </div>
-                    </div>
-
-                    @if (service.enableInstallment) {
-                      <div class="mt-3 bg-[var(--p-content-background)] rounded-lg border border-[color-mix(in_srgb,var(--p-primary-color)_25%,transparent)] p-3 space-y-2">
-                        <div class="grid grid-cols-[4fr_1fr] gap-4 items-center">
-                          <span class="flex items-center justify-end gap-2 text-[var(--p-text-muted-color)]">
-                            <i class="pi pi-wallet text-[var(--p-primary-color)]"></i>
-                            {{ 'crm.order_plan.form.remaining_amount' | translate }}:
-                          </span>
-                          <span class="font-semibold text-[var(--p-text-color)] text-right tabular-nums">{{ (service.totalAmount - service.depositAmount) | numberFormat }}</span>
-                        </div>
-                        <div class="grid grid-cols-[4fr_1fr] gap-4 items-center">
-                          <span class="flex items-center justify-end gap-2 text-[#FF5722]">
-                            <i class="pi pi-calendar"></i>
-                            {{ 'crm.order_plan.form.amount_per_period' | translate }}:
-                          </span>
-                          <span class="font-bold text-lg text-[#FF5722] text-right tabular-nums">{{ service.amountPerPeriod | numberFormat }}</span>
-                        </div>
-                        <div class="grid grid-cols-[4fr_1fr] gap-4 items-center">
-                          <span class="flex items-center justify-end gap-2 text-[#F59E0B]">
-                            <i class="pi pi-percentage"></i>
-                            {{ 'crm.order_plan.form.interest_rate' | translate }}:
-                          </span>
-                          <span class="font-semibold text-[#F59E0B] text-right">{{ service.interestRate }}{{ 'crm.order_plan.form.per_year' | translate }}</span>
-                        </div>
-                      </div>
-                    }
+          </tr>
+        </ng-template>
+        <ng-template let-index="rowIndex" let-serviceUsed #body>
+          @if (rootField.services_used![index]; as row) {
+            <!-- Khoá ổn định của dòng: MỌI side-state (tooltip, trả góp…) tra theo `uid`,
+                 KHÔNG theo `index` — xoá dòng giữa bảng làm index dịch, uid thì không. -->
+            @let uid = $any(serviceUsed)?._uid;
+            <tr>
+              <td>
+                <app-services-autocomplete-form-control
+                  [index]="index"
+                  [placeholder]="'crm.order_plan.form.pick_service_placeholder' | translate"
+                  [class.ng-invalid]="isFieldInvalid(row.service_id!)"
+                  (selectService)="onSelectService($event.value, $event.index)"
+                  [formField]="$any(row.service_id!)"
+                />
+                @if (changedFromServiceName().has(uid)) {
+                  <div class="text-xs text-[var(--p-text-muted-color)] mt-1">
+                    {{ 'crm.order_plan.change_service.changed_from' | translate: { name: changedFromServiceName().get(uid) } }}
                   </div>
                 }
-              </div>
-            </div>
-          } @else {
-            <div class="col-span-12 text-center py-8 text-[var(--p-text-muted-color)]">
-              <i class="pi pi-info-circle text-4xl mb-3 block text-[var(--p-text-muted-color)]"></i>
-              <p>{{ 'crm.order_plan.form.no_installment_services' | translate }}</p>
-              <p class="text-sm mt-1">{{ 'crm.order_plan.form.installment_only_enabled' | translate }}</p>
-            </div>
+                @if (canChangeService(serviceUsed)) {
+                  <button
+                    pButton
+                    type="button"
+                    [text]="true"
+                    severity="secondary"
+                    size="small"
+                    class="!px-2 !py-1 !text-xs mt-1"
+                    (click)="openChangeServiceDialog(index)"
+                    [pTooltip]="'crm.order_plan.change_service.action' | translate"
+                    tooltipPosition="top"
+                  ><i class="pi pi-sync mr-1"></i>{{ 'crm.order_plan.change_service.action' | translate }}</button>
+                }
+              </td>
+              <td>
+                <!-- ⚠ Khoá ô KHÔNG khai bằng `[readonly]`/`[disabled]` trên control có
+                     `[formField]`: directive FormField ghi đè 2 input đó bằng trạng thái field
+                     (xem `order-plan-row-lock.ts`). Khoá thật nằm trong `serviceRowSchema`. -->
+                <p-inputnumber
+                  [class.ng-invalid]="isFieldInvalid(row.quantity!)"
+                  class="ng-dirty"
+                  [formField]="$any(row.quantity!)"
+                  id="quantity"
+                  placeholder="0"
+                ></p-inputnumber>
+                @if (isFieldInvalid(row.quantity!)) {
+                  <small class="text-red-500 block whitespace-nowrap">{{ 'common.message.field_required' | translate }}</small>
+                }
+              </td>
+              <td class="text-[var(--p-text-muted-color)]">{{ row.unitName!().value() }}</td>
+              <td>
+                <p-inputnumber
+                  [max]="$any(row.max_price!().value())"
+                  [min]="$any(row.min_price!().value())"
+                  [pTooltip]="
+                    (displayPTooltipUnitPrice().get(uid))
+                      ? ('crm.order_plan.form.edit_price_in_range' | translate) + ' ' +
+                        (row.min_price!().value() | currencyFormat) +
+                        '-' +
+                        (row.max_price!().value() | currencyFormat)
+                      : ('crm.order_plan.form.price_not_editable' | translate)
+                  "
+                  class="ng-dirty"
+                  [formField]="$any(row.unit_price!)"
+                  id="unit_price"
+                  tooltipPosition="top"
+                  inputStyleClass="text-right"
+                ></p-inputnumber>
+              </td>
+              <td>
+                <p-inputgroup>
+                  <p-inputnumber
+                    [max]="
+                      row.service_discount_type!().value() ===
+                      SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY
+                        ? $any(row.quantity!().value()) * $any(row.unit_price!().value())
+                        : 100
+                    "
+                    [min]="0"
+                    [formField]="$any(row.service_discount!)"
+                    id="service_discount"
+                    placeholder="0"
+                    inputStyleClass="text-right"
+                  ></p-inputnumber>
+                  <button
+                    pButton
+                    (click)="
+                      changeDiscountType(
+                        row.service_discount_type!().value() ===
+                          SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY
+                          ? SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_PERCENT
+                          : SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY,
+                        index
+                      )
+                    "
+                    class="min-w-[3rem]"
+                    severity="success"
+                    type="button"
+                  ><span>{{
+                      row.service_discount_type!().value() ===
+                      SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY
+                        ? '$'
+                        : '%'
+                    }}</span></button>
+                </p-inputgroup>
+              </td>
+              <td>
+                <p-inputnumber
+                  [readonly]="true"
+                  [formField]="$any(row.discount!)"
+                  id="discount"
+                  placeholder="0"
+                  inputStyleClass="text-right"
+                ></p-inputnumber>
+              </td>
+              <td class="text-right tabular-nums">{{ row.total!().value() || 0 | numberFormat }}</td>
+              <td>
+                <p-inputnumber
+                  [max]="$any(row.total!().value())"
+                  [formField]="$any(row.discount_other!)"
+                  id="discount_other"
+                  placeholder="0"
+                  inputStyleClass="text-right"
+                ></p-inputnumber>
+              </td>
+              <td class="text-right tabular-nums font-semibold">{{ row.totalEnd!().value() || 0 | numberFormat }}</td>
+              <td>
+                <p-datepicker
+                  appendTo="body"
+                  class="ng-dirty"
+                  dateFormat="dd/mm/yy"
+                  [formField]="$any(row.expires_at!)"
+                  id="expires_at"
+                ></p-datepicker>
+              </td>
+              @if ((model().services_used ?? []).length > 1) {
+                <td class="text-center">
+                  <button
+                    pButton
+                    [iconOnly]="true"
+                    (click)="deleteServiceUsed(index)"
+                    [attr.aria-label]="'common.action.delete' | translate"
+                    severity="danger"
+                    [rounded]="true"
+                    [text]="true"
+                    size="small"
+                    [pTooltip]="'common.action.delete' | translate"
+                    tooltipPosition="top"
+                    type="button"
+                  ><i class="pi pi-trash"></i></button>
+                </td>
+              }
+            </tr>
           }
-        </p-fluid>
-        } @placeholder {
-          <div class="w-full" style="min-height: 320px"></div>
-        } @loading (after 150ms; minimum 250ms) {
-          <div class="w-full flex items-center justify-center" style="min-height: 320px">
-            <i class="pi pi-spin pi-spinner text-2xl text-[var(--p-text-muted-color)]"></i>
+        </ng-template>
+        <ng-template #footer>
+          <tr>
+            <td [attr.colspan]="(model().services_used ?? []).length > 1 ? 12 : 11" class="!p-2">
+              <button
+                pButton
+                (click)="addServiceUsed()"
+                severity="success"
+                [text]="true"
+                size="small"
+                type="button"
+                class="!w-auto"
+              ><span>{{ 'common.label.add' | translate }}</span></button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+
+    <!-- Note + coupon + totals -->
+    <div class="col-span-12">
+      <div class="flex flex-col md:flex-row gap-6">
+        <div class="basis-1/2 md:basis-1/2 w-full">
+          <p-floatlabel variant="on" class="w-full">
+            <textarea
+              [rows]="4"
+              pTextarea
+              class="ng-dirty w-full"
+              [formField]="$any(rootField.note!)"
+              id="note"
+            ></textarea>
+            <label for="note">{{ 'common.label.note' | translate }}</label>
+          </p-floatlabel>
+        </div>
+
+        <div class="basis-1/2 md:basis-1/2 w-full">
+          <div class="grid grid-cols-1 gap-4 items-start">
+            <div class="w-full">
+              <div class="sub-total border border-[var(--p-content-border-color)] rounded-md p-4 bg-[var(--p-content-hover-background)] space-y-1">
+                @if (totalRankDiscount() > 0) {
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-[var(--p-text-muted-color)]">{{ 'crm.order_plan.form.total_service' | translate }}</span>
+                    <span class="tabular-nums">{{ ($any(rootField.total!().value()) + totalRankDiscount()) | numberFormat }}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-[var(--p-text-muted-color)]">{{ 'common.label.membership_rank_discount' | translate }}</span>
+                    <span class="text-[#10B981] tabular-nums">-{{ totalRankDiscount() | numberFormat }}</span>
+                  </div>
+                }
+                <div class="flex items-center justify-between">
+                  <span class="font-semibold">{{ 'crm.order_plan.form.total_payment' | translate }}</span>
+                  <span class="text-[#E53935] font-semibold tabular-nums">{{ rootField.total!().value() | numberFormat }}</span>
+                </div>
+                @if (isEditMode()) {
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-[var(--p-text-muted-color)]">{{ 'common.status.paid' | translate }}</span>
+                    <span class="tabular-nums">{{ paidAmount ? (paidAmount | numberFormat) : 0 }}</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-[#E539351A] -mx-4 mt-2 px-4 py-2 border-y border-[#E5393540]">
+                    <span class="font-bold text-[#E53935]">{{ 'crm.order_plan.form.outstanding_balance' | translate }}</span>
+                    <span class="text-[#E53935] text-lg font-bold tabular-nums">{{ (($any(rootField.total!().value()) ?? 0) - paidAmount) | numberFormat }}</span>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
-        }
-      </p-tabpanel>
-    </p-tabpanels>
-  </p-tabs>
+        </div>
+      </div>
+    </div>
+  </p-fluid>
   <app-dialog-footer [isSubmitting]="isSubmitting()" (cancelForm)="closeForm($event)"
                      (saveForm)="checkBeforeSubmit()"/>
 </form>

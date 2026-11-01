@@ -25,8 +25,9 @@ type Handler struct{ Deps }
 
 func New(d Deps) *Handler { return &Handler{Deps: d} }
 
-// PrintRefundConsignment GET /api/print/refund-consignment/:id
-// Tra ve du lieu in phieu hoan ky gui.
+// PrintRefundConsignment GET /api/print/refund-deposit/:id
+// Trả về dữ liệu in phiếu hoàn cọc. Tên hàm giữ từ thời còn route in phiếu hoàn ký gửi (đã gỡ cùng
+// tính năng ký gửi) — nay chỉ phục vụ /refund-deposit/:id.
 // FE can: code, amount, payment_time, note, customer{fullname,phone,address},
 // paymentMethod{name}, branch_id
 func (h *Handler) PrintRefundConsignment(c *gin.Context) {

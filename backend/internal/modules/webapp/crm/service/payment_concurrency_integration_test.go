@@ -208,27 +208,6 @@ func TestPaymentConcurrency_RefundDepositOnce(t *testing.T) {
 	requireDec(t, -3_000_000, x.dec(t, "SELECT COALESCE(refundDeposit,0) FROM customer WHERE id = ?", x.cust), "customer.refundDeposit")
 }
 
-// M-1 (ký gửi): cùng kịch bản trên cọc ký gửi.
-func TestPaymentConcurrency_RefundConsignmentOnce(t *testing.T) {
-	x := newMoneyFx(t)
-	p := x.tpl(2_000_000)
-	p.DepositType = new(define.PaymentTypeDepositKG)
-	created, err := x.svc.CreateDepositCustomerFromPayment(p, int(x.userID))
-	require.NoError(t, err)
-	depID := int(created.ID)
-
-	res := race(3, func(int) error {
-		r := x.tpl(2_000_000)
-		r.DepositId = &depID
-		_, err := x.svc.CreateRefundKgCustomerFromPayment(r, int(x.userID))
-		return err
-	})
-	t.Logf("hoàn ký gửi 2tr ×3 trên ký gửi 2tr: %v", res)
-	require.Equal(t, 1, countOK(res), "%v", res)
-	requireOnlyExpected(t, res, errs.ErrRefundExceedsEscrow)
-	requireDec(t, 0, x.dec(t, "SELECT deposit_after FROM payment WHERE id = ?", depID), "deposit_after ký gửi")
-}
-
 // M-2: 6 phiếu thu hợp lệ cho 6 dịch vụ khác nhau của CÙNG một khách, song song ⇒ tổng của khách và
 // đơn phải bằng tổng phiếu (bản cũ: totalPayment=1tr, totalDebt=5tr dù đã thu đủ 6tr).
 func TestPaymentConcurrency_SixPaymentsCustomerTotals(t *testing.T) {
@@ -336,10 +315,9 @@ func TestPaymentDelete_WrongKindOrScopeRejected(t *testing.T) {
 		del  func(*gorm.DB, uint, int) error
 		want error
 	}{
-		"hoàn cọc":    {x.svc.DeleteRefundCustomer, errs.ErrDepositReturnNotFound},
-		"hoàn ký gửi": {x.svc.DeleteRefundConsignment, errs.ErrDepositReturnNotFound},
-		"hoàn DV":     {x.svc.DeleteRefundOrderPlan, errs.ErrRefundNotFound},
-		"cọc":         {x.svc.DeleteDeposit, errs.ErrDepositNotFound},
+		"hoàn cọc": {x.svc.DeleteRefundCustomer, errs.ErrDepositReturnNotFound},
+		"hoàn DV":  {x.svc.DeleteRefundOrderPlan, errs.ErrRefundNotFound},
+		"cọc":      {x.svc.DeleteDeposit, errs.ErrDepositNotFound},
 	} {
 		require.ErrorIs(t, tc.del(x.pool, payID, int(x.userID)), tc.want, name)
 	}

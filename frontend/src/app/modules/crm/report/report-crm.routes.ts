@@ -107,11 +107,6 @@ export default [
     data: { breadcrumb: 'crm.report.debt.order_plan.title', title: 'crm.report.debt.order_plan.title' },
   },
   {
-    path: 'debt/installment',
-    loadComponent: () => import('@/modules/crm/report/debt/installment-debts/installment-debts').then((c) => c.InstallmentDebts),
-    data: { breadcrumb: 'crm.report.debt.installment.title', title: 'crm.report.debt.installment.title' },
-  },
-  {
     path: 'debt/service',
     loadComponent: () => import('@/modules/crm/report/debt/service-debts/service-debts').then((c) => c.ServiceDebts),
     data: { breadcrumb: 'crm.report.debt.service.title', title: 'crm.report.debt.service.title' },

@@ -8,13 +8,6 @@ export interface ServiceCategory extends Identifiable {
   value?: number;
 }
 
-export interface InstallmentConfig {
-  periods: number[]; // Các kỳ hạn: [3, 6, 12]
-  min_deposit_percent: number; // % đặt cọc tối thiểu
-  interest_rate: number; // Lãi suất
-  period_interval_days: number; // Khoảng cách giữa các kỳ (ngày)
-}
-
 export interface ServiceModel extends Identifiable {
   id?: number;
   id_old?: number;
@@ -28,8 +21,6 @@ export interface ServiceModel extends Identifiable {
   serviceCategory_id?: number;
   service_type_id?: number;
   child?: any;
-  is_installment?: number; // Dịch vụ có được trả góp hay không?
-  installment_config?: InstallmentConfig; // Cấu hình trả góp
   isUpdateMaterial?: number; // Dịch vụ có được chỉnh sửa nguyên vật liệu khi điều trị hay không. Mặc định 0 là không được chỉnh sửa, 1 là được chỉnh sửa
   status?: number;
   time_reminder?: number;

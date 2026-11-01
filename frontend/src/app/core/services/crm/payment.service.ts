@@ -30,7 +30,6 @@ export type PaymentListSubPath =
   | ''
   | 'list-receipts'
   | 'list-deposit'
-  | 'list-consignment'
   | 'list-refund-deposit'
   | 'list-refund-order-plan';
 
@@ -39,7 +38,6 @@ export class PaymentService extends BaseApiService<PaymentModel> {
   protected override endpoint = 'payment';
   public readonly TYPE_DEPOSIT_RESERVE: number = 1;
   public readonly TYPE_DEPOSIT_TEMP: number = 2;
-  public readonly TYPE_DEPOSIT_KG: number = 3;
   public override unixTimesTampFields = [
     'created_at',
     'payment_time',
@@ -167,16 +165,6 @@ export class PaymentService extends BaseApiService<PaymentModel> {
   }
 
   /**
-   * API tạo mới hoàn ký gửi
-   * @param createParams
-   * @param options
-   */
-  createRefundKg(createParams: any, options: any = {}): Observable<PaymentModel> {
-    const params = this.beforeSave(createParams);
-    return this.apiService.post<any>(`${this.path}/create-refund-kg-customer`, params, options).pipe(map((res) => res?.data ?? res));
-  }
-
-  /**
    * API cập nhật đặt cọc
    * @param id
    * @param updateParams
@@ -231,15 +219,6 @@ export class PaymentService extends BaseApiService<PaymentModel> {
    */
   deleteRefundCustomer(id: number, options: any = {}): Observable<string> {
     return this.apiService.delete(`${this.path}/${id}/delete-refund-customer`, options);
-  }
-
-  /**
-   * API xóa hoàn ký gửi
-   * @param id
-   * @param options
-   */
-  deleteRefundConsignment(id: number, options: any = {}): Observable<string> {
-    return this.apiService.delete(`${this.path}/${id}/delete-refund-consignment`, options);
   }
 
   /**
@@ -354,11 +333,6 @@ export class PaymentService extends BaseApiService<PaymentModel> {
 
   printDeposit(id: number): Observable<any> {
     return this.apiService.get(`print/deposit/${id}`);
-  }
-
-  // In phieu hoan ky gui - goi API print module rieng
-  printRefundConsignment(id: number): Observable<any> {
-    return this.apiService.get(`print/refund-consignment/${id}`);
   }
 
   // In phieu hoan dat coc - goi API print module rieng

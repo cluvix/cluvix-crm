@@ -2,10 +2,10 @@
 //
 // Create: CreatePaymentCustomer, CreateDepositCustomer, CreateRefundDepositCustomer,
 //
-//	CreateRefundKgCustomer, CreateRefundOrderPlan, MoveDepositToPayment
+//	CreateRefundOrderPlan, MoveDepositToPayment
 //
 // Update: UpdatePaymentCustomer, UpdateDepositCustomer
-// Delete: DeletePayment, DeleteDeposit, DeleteRefundCustomer, DeleteRefundConsignment, DeleteRefundOrderPlan
+// Delete: DeletePayment, DeleteDeposit, DeleteRefundCustomer, DeleteRefundOrderPlan
 package service
 
 import (
@@ -368,7 +368,7 @@ func (s *PaymentService) CreateDepositCustomerFromPayment(p *crmPaymentDao.Payme
 //
 //	Nếu update trực tiếp + calculatorDeposit = double update → sai.
 //
-// validateDepositUse — phiếu DÙNG cọc (hoàn cọc, hoàn ký gửi, trả dịch vụ bằng cọc) chỉ được dùng cọc
+// validateDepositUse — phiếu DÙNG cọc (hoàn cọc, trả dịch vụ bằng cọc) chỉ được dùng cọc
 // của CHÍNH khách đó; dòng dịch vụ / đơn được trả (nếu có) cũng phải của khách đó (story-37 bỏ vế
 // "cùng công ty" — D15 1 thương hiệu/DB).
 // deposit_id / serviceUsed_id / parent_id đến từ body ⇒ thiếu guard này là hoàn/dùng được cọc của khách
@@ -438,7 +438,7 @@ func (s *PaymentService) CreateRefundDepositCustomerFromPayment(p *crmPaymentDao
 	return p, s.refundFromDeposit(p, *owner, errs.ErrRefundExceedsDeposit, userID)
 }
 
-// refundFromDeposit — lõi hoàn cọc / hoàn ký gửi (lens-money M-1). Số dư `deposit_after` đọc và so
+// refundFromDeposit — lõi hoàn cọc (lens-money M-1). Số dư `deposit_after` đọc và so
 // TRONG transaction, dưới khoá customer → phiếu cọc gốc (FOR UPDATE), nên N request hoàn song song
 // trên cùng một cọc chạy tuần tự: request sau thấy số dư đã trừ. afterSaveAll tính lại số dư và trả
 // lỗi nếu âm (lưới thứ hai). amount lúc gọi vẫn DƯƠNG (beforeSave mới đổi dấu).
@@ -462,30 +462,6 @@ func (s *PaymentService) refundFromDeposit(p *crmPaymentDao.Payment, ownerID int
 		// createPayment → beforeSave (đổi dấu) → save → afterSaveAll → calculatorDeposit* (tính lại số dư)
 		return s.createPayment(tx, p, userID)
 	})
-}
-
-// CreateRefundKgCustomer: hoàn ký gửi (giống PHP actionCreateRefundKgCustomer)
-// BUG FIX: same as CreateRefundDepositCustomer — afterSaveAll → calculatorDepositConsignment đã tính lại.
-// Deprecated: Phase 2 DTO — handler nên dùng CreateRefundKgCustomerFromPayment.
-func (s *PaymentService) CreateRefundKgCustomer(params map[string]interface{}, userID int) (*crmPaymentDao.Payment, error) {
-	return s.CreateRefundKgCustomerFromPayment(s.bindPayment(params), userID)
-}
-
-func (s *PaymentService) CreateRefundKgCustomerFromPayment(p *crmPaymentDao.Payment, userID int) (*crmPaymentDao.Payment, error) {
-	p.PaymentFor = new(define.PaymentForRefundDepositKG)
-
-	if p.DepositId == nil {
-		return nil, errs.ErrMissingDepositID
-	}
-	owner, vErr := s.validateDepositUse(*p.DepositId, p.CustomerId, nil, nil)
-	if vErr != nil {
-		return nil, vErr
-	}
-	if p.CustomerId == nil {
-		p.CustomerId = owner
-	}
-
-	return p, s.refundFromDeposit(p, *owner, errs.ErrRefundExceedsEscrow, userID)
 }
 
 // Deprecated: Phase 2 DTO — handler nên dùng CreateRefundOrderPlanFromPayment.
@@ -945,11 +921,6 @@ func (s *PaymentService) DeleteDeposit(scoped *gorm.DB, id uint, userID int) err
 // DeleteRefundCustomer: xóa hoàn cọc
 func (s *PaymentService) DeleteRefundCustomer(scoped *gorm.DB, id uint, userID int) error {
 	return s.deleteChecked(scoped, id, userID, errs.ErrDepositReturnNotFound, paymentForIs(define.PaymentForRefundDeposit, errs.ErrDepositReturnNotFound))
-}
-
-// DeleteRefundConsignment: xóa hoàn ký gửi
-func (s *PaymentService) DeleteRefundConsignment(scoped *gorm.DB, id uint, userID int) error {
-	return s.deleteChecked(scoped, id, userID, errs.ErrDepositReturnNotFound, paymentForIs(define.PaymentForRefundDepositKG, errs.ErrDepositReturnNotFound))
 }
 
 // DeleteRefundOrderPlan: xóa hoàn dịch vụ (giống PHP actionDeleteRefundOrderPlan)

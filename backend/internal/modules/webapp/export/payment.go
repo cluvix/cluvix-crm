@@ -319,9 +319,8 @@ func ExportPaymentClinic(c *gin.Context, q *gorm.DB) {
 	c.JSON(http.StatusOK, url)
 }
 
-// depositColsFor defines the exportable columns for ExportPaymentDeposit — shared by BOTH
-// list-deposit VÀ list-consignment (svc method exportCustomerDeposit). key = HỢP các displayCols[].value
-// của cả hai list; mỗi FE gửi subset của mình qua ?columns=.
+// depositColsFor defines the exportable columns for ExportPaymentDeposit (list-deposit, svc method
+// exportCustomerDeposit). key = displayCols[].value của list; FE gửi subset qua ?columns=.
 // loc format ngày; latestApptByCustomerID cho cột "Ngày hẹn lịch"; showPhone (option 20) mask SĐT.
 func depositColsFor(loc *time.Location, latestApptByCustomerID map[int]int64, showPhone bool) []paymentGenCol {
 	return []paymentGenCol{
@@ -358,22 +357,6 @@ func depositColsFor(loc *time.Location, latestApptByCustomerID map[int]int64, sh
 
 func ExportPaymentDeposit(c *gin.Context, q *gorm.DB) {
 	exportPaymentDeposit(c, q, "Phieu_dat_coc", nil)
-}
-
-// consignmentSkipCols — cột CHỈ có nghĩa với phiếu đặt cọc, không có trên màn ký gửi
-// (`list-consignment.ts` displayCols). `typeDepositLabel` ở màn ký gửi luôn = "Ký gửi" nên vô
-// nghĩa; `appointment_date` không hiển thị và là cột duy nhất cần query phụ
-// `loadLatestAppointmentDateByCustomerID` — bỏ nó đi thì export ký gửi bớt hẳn 1 query.
-var consignmentSkipCols = map[string]bool{
-	"typeDepositLabel": true,
-	"appointment_date": true,
-}
-
-// ExportPaymentDepositConsignment — export list ký gửi (`deposit_type = PaymentTypeDepositKG`).
-// Dùng chung SELECT/colDef với phiếu đặt cọc (list ký gửi cũng đọc `paymentListSelect`), chỉ khác
-// tên file và bỏ các cột riêng của đặt cọc.
-func ExportPaymentDepositConsignment(c *gin.Context, q *gorm.DB) {
-	exportPaymentDeposit(c, q, "Phieu_ky_gui", consignmentSkipCols)
 }
 
 // skipCols = nil → lấy trọn colDef. Khác nhau ở đây quyết định luôn việc có chạy query phụ

@@ -120,14 +120,6 @@ export function buildMenuTree(): any[] {
               permission: PERMISSION_SELECT.permissionViewPayment,
             },
             {
-              label: 'Phiếu ký gửi',
-              labelKey: 'crm.payment_list.title.consignment',
-              icon: 'pi pi-box',
-              iconColor: '#8B5CF6',
-              routerLink: ['/payment/consignment'],
-              permission: PERMISSION_SELECT.permissionViewPayment,
-            },
-            {
               label: 'Phiếu hoàn cọc',
               labelKey: 'crm.payment_list.title.refund_deposit',
               icon: 'pi pi-replay',

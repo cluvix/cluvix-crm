@@ -153,33 +153,6 @@ func (h *Handler) CreateRefundDepositCustomer(c *gin.Context) {
 	response.Created(c, pp)
 }
 
-// CreateRefundKgCustomer POST /payment/create-refund-kg-customer — hoàn ký gửi.
-// FK = deposit_id (payment gốc) — BẮT BUỘC verify tenant trước khi tạo refund.
-func (h *Handler) CreateRefundKgCustomer(c *gin.Context) {
-	var input PaymentInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		response.ValidateErr(c, err)
-		return
-	}
-	if input.DepositID == nil {
-		response.HandleError(c, errs.ErrMissingDepositID)
-		return
-	}
-	branchID, ok := h.fkBranch(c, "payment", *input.DepositID)
-	if !ok {
-		response.NotFound(c)
-		return
-	}
-	p := input.ToPayment()
-	p.BranchId = branchID
-	pp, err := h.PaymentSvc.CreateRefundKgCustomerFromPayment(p, int(middleware.GetUserID(c)))
-	if err != nil {
-		response.HandleError(c, err)
-		return
-	}
-	response.Created(c, pp)
-}
-
 // CreateRefundOrderPlan POST /payment/create-refund-order-plan — hoàn dịch vụ đơn hàng.
 // FK = serviceUsed_id (order_service_used) — BẮT BUỘC verify tenant trước khi tạo refund.
 func (h *Handler) CreateRefundOrderPlan(c *gin.Context) {

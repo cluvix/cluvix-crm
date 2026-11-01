@@ -39,8 +39,6 @@ export class ServicesHelperService {
       servicePosition: service?.servicePosition ?? null,
       department_type: service?.department_type ?? null,
       serviceCategory_id: service?.serviceCategory_id ?? null,
-      is_installment: service?.is_installment ?? null,
-      installment_config: service?.installment_config ?? null,
       emr_department_id: service?.emr_department_id ?? null,
     };
   }

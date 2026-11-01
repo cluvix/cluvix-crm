@@ -49,13 +49,6 @@
             *hasPerm="permission.permissionCreatePayment"
             [style]="{'background-color': '#7B3F9E', 'border-color': '#7B3F9E'}"
           ><i class="pi pi-plus"></i><span>{{ 'common.label.payment' | translate }}</span></button>
-          <button
-            pButton
-            type="button"
-            (click)="payInstallment()"
-            *hasPerm="permission.permissionCreatePayment"
-            [style]="{'background-color': '#FF5722', 'border-color': '#FF5722'}"
-          ><i class="pi pi-plus"></i><span>{{ 'common.label.installment' | translate }}</span></button>
         }
       </div>
       <div class="p-toolbar-group-end">
@@ -271,8 +264,7 @@
             <div class="flex justify-center items-centermt-1">
               <p-buttongroup>
                 <ng-container *hasPerm="permission.permissionExtRefundDeposit">
-                  @if (model.deposit_after > 0 &&
-                  model.deposit_type !== modelService.TYPE_DEPOSIT_KG) {
+                  @if (model.deposit_after > 0) {
                     <p-button
                       (click)="refundDeposit(model.id)" icon="pi pi-minus" [ariaLabel]="'common.label.refund_deposit' | translate"
                       [pTooltip]="'common.label.refund_deposit' | translate"
@@ -284,25 +276,11 @@
                 </ng-container>
                 <!-- Chuyển cọc như hình thức tạo mới thanh toán-->
                 <ng-container *hasPerm="permission.permissionExtDeposit">
-                  @if (model.deposit_after > 0 &&
-                  model.deposit_type !== modelService.TYPE_DEPOSIT_KG) {
+                  @if (model.deposit_after > 0) {
                     <p-button
                       (click)="moveDeposit($event, model.id, model.deposit_after)" icon="pi pi-step-forward" [ariaLabel]="'common.label.transfer_deposit' | translate"
                       [pTooltip]="'common.label.transfer_deposit' | translate"
                       severity="help"
-                      size="small"
-                      tooltipPosition="top"
-                    ></p-button>
-                  }
-                </ng-container>
-                <!-- BE gác POST create-refund-kg-customer bằng extPayment ⇒ FE ẩn nút theo đúng quyền đó. -->
-                <ng-container *hasPerm="permission.permissionExtPayment">
-                  @if (model.deposit_after > 0 &&
-                  model.deposit_type === modelService.TYPE_DEPOSIT_KG) {
-                    <p-button
-                      (click)="refundKg(model.id)" icon="pi pi-minus" [ariaLabel]="'common.label.refund_consignment' | translate"
-                      [pTooltip]="'common.label.refund_consignment' | translate"
-                      severity="warn"
                       size="small"
                       tooltipPosition="top"
                     ></p-button>
@@ -349,28 +327,6 @@
                 (click)="printRefundService(model.id)"
                 icon="pi pi-print" [ariaLabel]="'common.action.print' | translate"
                 [pTooltip]="'common.action.print' | translate"
-                severity="info"
-                size="small"
-                tooltipPosition="top"
-              ></p-button>
-            </p-buttongroup>
-          }
-          @if (model.payment_for === PAYMENT_FOR.CONSIGNMENT_REFUND) {
-            <p-buttongroup>
-              <ng-container *hasPerm="permission.permissionExtPayment">
-                <p-button
-                  (click)="deleteRefundConsignment($event, model.id)"
-                  icon="pi pi-trash" [ariaLabel]="'common.action.delete' | translate"
-                  [pTooltip]="'crm.payment.tooltip.delete_refund_consignment' | translate"
-                  severity="danger"
-                  size="small"
-                  tooltipPosition="top"
-                ></p-button>
-              </ng-container>
-              <p-button
-                (click)="printRefundConsignment(model.id)"
-                icon="pi pi-print" [ariaLabel]="'crm.payment.tooltip.print_refund_consignment' | translate"
-                [pTooltip]="'crm.payment.tooltip.print_refund_consignment' | translate"
                 severity="info"
                 size="small"
                 tooltipPosition="top"
@@ -448,20 +404,10 @@
             <span class="text-blue-500">{{ model.amount !== 0 ? (model.amount | currencyFormat) : '—' }}</span>
           }
           @if (model.payment_for === PAYMENT_FOR.DEPOSIT) {
-            @if (model.deposit_type === modelService.TYPE_DEPOSIT_KG) {
-              {{ "common.label.consignment" | translate }}: <b class="text-blue-500">{{ model.amountFormatted }}</b
-              ><br/>
-              {{ 'crm.order_plan.form.outstanding_balance' | translate }}:
-              <b class="text-blue-500">{{ model.deposit_afterFormatted }}</b>
-            } @else {
-              <ng-container [ngTemplateOutlet]="depositOther"></ng-container>
-            }
-            <ng-template #depositOther>
-              {{ "common.label.deposit" | translate }}: <b class="text-blue-500">{{ model.amountFormatted }}</b
+            {{ "common.label.deposit" | translate }}: <b class="text-blue-500">{{ model.amountFormatted }}</b
             ><br/>
-              {{ 'crm.order_plan.form.outstanding_balance' | translate }}:
-              <b class="text-blue-500">{{ model.deposit_afterFormatted }}</b>
-            </ng-template>
+            {{ 'crm.order_plan.form.outstanding_balance' | translate }}:
+            <b class="text-blue-500">{{ model.deposit_afterFormatted }}</b>
           }
         </td>
       }

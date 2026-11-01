@@ -1,8 +1,7 @@
-import {ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked} from '@angular/core';
+import {ChangeDetectionStrategy, Component, effect, inject, signal, untracked} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {applyEach, disabled, FormField, minError, required, schema, SchemaPathTree, validate} from '@angular/forms/signals';
-import {catchError, finalize, of, Subject} from 'rxjs';
-import {switchMap} from 'rxjs/operators';
+import {catchError, finalize, of} from 'rxjs';
 
 import {ServiceModel} from '@/core/models/config/clinic/service.model';
 import {CustomerModel} from '@/core/models/crm/customer.model';
@@ -22,29 +21,10 @@ import {UserCacheService, UserMultiSelectFormControl} from '@/indexeddb/config/c
 import {UnitHelperService} from '@/indexeddb/config/components/unit';
 import {UserOptionHelperService} from '@/indexeddb/config/components/user-option';
 import {ServicesHelperService} from '@/indexeddb/config/components/services';
-import {AppointmentService} from '@/core/services/crm/appointment.service';
 import {CustomerRankServicesHelperService} from '@/indexeddb/config/components/customer-rank-services';
 import {CustomerRanksHelperService} from '@/indexeddb/config/components/customer-ranks';
 import {ChangeServiceDialog} from '@/modules/crm/order-plan/change-service-dialog/change-service-dialog';
 import {isRowFieldLocked, LockableRowField} from '@/modules/crm/order-plan/form/order-plan-row-lock';
-
-/** State trả góp per dòng dịch vụ — nguồn DUY NHẤT ghi bởi user interaction (toggle/đổi kỳ/đổi trả trước). */
-interface InstallmentRowState {
-  selectedPeriod: number;
-  depositAmount: number;
-  enableInstallment: boolean;
-}
-
-/** Snapshot số liệu tổng dòng dịch vụ cần cho tính trả góp — cập nhật mỗi lần `_recalcMoney()` chạy. */
-interface ServiceRowSnapshot {
-  /** Khoá ổn định của dòng — mọi side-state (trả góp…) tra theo khoá này, KHÔNG theo vị trí dòng. */
-  uid: number;
-  /** `id` bản ghi OSU ở DB (`null` = dòng mới chưa lưu) — dùng để tra ngược `originalServiceUseds`. */
-  id: number | null;
-  service_id: number | null;
-  totalEnd: number;
-  rank_discount_percent: number;
-}
 
 /**
  * Bộ đếm khoá dòng (`_uid`). Module-level, tăng dần trong 1 phiên tab — chỉ cần duy nhất trong phạm vi
@@ -179,18 +159,11 @@ const serviceRowSchema = schema<OrderServiceUsedRow>((item) => {
   styleUrls: ['./order-plan-form.scss'],
 })
 export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
-  /**
-   * PrimeNG 22.0.0-rc.2 [lazy] trên p-tabs KHÔNG lazy thật (xem customer-detail.ts) —
-   * dùng @defer (when activeTab() === 'X') ở template thay vì dựa vào lazy của PrimeNG.
-   */
-  readonly activeTab = signal('0');
   modelService = inject(OrderPlanService);
-  appointmentService = inject(AppointmentService);
   public maxDate: Date = this.timezoneService.todayEnd();
   public minDate!: Date;
   optionsTimeBefore: boolean = false;
   optionsAllowPreviousDay: boolean = false;
-  private readonly appointmentLoad$ = new Subject<{ date: Date; customerId: number }>();
   selectedServiceUsed: ServiceModel | null = null;
   /** `_uid` dòng → đơn giá dòng đó có sửa được không (quyết định nội dung tooltip ô đơn giá). */
   readonly displayPTooltipUnitPrice = signal<Map<number, boolean>>(new Map());
@@ -199,17 +172,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   readonly changedFromServiceName = signal<Map<number, string>>(new Map());
   latestAppointment!: any;
   readonly customer = signal<CustomerModel>({});
-  readonly dropdownsWithAppointment = signal<any[]>([]);
   readonly totalRankDiscount = signal<number>(0);
-  /** Nguồn DUY NHẤT cho lựa chọn trả góp của user (toggle/kỳ hạn/trả trước) — mọi hiển thị
-   * (installmentServicesList) PHẢI derive từ đây qua computed(), KHÔNG giữ bản sao riêng để
-   * hiển thị (đã gây bug: đổi kỳ hạn/trả trước không cập nhật UI cho tới khi có 1 recalculation
-   * khác từ nơi khác vô tình ghi đè lại đúng giá trị). */
-  readonly installmentServicesState = signal<Map<number, InstallmentRowState>>(new Map()); // key = `_uid` dòng
-  /** Snapshot totalEnd/rank_discount_percent theo từng dòng dịch vụ — cập nhật mỗi lần `_recalcMoney()`
-   * chạy. installmentServicesList computed từ state + snapshot này, không cần refresh thủ công. */
-  private readonly servicesSnapshot = signal<ServiceRowSnapshot[]>([]);
-  date: Date = this.timezoneService.now();
 
   /**
    * SNAPSHOT BẤT BIẾN lúc mở dialog — `BaseSignalForm.model()` là nguồn SỐNG 2 chiều (mọi phím user gõ
@@ -235,10 +198,8 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     super();
     const customerDialog = this.dialogConfig?.data?.customer;
     this.customer.set(customerDialog);
-    // Caller (vd EMR Thăm khám) có thể truyền nguyên model appointment đang
-    // khám qua dialog data để form gắn đúng lịch + lấy revenue_id/source_id
-    // từ lịch đó. Khi không có (CRM mở dialog "tạo order tự do"), giữ
-    // hành vi cũ: dropdown tự nạp lịch theo ngày và auto-pick đầu tiên.
+    // Caller (màn lịch hẹn) có thể truyền model appointment qua dialog data — chỉ dùng để điền sẵn
+    // tư vấn viên/nguồn theo lịch đó. Đơn KHÔNG gắn với lịch hẹn nữa (`appointment_id` tạo mới = null).
     const appointmentDialog = this.dialogConfig?.data?.appointment;
     if (appointmentDialog) {
       this.latestAppointment = appointmentDialog;
@@ -268,44 +229,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   override ngOnInit(): void {
     this.unitHelper.ensureUnitsLoaded();
 
-    this.appointmentLoad$
-      .pipe(
-        switchMap(({date, customerId}) => this.appointmentService.appointmentDateInDay(date, customerId)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((res: any) => {
-        // Set KHÔNG điều kiện (bản cũ chỉ `set` khi `res.length > 0`, không bao giờ clear) — đổi ngày
-        // đơn sang ngày KHÔNG có lịch thì dropdown vẫn giữ lịch của ngày cũ, user chọn nhầm lịch sai
-        // ngày; nay danh sách rỗng thật và `required({when: length > 0})` cũng tự gỡ theo.
-        const list: any[] = res ?? [];
-        // `appointment_id` bắt buộc khi ngày đơn CÓ lịch hẹn — khai qua `required({when})` trong
-        // buildSchema() đọc chính `dropdownsWithAppointment()`, không `addValidators` thủ công nữa.
-        this.dropdownsWithAppointment.set(list);
-        if (list.length === 0) {
-          // Chỉ clear ở create mode — cùng lý do bản gốc chỉ auto-pick ở create mode: đơn đang sửa
-          // giữ nguyên lịch đã gắn, không tự tháo liên kết chỉ vì user xem lại ngày khác.
-          if (!this.isEditMode() && this.model().appointment_id != null) {
-            this.model.update(m => ({...m, appointment_id: null as any}));
-          }
-        } else {
-          if (!this.isEditMode()) {
-            const currentId = this.model().appointment_id;
-            const matched = currentId
-              ? list.find((it: any) => it.value === currentId)
-              : null;
-            const picked = matched ?? list[0];
-            this.model.update(m => ({
-              ...m,
-              appointment_id: picked?.value ?? null,
-              listRevenues: picked?.revenue_id
-                ? [picked.revenue_id]
-                : (this.customer()?.payment_user_id ? [this.customer()!.payment_user_id!] : []),
-              source_id: picked?.source_id ?? this.customer()?.source_id ?? null,
-            }));
-          }
-        }
-      });
-
     const dialogModel: OrderPlanModel | null = this.isEditMode() ? this.model() : null;
 
     if (dialogModel) {
@@ -334,9 +257,8 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         ...(this.initialValue ?? {}),
         customer_id: this.customer()?.id || null,
         branch_id: branchActiveId() || null,
-        // Ưu tiên gắn order vào ĐÚNG appointment đã truyền vào (EMR). Nếu
-        // không có (CRM cũ) thì null — loadAppointment() dưới đây fallback.
-        appointment_id: this.latestAppointment?.id ?? null,
+        // Đơn không gắn lịch hẹn. Đơn cũ đã gắn (edit) giữ nguyên `appointment_id` từ BE.
+        appointment_id: null as any,
         listRevenues: this.latestAppointment?.revenue_id
           ? [this.latestAppointment.revenue_id]
           : this.customer()?.payment_user_id ? [this.customer()!.payment_user_id!] : [],
@@ -368,37 +290,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       total: 0,
       services_used: rows,
     });
-
-    const appointmentDate = this.latestAppointment?.appointment_date
-      ? new Date(this.latestAppointment.appointment_date)
-      : model.created_time
-        ? new Date(model.created_time)
-        : this.date;
-    this.loadAppointment(appointmentDate, model.customer_id!);
-
-    // Pre-initialize installmentServicesState cho dịch vụ đã có installment_config lưu ở DB.
-    // Không có bước này, user submit trước khi mở tab trả góp sẽ gửi installmentConfig: null và BE
-    // xoá sạch order_installment của các dịch vụ đó.
-    if (this.isEditMode()) {
-      const stateMap = new Map(this.installmentServicesState());
-      // `rows` dựng theo đúng thứ tự `orderServiceUseds` (= `originalServiceUseds`) nên `rows[index]`
-      // là dòng của bản ghi thứ `index` — lấy `_uid` của nó làm khoá state, không dùng chính `index`.
-      this.originalServiceUseds.forEach((service: any, index: number) => {
-        const uid = rows[index]?._uid;
-        if (uid != null && service.installment_config && !stateMap.has(uid)) {
-          const cfg =
-            typeof service.installment_config === 'string'
-              ? JSON.parse(service.installment_config)
-              : service.installment_config;
-          stateMap.set(uid, {
-            selectedPeriod: cfg?.period ?? 3,
-            depositAmount: cfg?.deposit_amount ?? 0,
-            enableInstallment: true,
-          });
-        }
-      });
-      this.installmentServicesState.set(stateMap);
-    }
 
     // Bản gốc gọi `void this.handleService()` ngay sau khi nạp dòng (subscription không bắn lúc init).
     // `effectOnChange` cũng BỎ QUA lần chạy đầu → phải kích hoạt tay đúng 1 lần ở đây, nếu không mở
@@ -466,10 +357,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     required(p.customer_id!);
     required(p.branch_id!);
     required(p.created_time!);
-    // Bản gốc `addValidators([Validators.required])` khi ngày đơn có lịch hẹn — và KHÔNG BAO GIỜ gỡ ra.
-    // `{when}` là 2 chiều: đổi sang ngày không có lịch thì hết bắt buộc (đúng hơn bản cũ, đổi hành vi
-    // CÓ CHỦ ĐÍCH — ghi trong plan mục R10).
-    required(p.appointment_id!, {when: () => this.dropdownsWithAppointment().length > 0});
 
     applyEach(p.services_used!, serviceRowSchema);
   }
@@ -503,13 +390,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     );
 
     effectOnChange(
-      () => this.model().created_time,
-      (value) => {
-        if (value != null) untracked(() => this.loadAppointment(value as Date, this.model().customer_id!));
-      },
-    );
-
-    effectOnChange(
       () => this.model().branch_id,
       (branchId) =>
         untracked(() => {
@@ -534,12 +414,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     if (uid != null) {
       this.serviceInfoMap.delete(uid);
       this.displayPTooltipUnitPrice.update(m => {
-        if (!m.has(uid)) return m;
-        const next = new Map(m);
-        next.delete(uid);
-        return next;
-      });
-      this.installmentServicesState.update(m => {
         if (!m.has(uid)) return m;
         const next = new Map(m);
         next.delete(uid);
@@ -692,7 +566,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     let total = 0;
     let discount = 0;
     let discountOther = 0;
-    const snapshot: ServiceRowSnapshot[] = [];
     updated.forEach((row) => {
       const rowTotalEnd = Number(row.totalEnd) || 0;
       const pct = Number(row.rank_discount_percent) || 0;
@@ -702,13 +575,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       total += rowTotalEnd;
       discount += Number(row.discount) || 0;
       discountOther += Number(row.discount_other) || 0;
-      snapshot.push({
-        uid: row._uid,
-        id: row.id ?? null,
-        service_id: row.service_id ?? null,
-        totalEnd: rowTotalEnd,
-        rank_discount_percent: pct,
-      });
     });
 
     this.totalRankDiscount.set(totalRankDiscount);
@@ -732,8 +598,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         discount_other: nextDiscountOther,
       }));
     }
-    // installmentServicesList derive tự động qua computed() từ snapshot này + installmentServicesState.
-    this.servicesSnapshot.set(snapshot);
   }
 
   totalTotalService(
@@ -789,9 +653,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
 
     this.selectedServiceUsed = itemSelected;
     this.serviceInfoMap.set(uid, itemSelected);
-    const stateMap = new Map(this.installmentServicesState());
-    stateMap.delete(uid);
-    this.installmentServicesState.set(stateMap);
   }
 
   /**
@@ -856,10 +717,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     });
   }
 
-  loadAppointment(date: Date, customerId: number) {
-    this.appointmentLoad$.next({date, customerId});
-  }
-
   // ============ SUBMIT ============
 
   checkBeforeSubmit() {
@@ -913,12 +770,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
 
     this.isSubmitting.set(true);
 
-    // Chụp mảng dòng model NGAY CẠNH `getPayload()` — `raw.services_used[i]` sinh ra từ đúng
-    // `modelRows[i]` (cùng 1 lệnh `.map()` trong `getPayload()`), nhưng `getPayload()` cố ý loại `_uid`
-    // khỏi payload nên phải giữ lại nguồn để tra `_uid` theo vị trí. Hai lệnh PHẢI nằm liền nhau: chèn
-    // bất kỳ lệnh ghi `model` nào vào giữa là lệch map → state trả góp gán nhầm dòng, mà BE xoá thẳng
-    // `order_installment` của dòng không có `installment_config` (order_plan.go:1149).
-    const modelRows = this.model().services_used ?? [];
     const raw = this.getPayload();
     if (!raw.services_used?.length) {
       this.noti.warn(this.translate.instant('common.label.missing_service'), this.translate.instant('common.label.please_add_at_least_1_service'));
@@ -937,47 +788,15 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
 
     const payload = {
       ...raw,
-      services_used: (raw.services_used ?? []).map((s: any, index: number) => {
-        const rowUid = modelRows[index]?._uid;
-        const installmentState = rowUid != null ? this.installmentServicesState().get(rowUid) : undefined;
-        const serviceInfo = this.servicesHelper.getServiceInfo(s.service_id) as any;
+      services_used: (raw.services_used ?? []).map((s: any) => {
         const finalTotalEnd = s.totalEnd || 0;
-
-        let interestRate = 0;
-        let periodIntervalDays = 30;
-        let minDepositPercent = 30;
-        if (serviceInfo?.is_installment === 1 && serviceInfo?.installment_config) {
-          const config =
-            typeof serviceInfo.installment_config === 'string'
-              ? JSON.parse(serviceInfo.installment_config)
-              : serviceInfo.installment_config;
-          interestRate = config?.interest_rate ?? 0;
-          periodIntervalDays = config?.period_interval_days ?? 30;
-          minDepositPercent = config?.min_deposit_percent ?? 30;
-        }
-        let installmentConfig: any = null;
-        if (serviceInfo?.is_installment === 1 && installmentState?.enableInstallment === true) {
-          const depositAmount =
-            installmentState.depositAmount > 0
-              ? installmentState.depositAmount
-              : Math.ceil((finalTotalEnd * minDepositPercent) / 100);
-          const period = installmentState.selectedPeriod || 3;
-          const amountPerPeriod =
-            period > 0 ? Math.ceil((finalTotalEnd - depositAmount) / period) : 0;
-          installmentConfig = {
-            period,
-            deposit_amount: depositAmount,
-            amount_per_period: amountPerPeriod,
-            interest_rate: interestRate,
-            period_interval_days: periodIntervalDays,
-          };
-        }
-
+        // CRM không còn trả góp. Vẫn gửi KEY `installment_config` (= null): BE coi có key là tín hiệu
+        // tính lại payment_status của dòng đã có mỗi lần lưu (order_plan.go, nhánh `hasInstallment`).
         return {
           ...s,
           totalEnd: finalTotalEnd,
           expires_at: toEpoch(s.expires_at),
-          installment_config: installmentConfig,
+          installment_config: null,
         };
       }),
     };
@@ -1055,90 +874,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     };
   }
 
-  // ============ INSTALLMENT ============
-
-  /**
-   * `computed()` thay vì method — template gọi trong `@if`, bản method chạy lookup cache cho TỪNG dòng
-   * ở MỌI chu kỳ change detection (kể cả khi không có gì liên quan đổi).
-   */
-  readonly hasInstallmentServices = computed(() =>
-    (this.model().services_used ?? []).some((row) => {
-      const serviceInfo = this.servicesHelper.getServiceInfo(row.service_id!);
-      return serviceInfo?.is_installment === 1;
-    }),
-  );
-
-  /** Derive HOÀN TOÀN từ installmentServicesState + servicesSnapshot — không có bản ghi trung gian
-   * nào khác cần đồng bộ tay, nên mọi thay đổi ở 1 trong 2 signal nguồn tự động phản ánh lên UI
-   * ngay lập tức (kể cả khi đổi kỳ hạn/trả trước mà không đổi giá/số lượng dịch vụ). */
-  readonly installmentServicesList = computed(() => this.buildInstallmentServicesList());
-
-  onInstallmentToggle(uid: number, enabled: boolean) {
-    const stateMap = new Map(this.installmentServicesState());
-    const row = this.model().services_used?.find(r => r._uid === uid);
-    if (!row) return;
-    const serviceInfo = this.servicesHelper.getServiceInfo(row.service_id!) as any;
-    if (!serviceInfo?.is_installment) return;
-    const existing = stateMap.get(uid);
-    if (enabled) {
-      const totalEnd = row.totalEnd || 0;
-      const rankDiscountPercent = row.rank_discount_percent || 0;
-      const totalAmount = totalEnd - (totalEnd * rankDiscountPercent) / 100;
-      const rawConfig = serviceInfo.installment_config;
-      const config = typeof rawConfig === 'string' ? JSON.parse(rawConfig) : rawConfig;
-      if (!config) return;
-      const minDeposit = Math.ceil((totalAmount * (config.min_deposit_percent ?? 30)) / 100);
-      const selectedPeriod = existing?.selectedPeriod ?? config.periods?.[0] ?? 3;
-      stateMap.set(uid, {
-        selectedPeriod,
-        depositAmount: existing?.depositAmount || minDeposit,
-        enableInstallment: true,
-      });
-    } else {
-      stateMap.set(uid, {
-        selectedPeriod: existing?.selectedPeriod ?? 3,
-        depositAmount: existing?.depositAmount ?? 0,
-        enableInstallment: false,
-      });
-    }
-    this.installmentServicesState.set(stateMap);
-  }
-
-  onInstallmentPeriodChange(uid: number, period: number) {
-    const stateMap = new Map(this.installmentServicesState());
-    const existing = stateMap.get(uid);
-    let depositAmount = existing?.depositAmount || 0;
-    if (depositAmount <= 0) {
-      const row = this.model().services_used?.find(r => r._uid === uid);
-      const totalEnd = row?.totalEnd || 0;
-      const rankDiscountPercent = row?.rank_discount_percent || 0;
-      const totalAmount = totalEnd - (totalEnd * rankDiscountPercent) / 100;
-      const serviceInfo = this.servicesHelper.getServiceInfo(row?.service_id!) as any;
-      const rawConfig = serviceInfo?.installment_config;
-      const config = typeof rawConfig === 'string' ? JSON.parse(rawConfig) : rawConfig;
-      const minDepositPercent = config?.min_deposit_percent ?? 30;
-      depositAmount = Math.ceil((totalAmount * minDepositPercent) / 100);
-    }
-    stateMap.set(uid, {
-      selectedPeriod: period,
-      depositAmount,
-      enableInstallment: existing?.enableInstallment ?? true,
-    });
-    this.installmentServicesState.set(stateMap);
-  }
-
-  onDepositAmountChange(uid: number, amount: number) {
-    if (amount <= 0) return;
-    const stateMap = new Map(this.installmentServicesState());
-    const existing = stateMap.get(uid);
-    stateMap.set(uid, {
-      selectedPeriod: existing?.selectedPeriod ?? 3,
-      depositAmount: amount,
-      enableInstallment: existing?.enableInstallment ?? true,
-    });
-    this.installmentServicesState.set(stateMap);
-  }
-
   // ============ PRIVATE HELPERS ============
 
   /**
@@ -1198,7 +933,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   private readonly TOP_LEVEL_CONTROL_LABEL_KEYS: Record<string, string> = {
     branch_id: 'common.label.branch',
     created_time: 'common.label.order_date',
-    appointment_id: 'common.label.appointment',
     note: 'common.label.note',
     source_id: 'common.label.source',
     listRevenues: 'common.label.consultant',
@@ -1215,7 +949,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   };
 
   /** Field top-level có validator — dùng để quét invalid (Signal Forms không liệt kê control động được). */
-  private readonly TOP_LEVEL_VALIDATED_FIELDS = ['customer_id', 'branch_id', 'created_time', 'appointment_id'] as const;
+  private readonly TOP_LEVEL_VALIDATED_FIELDS = ['customer_id', 'branch_id', 'created_time'] as const;
   /** Field cấp dòng có validator. */
   private readonly ROW_VALIDATED_FIELDS = ['customer_id', 'quantity'] as const;
 
@@ -1256,72 +990,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       return entry.rowIndex !== undefined ? `${label} (dòng ${entry.rowIndex + 1})` : label;
     });
     return [...new Set(labels)];
-  }
-
-  /**
-   * Hàm THUẦN (pure) — chỉ đọc installmentServicesState()/servicesSnapshot(), không ghi lại
-   * bất kỳ signal nào (bắt buộc vì được gọi từ trong computed(); ghi ngược signal mà computed
-   * phụ thuộc sẽ gây vòng lặp cập nhật). Toàn bộ field hiển thị (kể cả amountPerPeriod) tính lại
-   * mới hoàn toàn từ state mỗi lần gọi — không có field "cache" nào có thể lệch với state.
-   */
-  private buildInstallmentServicesList(): any[] {
-    const stateMap = this.installmentServicesState();
-    const snapshot = this.servicesSnapshot();
-    const installmentServices: any[] = [];
-
-    snapshot.forEach((row) => {
-      if (row.service_id == null) return;
-      const serviceInfo = this.servicesHelper.getServiceInfo(row.service_id) as any;
-      if (serviceInfo?.is_installment !== 1) return;
-
-      const totalAmount = Math.round(row.totalEnd - (row.totalEnd * row.rank_discount_percent) / 100);
-      const rawConfig = serviceInfo.installment_config;
-      const config = typeof rawConfig === 'string' ? JSON.parse(rawConfig) : rawConfig;
-      if (!config) return;
-
-      const minDepositPercent = config.min_deposit_percent ?? 30;
-      const minDeposit = Math.ceil((totalAmount * minDepositPercent) / 100);
-      const availablePeriods: number[] = config.periods || [3, 6, 12];
-
-      // installment_config đã lưu ở BE (edit mode) — fallback khi state chưa có entry
-      // (_applyModel() đã pre-populate state cho case này ngay khi mở form; nhánh này chỉ
-      // phòng hờ dịch vụ mới thêm giữa phiên mà chưa từng qua _applyModel).
-      // Tra theo `id` bản ghi, KHÔNG theo vị trí: sau khi xoá 1 dòng giữa bảng, vị trí trong
-      // `originalServiceUseds` (mảng chụp lúc mở dialog) không còn khớp với vị trí dòng trên form.
-      const savedFromModel =
-        this.isEditMode() && row.id != null
-          ? (this.originalServiceUseds.find((s: any) => s.id === row.id) as any)?.installment_config
-          : null;
-      const parsedSaved = savedFromModel
-        ? (typeof savedFromModel === 'string' ? JSON.parse(savedFromModel) : savedFromModel)
-        : null;
-
-      const state = stateMap.get(row.uid);
-      const selectedPeriod = state?.selectedPeriod ?? parsedSaved?.period ?? availablePeriods[0] ?? 3;
-      const storedDeposit = state?.depositAmount ?? parsedSaved?.deposit_amount ?? 0;
-      const depositAmount = storedDeposit > 0 ? storedDeposit : minDeposit;
-      const amountPerPeriod =
-        selectedPeriod > 0 ? Math.ceil((totalAmount - depositAmount) / selectedPeriod) : 0;
-      const enableInstallment = state?.enableInstallment ?? !!parsedSaved;
-
-      installmentServices.push({
-        uid: row.uid,
-        service_id: row.service_id,
-        name: serviceInfo.name,
-        totalAmount,
-        enableInstallment,
-        availablePeriods: availablePeriods.map((p: number) => ({label: `${p} kỳ`, value: p})),
-        selectedPeriod,
-        depositAmount,
-        minDeposit,
-        minDepositPercent,
-        interestRate: config.interest_rate ?? 0,
-        periodIntervalDays: config.period_interval_days ?? 30,
-        amountPerPeriod,
-      });
-    });
-
-    return installmentServices;
   }
 
   /** Tiền đã thanh toán của đơn — snapshot lúc mở dialog (xem `originalPayment`). */

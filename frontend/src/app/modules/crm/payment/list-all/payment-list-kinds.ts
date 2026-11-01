@@ -12,7 +12,7 @@ import { PaymentListSubPath } from '@/core/services/crm/payment.service';
  * Khác ERP: bỏ cột Thương hiệu (1 thương hiệu/DB), Page facebook, Chiến dịch, Bác sĩ tư vấn, Direct
  * sale, % hoàn thành (schema CRM không có) và nút xuất hoá đơn.
  */
-export type PaymentListKind = 'payment' | 'receipts' | 'deposit' | 'consignment' | 'refund-deposit' | 'refund-service';
+export type PaymentListKind = 'payment' | 'receipts' | 'deposit' | 'refund-deposit' | 'refund-service';
 
 /** Cách vẽ 1 ô — template `payment-list-all.html` @switch theo giá trị này. */
 export type PaymentCell =
@@ -244,37 +244,6 @@ export const PAYMENT_LIST_KINDS: Record<PaymentListKind, PaymentListKindConfig> 
       ...AUDIT_COLS('branch'),
     ],
     selected: ['fullname', 'paymentMethod', 'amount', 'branch', 'source', 'appointment_date', 'province', 'payment_time', 'phone'],
-  },
-  consignment: {
-    subPath: 'list-consignment',
-    urlPrefix: 'cg',
-    lsColumnsKey: '/crm/payment/list-consignment',
-    defaultSort: '-payment_time',
-    dateField: 'payment_time',
-    dateLabelKey: 'crm.payment_list.col.consignment_date',
-    filters: ['branch_id', 'source_id'],
-    sumField: 'totalSumDeposit',
-    depositAfterField: 'totalSumDepositAfter',
-    detailCol: 'fullname',
-    exportTooltipKey: 'crm.payment_list.export_tooltip',
-    cols: [
-      col('id', 'ID', 'id', 'min-w-[60px]'),
-      col('customer_code', 'common.label.customer_code', 'customerCode', 'min-w-[150px]'),
-      col('customer_old_code', 'common.label.old_code', 'customerOldCode', 'min-w-[150px]'),
-      col('fullname', 'common.label.customer', 'customer', 'min-w-[180px]'),
-      col('phone', 'common.label.phone', 'phone', 'min-w-[120px]'),
-      col('payment_code', 'common.label.receipt_code', 'code', 'min-w-[120px]'),
-      col('paymentMethod', 'common.label.payment_method', 'method', 'min-w-[120px]'),
-      col('cardType', 'crm.payment_list.col.payment_channel', 'cardType', 'min-w-[120px]'),
-      col('amount', 'crm.payment_list.col.consignment_amount', 'amount', 'min-w-[120px]', 'sum'),
-      col('deposit_after', 'crm.payment_list.col.remaining_consignment', 'depositAfter', 'min-w-[120px]', 'depositAfter'),
-      col('source', 'common.label.source', 'sourceCustomer', 'min-w-[180px]'),
-      col('province', 'common.label.province', 'province'),
-      col('content', 'common.label.content', 'note', 'min-w-[170px]'),
-      col('payment_time', 'crm.payment_list.col.consignment_date', 'paymentTime'),
-      ...AUDIT_COLS('branch'),
-    ],
-    selected: ['fullname', 'phone', 'amount', 'source', 'payment_time', 'branch'],
   },
   'refund-deposit': {
     subPath: 'list-refund-deposit',

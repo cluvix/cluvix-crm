@@ -6,7 +6,7 @@ import { BranchHelperService } from '@/indexeddb/config/components/branch';
 import { ServicesHelperService } from '@/indexeddb/config/components/services/services-helper.service';
 
 /**
- * Báo cáo công nợ CRM — BE `crm/report/debt/*` (customer · order-plan · installment · service).
+ * Báo cáo công nợ CRM — BE `crm/report/debt/*` (customer · order-plan · service).
  * Mỗi báo cáo: `list*` trả `{items, _meta, total...}`, `export*` (?_export=1) trả URL file.
  */
 @Service()
@@ -29,14 +29,6 @@ export class ReportDebtCrmService extends BaseApiService<any> {
 
   exportOrderPlanDebts(params: any = {}): Observable<string> {
     return this.apiService.get(`${this.path}/order-plan?_export=1`, params);
-  }
-
-  listInstallmentDebts(params: any = {}): Observable<any> {
-    return this.apiService.get(`${this.path}/installment`, params);
-  }
-
-  exportInstallmentDebts(params: any = {}): Observable<string> {
-    return this.apiService.get(`${this.path}/installment?_export=1`, params);
   }
 
   listServiceDebts(params: any = {}): Observable<any> {

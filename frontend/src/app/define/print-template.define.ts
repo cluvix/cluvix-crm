@@ -4,7 +4,6 @@ export const PRINT_TEMPLATE_TYPE_OPTIONS = [
   { value: 'payment',                  label: 'Phiếu thanh toán' },
   { value: 'deposit',                  label: 'Phiếu đặt cọc' },
   { value: 'refund_deposit',           label: 'Hoàn cọc' },
-  { value: 'refund_consignment',       label: 'Hoàn ký gửi' },
   { value: 'refund_service',           label: 'Hoàn dịch vụ' },
   { value: 'order',                    label: 'Hóa đơn bán hàng' },
   { value: 'multi_payment',            label: 'Phiếu thanh toán nhiều DV' },

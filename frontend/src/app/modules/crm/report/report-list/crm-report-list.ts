@@ -85,14 +85,6 @@ export class CrmReportList extends BaseApp {
       descriptionKey: 'crm.report.debt.desc.order_plan',
     },
     {
-      label: 'Công nợ trả góp',
-      labelKey: 'crm.report.debt.installment.title',
-      link: '/report/debt/installment',
-      icon: 'pi pi-calendar-clock',
-      iconClass: 'text-purple-600',
-      descriptionKey: 'crm.report.debt.desc.installment',
-    },
-    {
       label: 'Công nợ theo dịch vụ',
       labelKey: 'crm.report.debt.service.title',
       link: '/report/debt/service',

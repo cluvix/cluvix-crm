@@ -25,10 +25,6 @@ export class PrintService {
     return this.api.get(`print/deposit/${id}`);
   }
 
-  refundConsignment(id: number): Observable<any> {
-    return this.api.get(`print/refund-consignment/${id}`);
-  }
-
   refundDeposit(id: number): Observable<any> {
     return this.api.get(`print/refund-deposit/${id}`);
   }

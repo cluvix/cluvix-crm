@@ -19,7 +19,6 @@ import { FormDeposit } from '@/modules/crm/payment/form/form-deposit/form-deposi
 import { FormMoveDeposit } from '@/modules/crm/payment/form/form-move-deposit/form-move-deposit';
 import { FormPayment } from '@/modules/crm/payment/form/form-payment/form-payment';
 import { FormRefundDeposit } from '@/modules/crm/payment/form/form-refund-deposit/form-refund-deposit';
-import { FormRefundKg } from '@/modules/crm/payment/form/form-refund-kg/form-refund-kg';
 import { CustomerModel } from '@/core/models/crm/customer.model';
 import { PaymentModel } from '@/core/models/crm/payment.model';
 import { CustomerService } from '@/core/services/crm/customer.service';
@@ -40,7 +39,6 @@ import { ListShareImports } from '@/share/import/list-share-imports';
 import { FillHeightDirective } from '@/share/directive/fill-height.directive';
 import { userId } from '@/core/services/auth';
 import { UserOptionHelperService } from '@/indexeddb/config/components/user-option';
-import { FormInstallment } from '@/modules/crm/payment/form/form-installment/form-installment';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -252,27 +250,6 @@ export class PaymentOfCustomer extends BaseListV2<PaymentModel> implements OnIni
   }
 
   /**
-   * Hàm xử lý hoàn ký gửi
-   * @param id
-   */
-  async refundKg(id: number) {
-    await this.modelService.ensureCacheLoaded();
-    const dialogRef = this.dialogWrapperService.open(FormRefundKg, {
-      header: this.translate.instant('common.label.refund_consignment'),
-      data: {
-        customer: this.customer,
-        idDeposit: id,
-      },
-      width: '700px',
-    });
-    dialogRef.onClose.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: any) => {
-      if (result) {
-        this.savePayment.emit(true);
-      }
-    });
-  }
-
-  /**
    * Hàm xử lý xóa cọc
    * @param event
    * @param id
@@ -331,45 +308,6 @@ export class PaymentOfCustomer extends BaseListV2<PaymentModel> implements OnIni
         this.loadingService.showLoading('deleteRecord');
         this.modelService
           .deleteRefundCustomer(id)
-          .pipe(
-            finalize(() => {
-              this.isSubmitting.set(false);
-              this.loadingService.hideLoading('deleteRecord');
-            }),
-          )
-          .subscribe({
-            next: (res: any) => {
-              this.noti.successRes(res);
-              this.savePayment.emit(true);
-            },
-          });
-      },
-      reject: () => {
-        this.isSubmitting.set(false);
-      },
-    });
-  }
-
-  /**
-   * Hàm xử lý xóa ký gửi
-   * @param event
-   * @param id
-   */
-  deleteRefundConsignment(event: Event, id: number) {
-    if (!this.permissionsService.getPermission(PERMISSION_SELECT.permissionExtPayment)) {
-      this.noti.warnMsg(this.translate.instant('common.message.no_permission'));
-      return;
-    }
-    this.isSubmitting.set(true);
-    this.confirmationService.confirm({
-      target: (event.target ?? undefined),
-      message: this.translate.instant('common.label.do_you_want_to_delete'),
-      icon: 'pi pi-exclamation-triangle',
-      acceptButtonProps: {severity: 'danger', size: 'small'},
-      accept: () => {
-        this.loadingService.showLoading('deleteRecord');
-        this.modelService
-          .deleteRefundConsignment(id)
           .pipe(
             finalize(() => {
               this.isSubmitting.set(false);
@@ -559,26 +497,6 @@ export class PaymentOfCustomer extends BaseListV2<PaymentModel> implements OnIni
   }
 
   /**
-   * Hàm xử lý ta mới trả góp
-   */
-  async payInstallment() {
-    await this.modelService.ensureCacheLoaded();
-    const dialogRef = this.dialogWrapperService.open(FormInstallment, {
-      data: {
-        customer: this.customer,
-      },
-      width: '840px',
-      header: this.translate.instant('crm.payment.dialog.create_installment'),
-    });
-
-    dialogRef.onClose.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: PaymentModel) => {
-      if (result) {
-        this.savePayment.emit(true);
-      }
-    });
-  }
-
-  /**
    * In phiếu thanh toán
    * @param id
    */
@@ -634,9 +552,6 @@ export class PaymentOfCustomer extends BaseListV2<PaymentModel> implements OnIni
     );
   }
 
-  printRefundConsignment(id: any) {
-    this.openPrint(`/print/refund-consignment/${id}`, `print-refund-consignment-${id}`, this.modelService.printRefundConsignment(id));
-  }
   /** Mở SlideOver chi tiết phiếu thu — dòng đã qua `addLabels` nên dùng thẳng làm seed. */
   openPaymentDetail(model: PaymentModel) {
     this.detail.open(model);
