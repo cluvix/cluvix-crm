@@ -1481,8 +1481,8 @@ func (h *Handler) DeleteCustomer(c *gin.Context) {
 		return
 	}
 
-	// Xoá kèm mọi phiếu thu/chi qua deletePayment — xem DeleteCustomerWithPayments.
-	if err := crmServices.DeleteCustomerWithPayments(h.DB, id, int(middleware.GetUserID(c))); err != nil {
+	// Khách đã có đơn hàng / phiếu thu-chi ⇒ chặn (LocalizedError 422) — xem crmServices.DeleteCustomer.
+	if err := crmServices.DeleteCustomer(h.DB, id, int(middleware.GetUserID(c))); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			response.NotFound(c)
 			return

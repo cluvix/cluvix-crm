@@ -131,7 +131,7 @@ func mapLockWaitTimeout(err error) error {
 	return err
 }
 
-// inTransaction — s.DB đang là một transaction (vd DeleteCustomerWithPayments dựng PaymentService{DB: tx}).
+// inTransaction — s.DB đang là một transaction (caller dựng PaymentService{DB: tx} trong transaction của mình).
 func inTransaction(db *gorm.DB) bool {
 	_, ok := db.Statement.ConnPool.(gorm.TxCommitter)
 	return ok

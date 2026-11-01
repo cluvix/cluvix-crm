@@ -24,10 +24,8 @@ var nullBeforeDelete = []string{
 // subTableDeletes — xoá / NULL các bảng KHÔNG có customer_id nhưng sẽ block xoá bảng cha.
 // Thực hiện trước customerChildTables.
 //
-// KHÔNG có `payment` ở đây (bỏ 2026-09-22): xoá thẳng payment bằng SQL bỏ qua dọn hoa hồng/doanh thu/
-// deposit của deletePayment. Payment PHẢI được xoá TRƯỚC qua
-// crmService.DeleteCustomerWithPayments (deletePayment từng phiếu); còn sót phiếu nào thì FK
-// payment.customer_id / serviceUsed_id / parent_id (RESTRICT) chặn xoá — lỗi, không âm thầm.
+// KHÔNG có `payment` ở đây: khách còn phiếu thu/chi thì KHÔNG được xoá — crmService.DeleteCustomer chặn trước
+// (user chốt 2026-11-01); FK payment.customer_id / serviceUsed_id / parent_id (RESTRICT) là lưới cuối.
 var subTableDeletes = []string{
 	// log tables
 	`DELETE FROM log_order_service_used WHERE order_service_used_id IN (SELECT id FROM order_service_used WHERE customer_id = ?)`,
@@ -61,8 +59,8 @@ var customerChildTables = []string{
 }
 
 // DeleteWithCleanup — DeleteWithCleanupTx trong transaction riêng. ⚠ KHÔNG xoá payment: khách còn
-// phiếu thu/chi thì lỗi FK 1451. Đường xoá khách của handler là crmService.DeleteCustomerWithPayments
-// (xoá phiếu qua deletePayment rồi mới gọi DeleteWithCleanupTx, cùng 1 tx).
+// phiếu thu/chi thì lỗi FK 1451. Đường xoá khách của handler là crmService.DeleteCustomer (chặn khách đã có
+// đơn hàng / phiếu rồi mới gọi DeleteWithCleanupTx, cùng 1 tx).
 func (s *CustomerService) DeleteWithCleanup(id uint, userID int) error {
 	return s.DB.Transaction(func(tx *gorm.DB) error {
 		return s.DeleteWithCleanupTx(tx, id, userID)

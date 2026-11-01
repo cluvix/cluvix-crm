@@ -247,6 +247,7 @@ var en = map[string]string{
 	"service_total_mismatch":             "Service amount does not match unit price, quantity and discounts (expected: %s, received: %s)",
 	"vat_rate_8_expired":                 "The 8%% VAT rate only applies to orders dated on or before %s",
 	"service_vat_mismatch":               "Service VAT does not match the order VAT rate (expected: %s, received: %s)",
+	"customer_delete_has_money":          "Cannot delete a customer who has orders or payment records (%d orders, %d payments)",
 	"service_change_permission_denied":   "You do not have permission to change a paid service",
 	"customer_status_invalid_transition": "Cannot transition status from %d to %d",
 

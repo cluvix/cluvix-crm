@@ -247,6 +247,7 @@ var vi = map[string]string{
 	"service_total_mismatch":             "Thành tiền dịch vụ không khớp đơn giá, số lượng và chiết khấu (tính lại: %s, gửi lên: %s)",
 	"vat_rate_8_expired":                 "Mức VAT 8%% chỉ áp dụng cho đơn có ngày tới hết %s",
 	"service_vat_mismatch":               "Tiền VAT dịch vụ không khớp mức VAT của đơn (tính lại: %s, gửi lên: %s)",
+	"customer_delete_has_money":          "Không thể xoá khách hàng đã có đơn hàng hoặc phiếu thu/chi (%d đơn hàng, %d phiếu)",
 	"service_change_permission_denied":   "Bạn không có quyền đổi dịch vụ đã thanh toán",
 	"customer_status_invalid_transition": "Không thể chuyển trạng thái từ %d sang %d",
 

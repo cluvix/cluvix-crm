@@ -2,8 +2,8 @@
 
 package handler
 
-// DELETE /crm/customer/:id — đi qua crmServices.DeleteCustomerWithPayments: phiếu thu/chi của khách
-// bị xoá qua deletePayment. (crm-standalone story-09: bỏ guard kỳ kế toán đã khoá + bút toán đảo sổ kép
+// DELETE /crm/customer/:id — đi qua crmServices.DeleteCustomer: khách đã có đơn hàng / phiếu thu-chi ⇒ 422,
+// không xoá gì (user chốt 2026-11-01; bản cũ xoá kèm phiếu qua deletePayment). (crm-standalone story-09: bỏ guard kỳ kế toán đã khoá + bút toán đảo sổ kép
 // cùng module kế toán ⇒ bỏ subtest "kỳ đã khoá ⇒ 422" và assert event đảo.)
 
 import (
@@ -37,7 +37,7 @@ func callDeleteCustomer(t *testing.T, tn *testhelpers.TestTenant, userID uint) *
 	return w
 }
 
-func TestDeleteCustomer_WithPayments(t *testing.T) {
+func TestDeleteCustomer_WithPaymentsBlocked(t *testing.T) {
 	if testDB == nil {
 		t.Fatal("TEST_MYSQL_DSN chưa set — integration test này KHÔNG được skip")
 	}
@@ -69,12 +69,12 @@ func TestDeleteCustomer_WithPayments(t *testing.T) {
 		return n
 	}
 
-	t.Run("200, khách + phiếu bị xoá", func(t *testing.T) {
+	t.Run("422, khách có phiếu cọc ⇒ khách + phiếu còn nguyên", func(t *testing.T) {
 		tn, userID, payID := setup(t)
 		w := callDeleteCustomer(t, tn, userID)
-		require.Equal(t, 200, w.Code, w.Body.String())
-		require.Zero(t, count(t, "SELECT COUNT(*) FROM customer WHERE id = ?", tn.CustomerID))
-		require.Zero(t, count(t, "SELECT COUNT(*) FROM payment WHERE id = ?", payID))
+		require.Equal(t, 422, w.Code, w.Body.String())
+		require.EqualValues(t, 1, count(t, "SELECT COUNT(*) FROM customer WHERE id = ?", tn.CustomerID))
+		require.EqualValues(t, 1, count(t, "SELECT COUNT(*) FROM payment WHERE id = ?", payID))
 	})
 }
 

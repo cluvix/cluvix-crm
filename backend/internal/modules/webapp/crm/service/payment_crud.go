@@ -372,8 +372,7 @@ func (s *PaymentService) CreateDepositCustomerFromPayment(p *crmPaymentDao.Payme
 // của CHÍNH khách đó; dòng dịch vụ / đơn được trả (nếu có) cũng phải của khách đó (story-37 bỏ vế
 // "cùng công ty" — D15 1 thương hiệu/DB).
 // deposit_id / serviceUsed_id / parent_id đến từ body ⇒ thiếu guard này là hoàn/dùng được cọc của khách
-// khác (IDOR body-id), và xoá khách chủ cọc (DeleteCustomerWithPayments) làm phiếu của khách kia mất
-// liên kết cọc. customerID nil ⇒ không so vế đó. Trả customer_id của phiếu cọc để caller điền
+// khác (IDOR body-id), và phiếu của khách kia mất liên kết khi phiếu cọc gốc bị xoá. customerID nil ⇒ không so vế đó. Trả customer_id của phiếu cọc để caller điền
 // khi phiếu mới chưa có.
 func (s *PaymentService) validateDepositUse(depositID int, customerID *int, serviceUsedID, parentID *int) (*int, error) {
 	var dep struct {
@@ -999,7 +998,7 @@ func (s *PaymentService) deleteChecked(scoped *gorm.DB, id uint, userID int, not
 		if err := check(tx, &p); err != nil {
 			return err
 		}
-		return s.deletePaymentTx(tx, &p, userID, nil)
+		return s.deletePaymentTx(tx, &p, userID)
 	})
 }
 
@@ -1052,25 +1051,18 @@ func (s *PaymentService) createPayment(tx *gorm.DB, p *crmPaymentDao.Payment, us
 
 // deletePayment: internal delete with beforeDelete + afterDelete
 func (s *PaymentService) deletePayment(p *crmPaymentDao.Payment, userID int) error {
-	return s.deletePaymentWith(p, userID, nil)
-}
-
-// deletePaymentWith — deferred != nil: phần TÍNH LẠI của afterDeleteAll được gom vào deferred để
-// caller chạy 1 lần sau khi xoá xong cả loạt (xem deferredPaymentRecalc). Phần lõi — guard, dọn bảng
-// con, log — luôn chạy ngay như cũ.
-func (s *PaymentService) deletePaymentWith(p *crmPaymentDao.Payment, userID int, deferred *deferredPaymentRecalc) error {
 	// crm-standalone story-09: bỏ guard hoá đơn điện tử đã phát hành + dọn bảng `invoice` — module
 	// einvoice đã xoá (story-07, D2), không còn code nào ghi bảng `invoice`.
 	return s.DB.Transaction(func(tx *gorm.DB) error {
 		if err := lockCustomers(tx, derefInt(p.CustomerId)); err != nil {
 			return err
 		}
-		return s.deletePaymentTx(tx, p, userID, deferred)
+		return s.deletePaymentTx(tx, p, userID)
 	})
 }
 
 // deletePaymentTx — thân xoá phiếu chạy trong tx của caller (caller đã khoá customer).
-func (s *PaymentService) deletePaymentTx(tx *gorm.DB, p *crmPaymentDao.Payment, userID int, deferred *deferredPaymentRecalc) error {
+func (s *PaymentService) deletePaymentTx(tx *gorm.DB, p *crmPaymentDao.Payment, userID int) error {
 	// beforeDelete: log + unlink relations
 	if err := s.logPaymentDelete(tx, p.ID, userID); err != nil {
 		return err
@@ -1091,10 +1083,6 @@ func (s *PaymentService) deletePaymentTx(tx *gorm.DB, p *crmPaymentDao.Payment, 
 		return err
 	}
 
-	if deferred != nil {
-		deferred.collect(p)
-		return nil
-	}
 	return s.afterDeleteAll(tx, p)
 }
 

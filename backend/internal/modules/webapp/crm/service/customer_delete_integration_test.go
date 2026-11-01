@@ -2,10 +2,9 @@
 
 package service
 
-// DeleteCustomerWithPayments: xoá khách KÈM mọi phiếu thu/chi (gắn thẳng khách, theo dòng dịch vụ,
-// theo đơn) qua deletePayment. Log: chỉ còn 1 dòng log xoá khách. Fixture logFx: log_delete_integration_test.go.
-// (crm-standalone story-09: bỏ bút toán đảo sổ kép + guard kỳ đã khoá cùng module kế toán ⇒ bỏ assert
-// event đảo và test "kỳ đã khoá huỷ cả lần xoá".)
+// DeleteCustomer: khách đã có đơn hàng HOẶC phiếu thu/chi (gắn thẳng khách, theo dòng dịch vụ, theo đơn) ⇒ chặn,
+// không xoá gì (user chốt 2026-11-01). Khách chưa có ⇒ xoá, chỉ còn 1 dòng log xoá khách.
+// Fixture logFx: log_delete_integration_test.go.
 
 import (
 	"testing"
@@ -18,30 +17,37 @@ import (
 	"erpCluvix/pkg/define"
 )
 
-func TestDeleteCustomerWithPayments_DeletesPaymentsAndCleansLogs(t *testing.T) {
+func TestDeleteCustomer_BlockedWhenHasDeposit(t *testing.T) {
+	f := newLogFx(t)
+	deposit, err := testhelpers.CreatePayment(testDB, f.tn, decimal.NewFromInt(500000), define.PaymentForDeposit)
+	require.NoError(t, err)
+	withFKChecks(t)
+
+	requireLocalized(t, DeleteCustomer(testDB, f.tn.CustomerID, int(f.userID)), "customer_delete_has_money")
+	require.EqualValues(t, 1, countWhere(t, "SELECT COUNT(*) FROM customer WHERE id = ?", f.tn.CustomerID), "khách phải còn")
+	require.EqualValues(t, 1, countWhere(t, "SELECT COUNT(*) FROM payment WHERE id = ?", deposit), "phiếu cọc phải còn")
+}
+
+func TestDeleteCustomer_BlockedWhenHasOrder(t *testing.T) {
+	f := newLogFx(t)
+	planID, _ := f.seedPlan(t, 1) // đơn chưa thu đồng nào vẫn chặn
+	withFKChecks(t)
+
+	requireLocalized(t, DeleteCustomer(testDB, f.tn.CustomerID, int(f.userID)), "customer_delete_has_money")
+	require.EqualValues(t, 1, countWhere(t, "SELECT COUNT(*) FROM order_plan WHERE id = ?", planID), "đơn phải còn")
+}
+
+func TestDeleteCustomer_NoMoneyDeletesAndLogsOnce(t *testing.T) {
 	f := newLogFx(t)
 	cid := f.tn.CustomerID
 	t.Cleanup(func() {
 		testDB.Exec("DELETE FROM log_customer WHERE changed_by = ?", f.userID)
 	})
-
-	deposit, err := testhelpers.CreatePayment(testDB, f.tn, decimal.NewFromInt(500000), define.PaymentForDeposit)
-	require.NoError(t, err)
-	planID, osuIDs := f.seedPlan(t, 1)
-	byService := f.seed(t, "payment", map[string]any{"branch_id": f.tn.BranchID, "method": 1, "amount": 100000,
-		"serviceUsed_id": osuIDs[0], "payment_for": define.PaymentForOrder})
-	byPlan := f.seed(t, "payment", map[string]any{"branch_id": f.tn.BranchID, "method": 1, "amount": 0, "parent_id": planID})
-	ids := []uint{deposit, byService, byPlan}
-	f.oldLog(t, "log_payment", "payment_id", deposit)
 	withFKChecks(t)
 
-	require.NoError(t, DeleteCustomerWithPayments(testDB, cid, int(f.userID)))
+	require.NoError(t, DeleteCustomer(testDB, cid, int(f.userID)))
 
 	require.Zero(t, countWhere(t, "SELECT COUNT(*) FROM customer WHERE id = ?", cid))
-	require.Zero(t, countWhere(t, "SELECT COUNT(*) FROM payment WHERE id IN ?", ids), "mọi phiếu của khách phải bị xoá")
-	// Story-40 (D15): nhận diện log của test theo changed_by (user tạo riêng cho test).
-	require.Zero(t, countWhere(t, "SELECT COUNT(*) FROM log_payment WHERE changed_by = ?", f.userID),
-		"xoá khách ⇒ không còn log thanh toán nào (cả log cũ lẫn dòng log xoá phiếu)")
 	require.EqualValues(t, 1, countWhere(t, "SELECT COUNT(*) FROM log_customer WHERE changed_by = ? AND action_type = ? AND customer_id IS NULL",
 		f.userID, history.ActionDelete), "chỉ còn 1 dòng log xoá khách")
 }

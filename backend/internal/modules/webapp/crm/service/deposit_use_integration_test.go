@@ -3,9 +3,8 @@
 package service
 
 // Phiếu DÙNG cọc (hoàn cọc, trả dịch vụ bằng cọc) chỉ được dùng cọc của chính khách đó,
-// dòng dịch vụ được trả cũng phải của khách đó (validateDepositUse). Và khi xoá khách mà
-// dữ liệu CŨ có phiếu dùng cọc của khách khác, cách xoá gom (deferredPaymentRecalc) vẫn phải tính lại
-// deposit_after của cọc khách kia — không bỏ như cọc bị xoá cùng loạt.
+// dòng dịch vụ được trả cũng phải của khách đó (validateDepositUse). (Xoá khách kèm phiếu đã bỏ — khách có
+// phiếu thì không xoá được, xem customer_delete_integration_test.go.)
 
 import (
 	"fmt"
@@ -95,53 +94,4 @@ func TestValidateDepositUse_RejectsForeignDeposit(t *testing.T) {
 	require.NotErrorIs(t, err, errs.ErrDepositNotFound)
 	require.NoError(t, err)
 	require.NotZero(t, created.ID)
-}
-
-// Dữ liệu CŨ (trước guard): khách A có phiếu hoàn cọc trỏ vào cọc của khách B. Xoá A ⇒ cọc của B không
-// bị xoá cùng loạt nên deferred.run PHẢI tính lại deposit_after của nó (phiếu hoàn của A đã mất).
-func TestDeleteCustomerWithPayments_RecalcsForeignDeposit(t *testing.T) {
-	f := newLogFx(t)
-	b := testhelpers.FreshTenant(t, testDB)
-	t.Cleanup(func() {
-		testDB.Exec("DELETE FROM log_customer WHERE changed_by = ?", f.userID)
-		testDB.Exec("DELETE FROM payment WHERE customer_id = ?", b.CustomerID)
-	})
-	depB := seedDeposit(t, b, 1000000)
-	f.seed(t, "payment", map[string]any{"branch_id": f.tn.BranchID, "method": 1, "amount": -100000,
-		"payment_for": define.PaymentForRefundDeposit, "deposit_id": depB})
-	require.NoError(t, testDB.Exec("UPDATE payment SET deposit_after = 900000 WHERE id = ?", depB).Error)
-	withFKChecks(t)
-
-	require.NoError(t, DeleteCustomerWithPayments(testDB, f.tn.CustomerID, int(f.userID)))
-
-	var after decimal.Decimal
-	require.NoError(t, testDB.Raw("SELECT deposit_after FROM payment WHERE id = ?", depB).Scan(&after).Error)
-	require.True(t, after.Equal(decimal.NewFromInt(1000000)),
-		"deposit_after cọc của khách B phải được tính lại = 1.000.000 sau khi phiếu hoàn của A bị xoá, có: %s", after)
-}
-
-// Cách xoá gom vẫn chạy calculatorPaymentServiceUsed 1 lần/dòng dịch vụ cho dòng Sản phẩm đã thanh toán
-// đủ — xoá khách vẫn phải thành công và dọn sạch dòng dịch vụ. (crm-standalone story-09: phần canh hàng
-// đợi trừ vật tư đã bỏ cùng module inventory.)
-func TestDeleteCustomerWithPayments_PaidProductLine(t *testing.T) {
-	f := newLogFx(t)
-	t.Cleanup(func() {
-		testDB.Exec("DELETE FROM log_customer WHERE changed_by = ?", f.userID)
-	})
-	require.NoError(t, testDB.Exec("INSERT INTO service (name, code, serviceCategory_id) VALUES ('SP test', ?, ?)",
-		fmt.Sprintf("SP%d", time.Now().UnixNano()), define.ServiceCategoryProduct).Error)
-	serviceID := testhelpers.LastInsertID(testDB)
-	t.Cleanup(func() { testDB.Exec("DELETE FROM service WHERE id = ?", serviceID) })
-	planID := f.seed(t, "order_plan", map[string]any{"branch_id": f.tn.BranchID})
-	osuID := f.seed(t, "order_service_used", map[string]any{"order_plan_id": planID, "service_id": serviceID,
-		"branch_id": f.tn.BranchID, "quantity": 1, "totalEnd": 100000, "payment": 100000,
-		"payment_status": define.ServicePaymentStatusDone})
-	f.seed(t, "payment", map[string]any{"branch_id": f.tn.BranchID, "method": 1, "amount": 100000,
-		"serviceUsed_id": osuID, "payment_for": define.PaymentForOrder})
-	withFKChecks(t)
-
-	require.NoError(t, DeleteCustomerWithPayments(testDB, f.tn.CustomerID, int(f.userID)))
-
-	require.EqualValues(t, 0, countWhere(t, "SELECT COUNT(*) FROM order_service_used WHERE id = ?", osuID),
-		"dòng dịch vụ của khách đã xoá phải bị dọn")
 }
