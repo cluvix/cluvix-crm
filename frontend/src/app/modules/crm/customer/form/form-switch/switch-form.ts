@@ -9,10 +9,10 @@ import { isDepartmentReceptionist } from '@/core/services/auth';
 import { CustomerService } from '@/core/services/crm/customer.service';
 import { BaseApiService } from '@/share/services/base-api.service';
 import { BaseSignalForm } from '@/share/base/base-signal-form';
-import { SCHEDULETIME_OPTIONS } from '@/define';
 import { FormShareImports } from '@/share/import/form-share-imports';
 
-/** 13 control của `buildForm()` bản Reactive Forms cũ, THEO ĐÚNG THỨ TỰ khai báo.
+/** Các control của `buildForm()` bản Reactive Forms cũ, THEO ĐÚNG THỨ TỰ khai báo (trừ
+ * `schedule_time`/`bookType` đã bỏ khỏi form 2026-11-01).
  *
  * ⚠ Whitelist ở đây quan trọng hơn mọi form trước: BE `CreateCustomerSwitch`
  * (`crm/customer/handler/customer.go:458`) **clone toàn bộ bản ghi khách cũ rồi override theo TỪNG KEY
@@ -27,8 +27,6 @@ const PAYLOAD_FIELDS_ALWAYS = [
   'created_day',
   'note',
   'appointment_date',
-  'schedule_time',
-  'bookType',
   'content',
   // story-43 (E6 bỏ company): `source_id`/`type_service_id` không còn khoá theo "đã chọn thương
   // hiệu" (xem lịch sử ở PAYLOAD_FIELDS_AFTER_COMPANY, epic fe-remove-company-picker) — luôn gửi.
@@ -57,8 +55,6 @@ interface SwitchFormModel {
   /** `<textarea pTextarea>` → seed `null` (gotcha #9 không áp cho TEXTAREA) */
   note: string | null;
   appointment_date: Date | null;
-  schedule_time: number | null;
-  bookType: number | null;
   content: string | null;
 }
 
@@ -71,8 +67,6 @@ function emptySwitchModel(): SwitchFormModel {
     created_day: null,
     note: null,
     appointment_date: null,
-    schedule_time: null,
-    bookType: null,
     content: null,
   };
 }
@@ -92,13 +86,6 @@ export class SwitchForm extends BaseSignalForm<SwitchFormModel> {
   minDate: Date = this.timezoneService.todayStart();
   maxDate: Date = this.timezoneService.todayEnd();
   customer!: CustomerModel;
-  bookTypeCategories: any[] = [
-    { name: 'Đặt trước', nameKey: 'crm.customer.book_type_pre', value: 1, key: 'dTr' },
-    { name: 'Phát sinh', nameKey: 'common.label.walk_in', value: 2, key: 'pSi' },
-    { name: 'Dự kiến', nameKey: 'common.label.planned', value: 3, key: 'dKi' },
-  ]; // phân loại đặt hẹn
-  selectedBookType: number = 1; // mặc định là đặt trước
-  protected readonly SCHEDULETIME_OPTIONS = SCHEDULETIME_OPTIONS;
 
   /** Bản cũ thêm `Validators.required` cho `appointment_date` khi user thuộc bộ phận Lễ tân. */
   private readonly isReceptionist = isDepartmentReceptionist();
@@ -111,13 +98,12 @@ export class SwitchForm extends BaseSignalForm<SwitchFormModel> {
   }
 
   /** Override HOÀN TOÀN — bản cũ `initialForm(this.customer)` rồi `buildForm(model)` chỉ đọc `created_day`
-   * và `bookType` từ khách cũ, mọi control khác khởi tạo `null` cứng. Giữ nguyên. */
+   * từ khách cũ, mọi control khác khởi tạo `null` cứng. (`bookType`/`schedule_time` đã bỏ khỏi form.) */
   override ngOnInit(): void {
     const cust = (this.customer ?? {}) as any;
     const obj: SwitchFormModel = {
       ...emptySwitchModel(),
       created_day: cust.created_day ?? null,
-      bookType: cust.bookType ?? this.selectedBookType,
     };
     this.model.set(obj);
   }

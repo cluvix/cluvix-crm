@@ -10,11 +10,7 @@ import { AppointmentService } from '@/core/services/crm/appointment.service';
 import { branchActiveId } from '@/core/services/auth';
 import { BaseSignalForm } from '@/share/base/base-signal-form';
 import { FormShareImports } from '@/share/import/form-share-imports';
-import {
-  APPOINTMENT_BOOK_TYPE_OPTIONS,
-  APPOINTMENT_TYPE_SELECT,
-  SCHEDULETIME_OPTIONS,
-} from '@/define';
+import { APPOINTMENT_TYPE_SELECT } from '@/define';
 import { NoteTemplateHelperService } from '@/indexeddb/config/components/note-template';
 import { ServicesGroupedAutocompleteFormControl } from '@/indexeddb/config/components/services';
 
@@ -23,14 +19,15 @@ import { ServicesGroupedAutocompleteFormControl } from '@/indexeddb/config/compo
  * (`rootField.x` trả `undefined`, không phải FieldTree, nếu giá trị hiện tại của field đó là `undefined`
  * — kể cả khi object CÓ key đó). Seed toàn bộ field `buildForm()` gốc (dòng 259-282) bằng `null`/`[]`,
  * KHÔNG field nào `undefined` — xem gotcha #1 `skill/frontend/angular22.md`.
+ * `schedule_time`/`convert_id`/`bookType` đã bỏ khỏi form (2026-11-01) ⇒ không seed: tạo mới để NULL,
+ * sửa thì giá trị cũ đi theo model gốc (BE chỉ ghi field khác nil) nên không bị xoá.
  */
 function emptyAppointmentModel(): AppointmentModel {
   return {
     content: null, contentPrivate: null, service_id: null,
     customer_id: null, appointment_type_id: null, branch_id: null, appointment_date: null,
-    schedule_time: null,
-    type_service_id: null, bookType: null, source_id: null,
-    revenue_id: null, convert_id: null, customer_data: [], updated_at: null,
+    type_service_id: null, source_id: null,
+    revenue_id: null, customer_data: [], updated_at: null,
   } as unknown as AppointmentModel;
 }
 
@@ -48,8 +45,6 @@ export class FormAppointmentV2 extends BaseSignalForm<AppointmentModel> {
   appointment!: AppointmentModel;
   customer!: CustomerModel;
   customerServicesData = signal<any[]>([]);
-  protected readonly SCHEDULETIME_OPTIONS = SCHEDULETIME_OPTIONS;
-  protected readonly APPOINTMENT_BOOK_TYPE_OPTIONS = APPOINTMENT_BOOK_TYPE_OPTIONS;
 
   constructor() {
     super();
@@ -78,7 +73,6 @@ export class FormAppointmentV2 extends BaseSignalForm<AppointmentModel> {
         branch_id: branchActiveId(),
         appointment_date: this.today,
         customer_id: this.customer?.id ?? null,
-        bookType: this.modelService.BOOKTYPE_DATTRUOC,
         source_id: this.customer?.source_id ?? null,
         revenue_id: this.customer?.payment_user_id ?? null,
         type_service_id: this.customer?.type_service_id ?? null,

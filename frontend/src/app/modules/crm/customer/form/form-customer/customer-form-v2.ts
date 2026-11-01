@@ -34,7 +34,6 @@ import { UtilsService } from '@/share/services/utils.service';
 import {
   CUSTOMER_CONNECT_OPTION,
   GENDER_OPTIONS,
-  SCHEDULETIME_OPTIONS,
 } from '@/define';
 
 import { FormShareImports } from '@/share/import/form-share-imports';
@@ -50,9 +49,7 @@ import { EthnicityAutocompleteFormControl } from '@/indexeddb/config/components/
  * ghi chú khách khi tạo.
  */
 export interface CustomerFormModel extends CustomerModel {
-  bookType?: number | null;
   appointment_type_id?: number | null;
-  schedule_time?: number | null;
   content?: string | null;
   noteCustomer?: string | null;
 }
@@ -78,7 +75,7 @@ const PAYLOAD_FIELDS = [
   'payment_user_id', 'old_code', 'created_day',
   'connect_id',
   'appointment_date', 'appointment_type_id',
-  'schedule_time', 'bookType', 'content', 'updated_at',
+  'content', 'updated_at',
   'emr_id_card_number',
   'emr_permanent_address', 'emr_house_number', 'noteCustomer',
 ] as const;
@@ -134,7 +131,7 @@ function emptyCustomerModel(): CustomerFormModel {
     connect_id: null,
     appointment_date: null,
     appointment_type_id: null,
-    schedule_time: null, bookType: null, content: null, updated_at: null,
+    content: null, updated_at: null,
     emr_permanent_address: null,
     noteCustomer: null,
   } as unknown as CustomerFormModel;
@@ -180,12 +177,6 @@ export class CustomerFormV2 extends BaseSignalForm<CustomerFormModel> {
   modelService = inject(CustomerService) as unknown as CustomerService & BaseApiService<CustomerFormModel>;
   wardService = inject(LocationWardService);
   maxDate!: Date;
-  bookTypeCategories: any[] = [
-    { name: 'Đặt trước', nameKey: 'crm.customer.book_type_pre', value: 1, key: 'dTr' },
-    { name: 'Phát sinh', nameKey: 'common.label.walk_in', value: 2, key: 'pSi' },
-    { name: 'Dự kiến', nameKey: 'common.label.planned', value: 3, key: 'dKi' },
-  ]; // phân loại đặt hẹn
-  selectedBookType = 1; // mặc định là đặt trước
   selectedDateBirthday!: any;
   selectedDateCreatedDay!: any;
   customer!: CustomerFormModel;
@@ -197,7 +188,6 @@ export class CustomerFormV2 extends BaseSignalForm<CustomerFormModel> {
   readonly CUSTOMIZE_FORM_LEAD_ID = 2;
   readonly activeTab = signal<string | number>('0');
   protected readonly genderOptions = translateOptions(GENDER_OPTIONS);
-  protected readonly SCHEDULETIME_OPTIONS = SCHEDULETIME_OPTIONS;
   protected readonly CUSTOMER_CONNECT_OPTION = CUSTOMER_CONNECT_OPTION;
   private utilsService = inject(UtilsService);
   private controlFieldInTableCache = inject(ControlFieldInTableCacheService);
@@ -287,8 +277,7 @@ export class CustomerFormV2 extends BaseSignalForm<CustomerFormModel> {
       this.isFieldInvalid(this.rootField.address_other!),
     appointment:
       this.isFieldInvalid(this.rootField.appointment_date!) ||
-      this.isFieldInvalid(this.rootField.content!) ||
-      this.isFieldInvalid(this.rootField.schedule_time!),
+      this.isFieldInvalid(this.rootField.content!),
   }));
 
   override ngOnInit(): void {
@@ -300,7 +289,6 @@ export class CustomerFormV2 extends BaseSignalForm<CustomerFormModel> {
         branch_id: activeBranch && branchListId().includes(activeBranch) ? activeBranch : null,
         old_code: null,
         country_id: this.modelService.VIETNAM,
-        bookType: this.selectedBookType,
         phone: this.dialogConfig?.data?.phone || null,
       };
 
@@ -327,7 +315,6 @@ export class CustomerFormV2 extends BaseSignalForm<CustomerFormModel> {
       // Bản gốc khai các control này bằng `null` cứng, KHÔNG lấy từ model (dòng 598-609, 632).
       appointment_date: null,
       appointment_type_id: null,
-      schedule_time: null,
       content: null,
       noteCustomer: null,
     };

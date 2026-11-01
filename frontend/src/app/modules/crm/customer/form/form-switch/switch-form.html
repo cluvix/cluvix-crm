@@ -15,8 +15,7 @@
             <i class="pi pi-calendar mr-1"></i>
             <span class="whitespace-nowrap">{{ 'common.label.checkin_appointment' | translate }}</span>
             @if (isFieldInvalid(rootField.appointment_date!) ||
-            isFieldInvalid(rootField.content!) ||
-            isFieldInvalid(rootField.schedule_time!)) {
+            isFieldInvalid(rootField.content!)) {
               <span class="text-red-500">!</span>
             }
           </p-tab>
@@ -117,37 +116,6 @@
                   ></p-datepicker>
                   <label for="appointment_date">{{ 'common.label.checkin_appointment' | translate }}</label>
                 </p-floatlabel>
-              </div>
-              <div class="col-span-12 lg:col-span-4 ">
-                <p-floatlabel variant="on">
-                  <p-select
-                    appendTo="body"
-                    [class.ng-invalid]="isFieldInvalid(rootField.schedule_time!)"
-                    [options]="SCHEDULETIME_OPTIONS"
-                    [resetFilterOnHide]="true"
-                    [showClear]="true"
-                    class="ng-dirty"
-                    [emptyFilterMessage]="'common.label.no_results' | translate"
-                    [formField]="$any(rootField.schedule_time!)"
-                    id="schedule_time"
-                    inputId="schedule_time"
-                    optionLabel="label"
-                    optionValue="value"
-                  ></p-select>
-                  <label for="schedule_time">{{ 'common.label.expected_time' | translate }}</label>
-                </p-floatlabel>
-              </div>
-              <div class="col-span-12 flex flex-wrap gap-3 field-checkbox">
-                @for (category of bookTypeCategories; track $index) {
-                  <div class="flex align-center">
-                    <p-radiobutton
-                      [inputId]="category.key"
-                      [value]="category.value"
-                      [formField]="$any(rootField.bookType!)"
-                    ></p-radiobutton>
-                    <label [for]="category.key" class="ml-2">{{ (category.nameKey || category.name) | translate }}</label>
-                  </div>
-                }
               </div>
               <div class="col-span-12 ">
                 <p-floatlabel variant="on">

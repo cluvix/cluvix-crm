@@ -27,7 +27,7 @@
     </div>
 
     <!-- Ngày đặt hẹn -->
-    <div class="col-span-12 lg:col-span-3">
+    <div class="col-span-12 lg:col-span-4">
       <p-floatlabel variant="on" class="w-full">
         <p-datepicker
           class="w-full ng-dirty"
@@ -42,24 +42,8 @@
       </p-floatlabel>
     </div>
 
-    <!-- Thời gian dự kiến -->
-    <div class="col-span-12 lg:col-span-3">
-      <p-floatlabel variant="on" class="w-full">
-        <p-select
-          appendTo="body"
-          class="w-full ng-dirty"
-          [formField]="rootField.schedule_time!"
-          [options]="SCHEDULETIME_OPTIONS"
-          inputId="schedule_time"
-          [showClear]="true"
-          [class.ng-invalid]="isFieldInvalid(rootField.schedule_time!)"
-        ></p-select>
-        <label>{{ 'common.label.expected_time' | translate }}</label>
-      </p-floatlabel>
-    </div>
-
     <!-- Chi nhánh -->
-    <div class="col-span-12 lg:col-span-3">
+    <div class="col-span-12 lg:col-span-4">
       <p-floatlabel variant="on" class="w-full">
         <app-branch-form-control
           class="w-full ng-dirty"
@@ -73,7 +57,7 @@
     </div>
 
     <!-- Nguồn khách -->
-    <div class="col-span-12 lg:col-span-3">
+    <div class="col-span-12 lg:col-span-4">
       <p-floatlabel variant="on" class="w-full">
         <app-source-autocomplete-form-control
           class="w-full ng-dirty"
@@ -84,7 +68,7 @@
     </div>
 
     <!-- Nhóm dịch vụ -->
-    <div class="col-span-12 lg:col-span-4">
+    <div class="col-span-12 lg:col-span-6">
       <p-floatlabel variant="on" class="w-full">
         <app-service-type-form-control
           class="w-full ng-dirty"
@@ -95,22 +79,8 @@
       </p-floatlabel>
     </div>
 
-    <!-- Convert -->
-    <div class="col-span-12 lg:col-span-4">
-      <p-floatlabel variant="on" class="w-full">
-        <app-department-user-form-control
-          class="w-full ng-dirty"
-          [formField]="rootField.convert_id!"
-          [branchId]="currentBranchId()"
-          [activeOnly]="!isEditMode()"
-          [department]="11"
-        />
-        <label>{{ 'common.label.convert' | translate }}</label>
-      </p-floatlabel>
-    </div>
-
     <!-- Tư vấn viên -->
-    <div class="col-span-12 lg:col-span-4">
+    <div class="col-span-12 lg:col-span-6">
       <p-floatlabel variant="on" class="w-full">
         <app-user-form-control
           class="w-full ng-dirty"
@@ -119,22 +89,6 @@
         ></app-user-form-control>
         <label>{{ 'common.label.consultant' | translate }}</label>
       </p-floatlabel>
-    </div>
-
-    <!-- Radio chọn loại lịch -->
-    <div class="col-span-12 flex flex-wrap items-center justify-between gap-3 pt-2">
-      <div class="flex flex-wrap gap-5">
-        @for (category of APPOINTMENT_BOOK_TYPE_OPTIONS; track category.value) {
-          <div class="flex items-center">
-            <p-radiobutton
-              [inputId]="category.key"
-              [value]="category.value"
-              [formField]="rootField.bookType!"
-            ></p-radiobutton>
-            <label [for]="category.key" class="ml-2">{{ (category.labelKey || category.label) | translate }}</label>
-          </div>
-        }
-      </div>
     </div>
 
     <!-- Nội dung -->

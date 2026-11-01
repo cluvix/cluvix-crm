@@ -115,22 +115,6 @@ export const APPOINTMENT_STATUS_MAP = APPOINTMENT_STATUS_OPTIONS.reduce(
   {} as Record<number, appointmentStatusInfo>,
 );
 
-export const SCHEDULETIME_SELECT = {
-  HALF_HOUR: 1800,
-  ONE_HOUR: 3600,
-  ONE_AND_A_HALF_HOUR: 5400,
-  TWO_HOUR: 7200,
-  THREE_HOUR: 10800,
-} as const;
-
-export const SCHEDULETIME_OPTIONS = [
-  { label: '30 phút', labelKey: 'define.appointment.schedule_time.half_hour', value: SCHEDULETIME_SELECT.HALF_HOUR },
-  { label: '1 giờ', labelKey: 'define.appointment.schedule_time.one_hour', value: SCHEDULETIME_SELECT.ONE_HOUR },
-  { label: '1 giờ 30 phút', labelKey: 'define.appointment.schedule_time.one_and_half_hour', value: SCHEDULETIME_SELECT.ONE_AND_A_HALF_HOUR },
-  { label: '2 giờ', labelKey: 'define.appointment.schedule_time.two_hour', value: SCHEDULETIME_SELECT.TWO_HOUR },
-  { label: '3 giờ', labelKey: 'define.appointment.schedule_time.three_hour', value: SCHEDULETIME_SELECT.THREE_HOUR },
-];
-
 export const APPOINTMENT_BOOK_TYPE_SELECT = {
   BOOK_TYPE_DAT_TRUOC: 1,
   BOOK_TYPE_PHAT_SINH: 2,

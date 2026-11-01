@@ -29,7 +29,6 @@ import {AppointmentReasonHelperService} from '@/indexeddb/config/components/appo
 
 @Service()
 export class AppointmentService extends BaseApiService<AppointmentModel> {
-  public readonly BOOKTYPE_DATTRUOC: number = 1;
   protected override endpoint = 'appointment';
   protected override dateFields = [];
   protected override unixTimesTampFields = [
