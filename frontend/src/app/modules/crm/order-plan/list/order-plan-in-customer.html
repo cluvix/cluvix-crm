@@ -119,19 +119,24 @@
           {{ 'common.label.subtotal' | translate }} <i class="pCalculator block">(1)</i>
         </th>
       }
+      @if (isColVisible('vat_amount')()) {
+        <th class="min-w-[110px]">
+          {{ 'crm.order_plan.form.vat' | translate }}<i class="pCalculator block">(2)</i>
+        </th>
+      }
       @if (isColVisible('payment')()) {
         <th class="min-w-[130px]">
-          {{ 'common.status.paid' | translate }}<i class="pCalculator block">(2)</i>
+          {{ 'common.status.paid' | translate }}<i class="pCalculator block">(3)</i>
         </th>
       }
       @if (isColVisible('refundServiceTotal')()) {
         <th class="min-w-[130px]">
-          {{ 'common.label.service_refund' | translate }}<i class="pCalculator block">(3)</i>
+          {{ 'common.label.service_refund' | translate }}<i class="pCalculator block">(4)</i>
         </th>
       }
       @if (isColVisible('conLai')()) {
         <th class="min-w-[130px]">
-          {{ 'crm.order_plan.form.outstanding_balance' | translate }}<i class="pCalculator block">(4)=1-2-3</i>
+          {{ 'crm.order_plan.form.outstanding_balance' | translate }}<i class="pCalculator block">(5)=1+2-3</i>
         </th>
       }
       @if (isColVisible('tuVan')()) {
@@ -327,6 +332,11 @@
           {{ model.totalEnd | currencyFormat }}
         </td>
       }
+      @if (isColVisible('vat_amount')()) {
+        <td class="text-blue-500">
+          {{ model.vat_amount || 0 | currencyFormat }}
+        </td>
+      }
 
       @if (isColVisible('payment')()) {
         <td class="text-blue-500">
@@ -340,7 +350,7 @@
       }
       @if (isColVisible('conLai')()) {
         <td class="text-blue-500">
-          {{ +model.totalEnd - +model.payment | currencyFormat }}
+          {{ rowDebt(model) | currencyFormat }}
         </td>
       }
       @if (isColVisible('tuVan')() && rowgroup) {
@@ -437,6 +447,11 @@
           <b class="text-blue-500">{{ getTotal('totalEnd') | currencyFormat }}</b>
         </td>
       }
+      @if (isColVisible('vat_amount')()) {
+        <td>
+          <b class="text-blue-500">{{ getTotalVat() | currencyFormat }}</b>
+        </td>
+      }
       @if (isColVisible('payment')()) {
         <td>
           <b class="text-blue-500">{{ getPayment('payment') | currencyFormat }}</b>
@@ -449,7 +464,7 @@
       }
       @if (isColVisible('conLai')()) {
         <td>
-          <b class="text-blue-500">{{ getTotal('totalEnd') - getPayment('payment') | currencyFormat }}</b>
+          <b class="text-blue-500">{{ getTotal('totalEnd') + getTotalVat() - getPayment('payment') | currencyFormat }}</b>
         </td>
       }
       @if (isColVisible('tuVan')()) {

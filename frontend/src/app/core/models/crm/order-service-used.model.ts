@@ -37,6 +37,8 @@ export interface OrderServiceUsedRow {
   discountServiceLock: number | null;
   unitName: string | null;
   rank_discount_percent: number | null;
+  /** Tiền VAT của dòng = round(totalEnd × % VAT đơn / 100) — BE tính lại và đối chiếu (lệch > 1đ ⇒ chặn). */
+  vat_amount: number | null;
 
   // ===== FE-only, KHÔNG gửi BE (loại ở getPayload) =====
   /** Khoá ổn định của dòng — `dataKey` cho p-table. `id` không dùng được vì dòng mới có id = null. */
@@ -72,7 +74,8 @@ export interface OrderServiceUsedModel extends Identifiable {
   discountServiceLock?: number; // Số tiền giảm trừ vào doanh số do khoá dịch vụ
   rank_discount_percent?: number; // % giảm theo hạng thành viên
   rank_discount_amount?: number; // Số tiền giảm theo hạng thành viên
-  totalEnd?: number; // Tổng tiền cần thanh toán
+  totalEnd?: number; // Thành tiền TRƯỚC thuế — phải thu = totalEnd + vat_amount
+  vat_amount?: number; // Tiền VAT của dòng (theo mức VAT của đơn)
   payment?: number;
   broker_id?: number; // CTV giới thiệu (copy từ OTP, NULL = không tính hoa hồng)
   status_commission?: number;

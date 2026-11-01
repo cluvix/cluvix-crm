@@ -22,13 +22,21 @@ var serviceDebtKeySearch = []string{
 	"customer.fullname", "customer.code", "customer.phone", "order_service_used.code",
 }
 
-// serviceDebtPredicate — "dịch vụ còn nợ". Viết dạng `(<biểu thức>) = 1` để khớp chỉ mục hàm idx_osu_debt_day nếu có;
-// cột NULL ⇒ NULL ⇒ loại (như ERP).
-const serviceDebtPredicate = "(order_service_used.totalEnd <> order_service_used.payment) = 1"
+// osuPayable — phải thu của dòng dịch vụ (bmad/order-vat, phương án B): totalEnd là tiền TRƯỚC thuế, phiếu thu
+// (payment) là tiền CÓ thuế ⇒ công nợ dòng = (totalEnd + vat_amount) − payment. vat_amount NOT NULL DEFAULT 0 ⇒
+// cố ý KHÔNG COALESCE: totalEnd NULL vẫn ra NULL, giữ ngữ nghĩa predicate như ERP. Dòng cũ vat_amount = 0 ⇒
+// số liệu y như trước khi có VAT.
+const osuPayable = "(order_service_used.totalEnd + order_service_used.vat_amount)"
+
+// serviceDebtPredicate — "dịch vụ còn nợ" = phải thu (có VAT) ≠ đã thu. Viết dạng `(<biểu thức>) = 1` để khớp
+// chỉ mục hàm nếu sau này thêm (biểu thức chỉ mục phải là CHÍNH biểu thức này, kể cả vế vat_amount); cột NULL ⇒
+// NULL ⇒ loại (như ERP).
+const serviceDebtPredicate = "(" + osuPayable + " <> order_service_used.payment) = 1"
 
 type serviceDebtTotals struct {
 	Total        int64           `gorm:"column:total"`
 	TotalEnd     decimal.Decimal `gorm:"column:totalEnd"`
+	VatAmount    decimal.Decimal `gorm:"column:vatAmount"`
 	TotalPayment decimal.Decimal `gorm:"column:totalPayment"`
 	TotalDebt    decimal.Decimal `gorm:"column:totalDebt"`
 	TotalDeposit decimal.Decimal `gorm:"column:totalDeposit"`
@@ -127,7 +135,8 @@ func (h *Handler) serviceDebtQueryPlan(c *gin.Context, withCustomer bool, from, 
 	}
 	q = q.Where("service.serviceCategory_id IN ?", []int{define.ServiceCategoryService, define.ServiceCategoryTreatment}).
 		Where(serviceDebtPredicate).
-		// Khoá dịch vụ (isLock=2) đặt totalEnd = payment ⇒ predicate đã tự loại; ghi tường minh cho đúng ý định.
+		// Khoá dịch vụ (isLock=2) chốt totalEnd + vat_amount = payment ⇒ predicate đã tự loại; ghi tường minh cho
+		// đúng ý định.
 		Where("order_service_used.isLock != ?", define.ServiceUsedIsLock)
 
 	q = query.ApplyFilter(c, q, "branch_id", "order_service_used.branch_id")
@@ -185,8 +194,8 @@ func (h *Handler) ServiceDebts(c *gin.Context) {
 		q := serviceDebtSort(c, h.serviceDebtQueryPlan(c, withCustomer, from, to, serviceDebtPlanPage)).
 			Select(`order_service_used.id, order_service_used.code,
 				order_service_used.service_id, order_service_used.customer_id,
-				order_service_used.totalEnd, order_service_used.payment,
-				order_service_used.totalEnd - order_service_used.payment AS debt,
+				order_service_used.totalEnd, order_service_used.vat_amount, order_service_used.payment,
+				` + osuPayable + ` - order_service_used.payment AS debt,
 				order_service_used.quantity, order_service_used.branch_id,
 				order_service_used.created_day`)
 		result = pagination.PaginateWithTotal(c, q, &items, totals.Total)
@@ -204,6 +213,7 @@ func (h *Handler) ServiceDebts(c *gin.Context) {
 		"_meta": result.Meta,
 		"total": gin.H{
 			"totalEnd":     totals.TotalEnd,
+			"vatAmount":    totals.VatAmount,
 			"totalPayment": totals.TotalPayment,
 			"totalDebt":    totals.TotalDebt,
 			"totalDeposit": totals.TotalDeposit,
@@ -211,7 +221,7 @@ func (h *Handler) ServiceDebts(c *gin.Context) {
 	})
 }
 
-// serviceDebtSummary — dòng tổng (đếm + 3 tổng tiền) VÀ totalDeposit trong MỘT lượt đọc osu.
+// serviceDebtSummary — dòng tổng (đếm + 4 tổng tiền) VÀ totalDeposit trong MỘT lượt đọc osu.
 //
 // totalDeposit = tổng cọc của các KHÁCH (mỗi khách 1 lần) có dịch vụ còn nợ theo ĐÚNG bộ lọc danh sách. Bản
 // trước chạy 2 câu riêng trên cùng bộ lọc (tổng: 1 lượt quét; cọc: `customer WHERE id IN (subquery)` = lượt
@@ -225,8 +235,9 @@ func (h *Handler) serviceDebtSummary(c *gin.Context, withCustomer bool, from, to
 		Select(`order_service_used.customer_id,
 			COUNT(*) AS cnt,
 			SUM(order_service_used.totalEnd) AS te,
+			SUM(order_service_used.vat_amount) AS vat,
 			SUM(order_service_used.payment) AS pay,
-			SUM(order_service_used.totalEnd - order_service_used.payment) AS debt`).
+			SUM(` + osuPayable + ` - order_service_used.payment) AS debt`).
 		Group("order_service_used.customer_id")
 	// Lỗi gắn vào câu con (vd đọc phạm vi telesale lỗi — fail-closed) KHÔNG tự lan ra câu ngoài khi câu con
 	// được nhúng làm bảng dẫn xuất ⇒ kiểm tay, nếu không sẽ chạy câu THIẾU vế phạm vi.
@@ -237,6 +248,7 @@ func (h *Handler) serviceDebtSummary(c *gin.Context, withCustomer bool, from, to
 		Joins("LEFT JOIN customer dep ON dep.id = g.customer_id").
 		Select(`COALESCE(SUM(g.cnt), 0) AS total,
 			COALESCE(SUM(g.te), 0) AS totalEnd,
+			COALESCE(SUM(g.vat), 0) AS vatAmount,
 			COALESCE(SUM(g.pay), 0) AS totalPayment,
 			COALESCE(SUM(g.debt), 0) AS totalDebt,
 			COALESCE(SUM(dep.totalDeposit), 0) AS totalDeposit`).

@@ -22,6 +22,12 @@ describe('FormPayment.getMaxAmount (R-2)', () => {
     expect(maxAmount(su, { id: 0, amount: 0 })).toBe(6_000_000);
   });
 
+  it('có VAT: trần = (totalEnd + vat_amount) − payment', () => {
+    expect(maxAmount({ totalEnd: 10_000_000, vat_amount: 1_000_000, payment: 4_000_000 }, { id: 0, amount: 0 })).toBe(
+      7_000_000,
+    );
+  });
+
   it('sửa phiếu: cộng lại số tiền đang lưu của chính phiếu', () => {
     expect(maxAmount({ totalEnd: 10_000_000, payment: 4_000_000 }, { id: 7, amount: 1_500_000 })).toBe(7_500_000);
   });

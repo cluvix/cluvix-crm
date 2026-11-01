@@ -1,0 +1,100 @@
+<app-quick-add-panel [titleKey]="panel.titleKey">
+  <!-- `@for` theo `ctrl.rowKey()` ⇒ dựng lại khung sau mỗi lần thêm (xem `QuickEntryController`). -->
+  @for (k of [ctrl.rowKey()]; track k) {
+    <div class="grid grid-cols-12 gap-3 items-center">
+      <!-- lg: Dịch vụ 6 · SL 1 · Đơn giá 2 · CK DV 3. Dưới lg: Dịch vụ 12 | SL 3 · Đơn giá 9 | CK DV 12.
+           `min-w-0` mọi ô + p-inputnumber `fluid` ⇒ ô co theo cột, không tràn đè ô kế. -->
+      <div class="col-span-12 lg:col-span-6 min-w-0">
+        <p-floatlabel variant="on">
+          <app-services-autocomplete-form-control
+            #picker
+            [autoOptionFocus]="true"
+            (valueChange)="onServiceChange($event)"
+            (keydown.enter)="ctrl.onPickerEnter($event, !!service())"
+          />
+          <label>{{ 'common.label.service' | translate }}</label>
+        </p-floatlabel>
+      </div>
+      <div class="col-span-3 lg:col-span-1 min-w-0">
+        <p-floatlabel variant="on">
+          <p-inputnumber
+            #qty
+            [inputId]="ids.qty"
+            [formField]="$any(f.quantity)"
+            (keydown.enter)="ctrl.onEnter($event)"
+            [min]="1"
+            [maxFractionDigits]="0"
+            [fluid]="true"
+            inputStyleClass="w-full min-w-0"
+            class="w-full"
+          ></p-inputnumber>
+          <label [for]="ids.qty">{{ 'common.label.quantity' | translate }}</label>
+        </p-floatlabel>
+      </div>
+      <div class="col-span-9 lg:col-span-2 min-w-0">
+        <p-floatlabel variant="on">
+          @let range = priceRange();
+          <p-inputnumber
+            [inputId]="ids.price"
+            [formField]="$any(f.unit_price)"
+            (keydown.enter)="ctrl.onEnter($event)"
+            [min]="range && !range.locked ? range.min : 0"
+            [max]="range && !range.locked ? range.max : undefined"
+            [pTooltip]="
+              range
+                ? range.locked
+                  ? ('crm.order_plan.form.price_not_editable' | translate)
+                  : ('crm.order_plan.form.edit_price_in_range' | translate) + ' ' + (range.min | currencyFormat) + '-' + (range.max | currencyFormat)
+                : ''
+            "
+            tooltipPosition="top"
+            [fluid]="true"
+            inputStyleClass="w-full min-w-0"
+            class="w-full"
+          ></p-inputnumber>
+          <label [for]="ids.price">
+            {{ 'common.label.unit_price' | translate }}@if (unitName()) { / {{ unitName() }} }
+          </label>
+        </p-floatlabel>
+      </div>
+      <div class="col-span-12 lg:col-span-3 min-w-0">
+        <p-inputgroup>
+          <p-floatlabel variant="on" class="flex-1 min-w-0">
+            <p-inputnumber
+              [inputId]="ids.discount"
+              [formField]="$any(f.service_discount)"
+              (keydown.enter)="ctrl.onEnter($event)"
+              [min]="0"
+              [max]="discountMax()"
+              [fluid]="true"
+              inputStyleClass="w-full min-w-0 text-right"
+            ></p-inputnumber>
+            <label [for]="ids.discount">{{ 'common.label.service_discount' | translate }}</label>
+          </p-floatlabel>
+          <button
+            pButton
+            type="button"
+            severity="success"
+            class="min-w-[3rem] shrink-0"
+            [fluid]="false"
+            (click)="toggleDiscountType()"
+            [attr.aria-label]="'common.label.service_discount' | translate"
+          ><span>{{ discountType() === SERVICE_DISCOUNT_TYPE_SELECT.SERVICE_DISCOUNT_TYPE_CURRENCY ? 'đ' : '%' }}</span></button>
+        </p-inputgroup>
+      </div>
+    </div>
+    <div class="mt-3 flex flex-wrap items-center justify-end gap-3">
+      <span class="text-sm text-muted-color">
+        {{ 'common.label.subtotal' | translate }}:
+        <span class="font-semibold text-color tabular-nums">{{ subtotal() | currencyFormat }}</span>
+        @if (subtotalBeforePromotions()) {
+          <span class="text-xs">({{ 'crm.order_plan.form.quick_subtotal_hint' | translate }})</span>
+        }
+      </span>
+      <!-- `[fluid]="false"`: form cha bọc `<p-fluid>` ⇒ pButton mặc định giãn hết chiều ngang. -->
+      <button pButton type="button" [fluid]="false" [disabled]="!service()" (click)="commit()">
+        <i class="pi pi-plus"></i><span>{{ 'common.action.add' | translate }}</span>
+      </button>
+    </div>
+  }
+</app-quick-add-panel>

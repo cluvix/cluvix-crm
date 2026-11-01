@@ -11,6 +11,7 @@ import {
   Output,
   signal,
   SimpleChanges,
+  viewChild,
 } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 
@@ -48,6 +49,7 @@ import { TranslateService, TranslatePipe } from '@ngx-translate/core';
       [showClear]="true"
       appendTo="body"
       [emptyMessage]="emptyMessage"
+      [autoOptionFocus]="autoOptionFocus"
       class="w-full"
     />
   `,
@@ -63,6 +65,9 @@ export class ServicesAutocompleteFormControl implements ControlValueAccessor, On
   @Input() index?: number;
   @Input() disabled: boolean = false;
   @Input() placeholder: string = '';
+  /** Tự focus gợi ý đầu tiên khi danh sách mở ⇒ gõ tên rồi Enter là chọn luôn (ô nhập nhanh dịch vụ). Mặc định tắt. */
+  @Input() autoOptionFocus: boolean = false;
+  private readonly autoComplete = viewChild(AutoComplete);
   selectedItem: ServiceModel | null = null;
   filteredItems = signal<ServiceModel[]>([]);
   private cache = inject(ServicesCacheService);
@@ -150,6 +155,11 @@ export class ServicesAutocompleteFormControl implements ControlValueAccessor, On
     this.valueChange.emit(id);
     this.onChange(id);
     this.onTouched();
+  }
+
+  /** Đưa con trỏ vào ô tìm — khung "Thêm dịch vụ" gọi sau khi thêm dòng để chọn dịch vụ kế tiếp. */
+  focus(): void {
+    (this.autoComplete()?.inputEL()?.nativeElement as HTMLInputElement | undefined)?.focus();
   }
 
   onClear() {

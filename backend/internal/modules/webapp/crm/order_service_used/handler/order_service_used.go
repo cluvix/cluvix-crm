@@ -124,11 +124,13 @@ func (h *Handler) ListTreatmentService(c *gin.Context) {
 	var agg struct {
 		TotalDiscountOther decimal.Decimal `gorm:"column:totalDiscountOther"`
 		TotalTotalEnd      decimal.Decimal `gorm:"column:totalTotalEnd"`
+		TotalVatAmount     decimal.Decimal `gorm:"column:totalVatAmount"`
 		TotalThanhtoan     decimal.Decimal `gorm:"column:totalThanhtoan"`
 	}
 	h.buildTreatmentServiceQuery(c).
 		Select(`COALESCE(SUM(order_service_used.discount_other), 0) as totalDiscountOther,
 			COALESCE(SUM(order_service_used.totalEnd), 0) as totalTotalEnd,
+			COALESCE(SUM(order_service_used.vat_amount), 0) as totalVatAmount,
 			COALESCE(SUM(order_service_used.payment), 0) as totalThanhtoan`).
 		Offset(-1).Limit(-1).
 		Scan(&agg)
@@ -143,7 +145,7 @@ func (h *Handler) ListTreatmentService(c *gin.Context) {
 		order_service_used.unit_price,
 		order_service_used.service_discount, order_service_used.service_discount_type,
 		order_service_used.discount_other, order_service_used.rank_discount_amount,
-		order_service_used.totalEnd, order_service_used.payment,
+		order_service_used.totalEnd, order_service_used.vat_amount, order_service_used.payment,
 		order_service_used.payment_status, order_service_used.dayComplete,
 		order_service_used.created_day,
 		order_service_used.isLock,
@@ -217,6 +219,7 @@ func (h *Handler) ListTreatmentService(c *gin.Context) {
 		"object":             result,
 		"totalDiscountOther": agg.TotalDiscountOther,
 		"totalTotalEnd":      agg.TotalTotalEnd,
+		"totalVatAmount":     agg.TotalVatAmount,
 		"totalThanhtoan":     agg.TotalThanhtoan,
 	})
 }
@@ -314,12 +317,14 @@ func (h *Handler) ListServiceUsedWithAppointment(c *gin.Context) {
 	// Aggregates — CÙNG bộ lọc với danh sách (dựng lại từ cùng builder, không sort).
 	var agg struct {
 		TotalTotalEnd  decimal.Decimal `gorm:"column:totalTotalEnd"`
+		TotalVatAmount decimal.Decimal `gorm:"column:totalVatAmount"`
 		TotalThanhtoan decimal.Decimal `gorm:"column:totalThanhtoan"`
 	}
 	// Lỗi câu tổng KHÔNG được nuốt: `Scan` thất bại để `agg` ở zero-value, FE hiện tổng = 0 —
 	// nhìn y hệt một bộ lọc không có dữ liệu, không ai biết là query hỏng.
 	aggTx := h.buildServiceUsedWithAppointmentQuery(c).
 		Select(`COALESCE(SUM(order_service_used.totalEnd), 0) as totalTotalEnd,
+		COALESCE(SUM(order_service_used.vat_amount), 0) as totalVatAmount,
 		COALESCE(SUM(order_service_used.payment), 0) as totalThanhtoan`).
 		Scan(&agg)
 	if pagination.IsQueryError(aggTx.Error) {
@@ -336,8 +341,8 @@ func (h *Handler) ListServiceUsedWithAppointment(c *gin.Context) {
 		order_service_used.quantity,
 		order_service_used.unit_price,
 		order_service_used.service_discount, order_service_used.service_discount_type,
-		order_service_used.discount_other, order_service_used.totalEnd, order_service_used.payment,
-		order_service_used.payment_status, order_service_used.created_day,
+		order_service_used.discount_other, order_service_used.totalEnd, order_service_used.vat_amount,
+		order_service_used.payment, order_service_used.payment_status, order_service_used.created_day,
 		order_service_used.isLock, order_service_used.created_by, order_service_used.created_at,
 		order_service_used.updated_by, order_service_used.updated_at`)
 	result := pagination.Paginate(c, q, &items)
@@ -372,6 +377,7 @@ func (h *Handler) ListServiceUsedWithAppointment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"object":         result,
 		"totalTotalEnd":  agg.TotalTotalEnd,
+		"totalVatAmount": agg.TotalVatAmount,
 		"totalThanhtoan": agg.TotalThanhtoan,
 	})
 }
@@ -380,7 +386,7 @@ func (h *Handler) ListServiceUsedWithAppointment(c *gin.Context) {
 //
 // Giới hạn đúng tập 2 consumer đang dùng, KHÔNG trả dư (rule: chỉ select field FE cần):
 //   - SlideOver chi tiết dịch vụ điều trị (FE `treatment-service-detail-panel`);
-//   - form thanh toán (`form-payment.ts`) — cần `totalEnd`, `payment`, `refundServiceUsed`, `created_day`.
+//   - form thanh toán (`form-payment.ts`) — cần `totalEnd`, `vat_amount`, `payment`, `refundServiceUsed`, `created_day`.
 //
 // ⛔ KHÔNG thêm lại nhóm hoa hồng (`commission_*_snap`): tỷ lệ hoa hồng không hiển thị ở màn nào trong hai màn trên, để trong
 // response là rò rỉ cho bất kỳ ai mở được danh sách dịch vụ. Cần hiển thị hoa hồng → làm endpoint
@@ -389,7 +395,7 @@ const treatmentServiceDetailColumns = `id, code, customer_id, service_id, branch
 	quantity,
 	unit_price, service_discount, service_discount_type, discount_other,
 	rank_discount_amount, discountServiceLock,
-	totalEnd, payment, refundServiceUsed,
+	totalEnd, vat_amount, payment, refundServiceUsed,
 	isLock, installment_config, note, note_discount,
 	created_day, activated_at, dayComplete, dayReExploitation,
 	created_by, created_at, updated_by, updated_at`
@@ -509,6 +515,7 @@ func (h *Handler) LockServiceUsed(c *gin.Context) {
 	}
 
 	totalEnd := helpers.ToDecimal(item["totalEnd"])
+	vatAmount := helpers.ToDecimal(item["vat_amount"])
 	payment := helpers.ToDecimal(item["payment"])
 	currentIsLock := int(helpers.ToDecimal(item["isLock"]).IntPart())
 
@@ -523,15 +530,21 @@ func (h *Handler) LockServiceUsed(c *gin.Context) {
 		msg = "Mở khoá dịch vụ thành công"
 		isLockNew = define.ServiceUsedNotLock
 		updates["isLock"] = define.ServiceUsedNotLock
-		updates["totalEnd"] = totalEnd.Add(helpers.ToDecimal(item["discountServiceLock"]))
+		restored := totalEnd.Add(helpers.ToDecimal(item["discountServiceLock"]))
+		updates["totalEnd"] = restored
 		updates["discountServiceLock"] = decimal.Zero
+		// VAT tính lại theo mức VAT HIỆN TẠI của đơn trên totalEnd khôi phục (bmad/order-vat D7).
+		updates["vat_amount"] = crmService.OrderServiceUsedVat(h.DB, int(helpers.ToDecimal(item["order_plan_id"]).IntPart()), restored)
 	} else {
-		// Chưa khoá → khoá
+		// Chưa khoá → khoá: chốt phải thu = đã thu. Đã thu là tiền CÓ thuế ⇒ chia theo tỷ lệ dòng thành phần
+		// trước thuế (totalEnd mới) + phần thuế (vat_amount mới); discountServiceLock = phần trước thuế chưa thu.
 		msg = "Khoá dịch vụ thành công"
 		isLockNew = define.ServiceUsedIsLock
 		updates["isLock"] = define.ServiceUsedIsLock
-		updates["discountServiceLock"] = totalEnd.Sub(payment)
-		updates["totalEnd"] = payment
+		lockedTotalEnd, lockedVat := crmService.LockSplit(totalEnd, vatAmount, payment)
+		updates["discountServiceLock"] = totalEnd.Sub(lockedTotalEnd)
+		updates["totalEnd"] = lockedTotalEnd
+		updates["vat_amount"] = lockedVat
 	}
 
 	// Guard: nếu trạng thái không đổi → bỏ qua
@@ -555,8 +568,8 @@ func (h *Handler) LockServiceUsed(c *gin.Context) {
 		}
 		// isLock là tinyint(1), GORM tự map sang bool nên phải dùng Exec để set đúng giá trị số.
 		// Khoá lạc quan D6: bump GREATEST(now, updated_at+1) + AND updated_at=? guard chống race window.
-		result := tx.Exec("UPDATE order_service_used SET isLock=?, discountServiceLock=?, totalEnd=?, updated_at=GREATEST(?, updated_at + 1) WHERE id=? AND updated_at=?",
-			isLockNew, updates["discountServiceLock"], updates["totalEnd"], updates["updated_at"], id, current.UpdatedAt)
+		result := tx.Exec("UPDATE order_service_used SET isLock=?, discountServiceLock=?, totalEnd=?, vat_amount=?, updated_at=GREATEST(?, updated_at + 1) WHERE id=? AND updated_at=?",
+			isLockNew, updates["discountServiceLock"], updates["totalEnd"], updates["vat_amount"], updates["updated_at"], id, current.UpdatedAt)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -615,9 +628,11 @@ func (h *Handler) ServiceUsedOfCustomer(c *gin.Context) {
 	}
 	var rows []map[string]any
 	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB), "osu").Table("order_service_used osu").
-		Select("osu.id, s.name as serviceName, osu.order_plan_id, osu.branch_id, osu.totalEnd, osu.payment, osu.created_day").
+		Select("osu.id, s.name as serviceName, osu.order_plan_id, osu.branch_id, "+
+			"COALESCE(osu.totalEnd, 0) + osu.vat_amount AS payable, osu.payment, osu.created_day").
 		Joins("LEFT JOIN service s ON s.id = osu.service_id").
-		Where("osu.customer_id = ? AND osu.totalEnd != osu.payment", idCustomer).
+		// Còn nợ theo số PHẢI THU = totalEnd + VAT (bmad/order-vat D4).
+		Where("osu.customer_id = ? AND COALESCE(osu.totalEnd, 0) + osu.vat_amount != osu.payment", idCustomer).
 		Order("osu.id DESC").Limit(500).Find(&rows)
 	if pagination.IsQueryError(tx.Error) {
 		pagination.FailQuery(c, tx.Error)
@@ -627,9 +642,9 @@ func (h *Handler) ServiceUsedOfCustomer(c *gin.Context) {
 
 	result := make([]gin.H, 0, len(rows))
 	for _, r := range rows {
-		totalEnd := helpers.ToDecimal(r["totalEnd"])
+		payable := helpers.ToDecimal(r["payable"])
 		payment := helpers.ToDecimal(r["payment"])
-		money := totalEnd.Sub(payment)
+		money := payable.Sub(payment)
 		svcName, _ := r["serviceName"].(string)
 		label := fmt.Sprintf("%s - %s", svcName, helpers.FormatDecimal(h.DB, money))
 		result = append(result, gin.H{

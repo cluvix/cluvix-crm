@@ -12,6 +12,7 @@ export * from './unit.define';
 export * from './user.define';
 export * from './log.define';
 export * from './plan-service.define';
+export * from './order-vat.define';
 export * from './permission.define';
 export * from './rbac.define';
 export * from './primeng.define';

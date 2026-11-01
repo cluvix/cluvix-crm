@@ -82,42 +82,18 @@ func requireLocalized(t *testing.T, err error, key string) {
 	require.Equal(t, key, le.Key)
 }
 
-// M-9: nâng totalEnd 1tr → 1.5tr (kèm lịch trả góp mới 500k×3) sau khi đã thu đủ 1tr.
+// M-9: nâng totalEnd 1tr → 1.5tr sau khi đã thu đủ 1tr ⇒ Partly; kỳ trả góp cũ còn sót bị dọn (trả góp đã gỡ — D12).
 func TestOrderMoney_RaiseTotalEndRecalcStatusAndInstallments(t *testing.T) {
 	f := newOrderEditFx(t)
 	require.NoError(t, f.update(t, []map[string]interface{}{{
 		"id": f.osuID, "quantity": 1, "unit_price": 1_500_000, "total": 1_500_000, "totalEnd": 1_500_000,
-		"installment_config": map[string]interface{}{"period": 2, "deposit_amount": 500_000, "amount_per_period": 500_000, "period_interval_days": 30},
+		"installment_config": nil,
 	}}, nil))
 
 	require.Equal(t, define.ServicePaymentStatusPartly, f.status(t), "còn nợ 500k ⇒ Partly, không còn Done")
-	type inst struct {
-		Amount, Paid decimal.Decimal
-		Status       int
-	}
-	rows, err := testDB.Raw("SELECT amount, COALESCE(paid_amount,0), status FROM order_installment WHERE order_service_used_id = ? ORDER BY period_number", f.osuID).Rows()
-	require.NoError(t, err)
-	var got []inst
-	for rows.Next() {
-		var r inst
-		require.NoError(t, rows.Scan(&r.Amount, &r.Paid, &r.Status))
-		got = append(got, r)
-	}
-	require.NoError(t, rows.Close())
-	require.Len(t, got, 3)
-	want := []struct {
-		amount, paid int64
-		status       int
-	}{
-		{500_000, 500_000, define.InstallmentStatusPaid},
-		{500_000, 500_000, define.InstallmentStatusPaid},
-		{500_000, 0, define.InstallmentStatusUnpaid},
-	}
-	for i, w := range want {
-		requireDec(t, w.amount, got[i].Amount, "kỳ amount")
-		requireDec(t, w.paid, got[i].Paid, "kỳ paid_amount (phân bổ lại theo số đã thu)")
-		require.Equal(t, w.status, got[i].Status, "kỳ %d status", i)
-	}
+	var left int64
+	require.NoError(t, testDB.Raw("SELECT COUNT(*) FROM order_installment WHERE order_service_used_id = ?", f.osuID).Scan(&left).Error)
+	require.EqualValues(t, 0, left, "kỳ trả góp cũ phải được dọn")
 	paid, debts := f.planMoney(t)
 	requireDec(t, 1_000_000, paid, "order.paymentPlan")
 	requireDec(t, 500_000, debts, "order.debtsPlan")

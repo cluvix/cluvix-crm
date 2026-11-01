@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal, ViewEncapsulation } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { PrintService } from '@/prints/print.service';
@@ -19,6 +19,9 @@ export class PrintMultiPayment extends BasePrint implements OnInit {
   private printService = inject(PrintService);
   readonly customer = signal<CustomerModel>({});
   private destroyRef = inject(DestroyRef);
+
+  /** Chỉ in cột VAT khi có dòng nào mang VAT — phiếu của dịch vụ cũ không VAT in y như trước. */
+  readonly hasVat = computed(() => this.models().some((m) => (Number(m.vat_amount) || 0) !== 0));
 
   ngOnInit() {
     this.activatedRoute.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((queryParams: any) => {
@@ -53,6 +56,24 @@ export class PrintMultiPayment extends BasePrint implements OnInit {
     return totalEnd;
   }
 
+  calculatorVat(models: any) {
+    let totalVat = 0;
+    for (let i = 0; i < models.length; i++) {
+      totalVat += Number(models[i].vat_amount) || 0;
+    }
+    return totalVat;
+  }
+
+  /** Phải thu của 1 dòng: BE trả `total_after_vat`, thiếu thì tự cộng Thành tiền (chưa VAT) + VAT. */
+  payable(model: any): number {
+    return Number(model.total_after_vat ?? +model.totalEnd + (Number(model.vat_amount) || 0));
+  }
+
+  /** Còn lại của 1 dòng = phải thu − đã thanh toán. */
+  residual(model: any) {
+    return this.payable(model) - +model.amount;
+  }
+
   calculatorAmount(models: any) {
     let totalAmount = 0;
     for (let i = 0; i < models.length; i++) {
@@ -64,7 +85,7 @@ export class PrintMultiPayment extends BasePrint implements OnInit {
   residualTotal(models: any) {
     let totalResidual = 0;
     for (let i = 0; i < models.length; i++) {
-      totalResidual += +models[i].totalEnd - +models[i].amount;
+      totalResidual += this.residual(models[i]);
     }
     return totalResidual;
   }

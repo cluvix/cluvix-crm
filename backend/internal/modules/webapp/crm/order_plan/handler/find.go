@@ -49,11 +49,11 @@ func (h *Handler) GetOrderPlan(c *gin.Context) {
 	helpers.ParseDecimalFieldsForTables(services, "order_service_used")
 	item["orderServiceUseds"] = services
 
-	total := decimal.Zero
-	for _, svc := range services {
-		total = total.Add(helpers.ToDecimal(svc["totalEnd"]))
-	}
+	// VAT (bmad/order-vat): `total` giữ tiền TRƯỚC thuế; `total_after_vat` = phải thu của đơn.
+	total, vatTotal := sumOrderPlanServices(services)
 	item["total"] = total
+	item["vat_total"] = vatTotal
+	item["total_after_vat"] = total.Add(vatTotal)
 
 	// payment + refundServiceTotal của đơn (đơn đã qua branch scope ở trên). Story-37 (D15): bỏ vế
 	// company trong subquery — 1 thương hiệu/DB, mọi phiếu/dịch vụ của đơn đều thuộc thương hiệu đó.

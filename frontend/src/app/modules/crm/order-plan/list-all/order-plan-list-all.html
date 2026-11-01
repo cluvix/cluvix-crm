@@ -202,6 +202,12 @@
       @if (isColVisible('total')()) {
         <th class="min-w-[160px]">{{ 'crm.order_plan.list_all.total' | translate }}</th>
       }
+      @if (isColVisible('vat_total')()) {
+        <th class="min-w-[130px]">{{ 'common.label.vat_amount' | translate }}</th>
+      }
+      @if (isColVisible('total_after_vat')()) {
+        <th class="min-w-[160px]">{{ 'crm.order_plan.form.total_after_vat' | translate }}</th>
+      }
       @if (isColVisible('payment')()) {
         <th class="min-w-[160px]">{{ 'common.status.paid' | translate }}</th>
       }
@@ -301,6 +307,16 @@
           <span class="text-blue-500">{{ model.total | currencyFormat }}</span>
         </td>
       }
+      @if (isColVisible('vat_total')()) {
+        <td class="text-blue-500">
+          {{ model.vat_total || 0 | currencyFormat }}
+        </td>
+      }
+      @if (isColVisible('total_after_vat')()) {
+        <td class="text-blue-500">
+          {{ +model.total + (+model.vat_total || 0) | currencyFormat }}
+        </td>
+      }
       @if (isColVisible('payment')()) {
         <td class="text-blue-500">
           {{ model.payment | currencyFormat }}
@@ -308,7 +324,7 @@
       }
       @if (isColVisible('report-debt')()) {
         <td class="text-red-500">
-          {{ model.total - model.payment | currencyFormat }}
+          {{ +model.total + (+model.vat_total || 0) - +model.payment | currencyFormat }}
         </td>
       }
       @if (isColVisible('tuVan')()) {
@@ -400,6 +416,7 @@
                 <th class="min-w-[120px]">
                   {{ 'common.label.subtotal' | translate }}<i class="pCalculator block">(1)x(2)-(3)-(4)-(5)</i>
                 </th>
+                <th class="min-w-[100px]">{{ 'common.label.vat_amount' | translate }}</th>
               </tr>
             </ng-template>
             <ng-template #body let-index="rowIndex" let-subModel>
@@ -418,6 +435,7 @@
                 <td class="text-blue-500">{{ subModel.discount_other | currencyFormat }}</td>
                 <td class="text-blue-500">{{ subModel.rank_discount_amount | currencyFormat }}</td>
                 <td class="text-blue-500">{{ subModel.totalEnd | currencyFormat }}</td>
+                <td class="text-blue-500">{{ subModel.vat_amount || 0 | currencyFormat }}</td>
               </tr>
             </ng-template>
           </p-table>

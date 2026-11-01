@@ -63,7 +63,6 @@
 - DELETE `/api/crm/order-plan/:id` → `DeleteOrderPlan` (internal/modules/webapp/crm/order_plan/handler/handler.go).
 
 #### Payment (`/payment`)
-- GET    `/api/crm/payment/get-order-plan/:id` → `GetOrderPlan` (internal/modules/webapp/crm/payment/handler/handler.go).
 - GET    `/api/crm/payment/:id` → `GetPayment` (internal/modules/webapp/crm/payment/handler/handler.go).
 - POST   `/api/crm/payment/create-payment-order` → `CreatePaymentOrder` (internal/modules/webapp/crm/payment/handler/handler.go).
 - POST   `/api/crm/payment` → `CreatePaymentClinic` (internal/modules/webapp/crm/payment/handler/handler.go).

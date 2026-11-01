@@ -47,6 +47,7 @@ type OrderServiceUsed struct {
 	RankDiscountAmount  *decimal.Decimal ` gorm:"column:rank_discount_amount;type:decimal(20,2);default:0.00;comment:Số tiền giảm trừ theo hạng thành viên" json:"rank_discount_amount"`
 	InstallmentConfig   datatypes.JSON   `gorm:"column:installment_config;type:json;comment:Cấu hình trả góp (JSON)" json:"installment_config"`
 	TotalEnd            *decimal.Decimal ` gorm:"column:totalEnd;type:decimal(20,2);default:0.00;comment:Tổng tiền sau khi khấu trừ service_discount, discount_other" json:"totalEnd"`
+	VatAmount           decimal.Decimal  ` gorm:"column:vat_amount;type:decimal(20,2);not null;default:0.00;comment:Tiền VAT của dòng = round(totalEnd × vat_rate đơn / 100); phải thu = totalEnd + vat_amount" json:"vat_amount"`
 	Payment             *decimal.Decimal ` gorm:"type:decimal(20,2);default:0.00;comment:Số tiền đã thanh toán" json:"payment"`
 	Note                string           ` gorm:"comment:Ghi chú" json:"note"`
 	PaymentStatus       *int             ` gorm:"column:payment_status;default:1;comment:Trạng thái thanh toán" json:"payment_status"`

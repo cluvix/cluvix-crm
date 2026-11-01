@@ -97,7 +97,8 @@ func (h *Handler) attachPaymentRelations(c *gin.Context, items []map[string]inte
 	}
 	if suIds := handlerutil.CollectIDs(items, "serviceUsed_id"); len(suIds) > 0 {
 		handlerutil.AttachRelationScoped(tenant.CrossBranchLookupScope, c, h.DB, items, "serviceUsed_id", "serviceUsed",
-			"order_service_used", "id", "id, code, service_id, totalEnd, payment", suIds)
+			// vat_amount (bmad/order-vat): phải thu dòng = totalEnd + vat_amount — FE so với payment ra còn nợ.
+			"order_service_used", "id", "id, code, service_id, totalEnd, vat_amount, payment", suIds)
 	}
 	if apptIds := handlerutil.CollectIDs(items, "appointment_id"); len(apptIds) > 0 {
 		handlerutil.AttachRelationScoped(tenant.CrossBranchLookupScope, c, h.DB, items, "appointment_id", "appointment",

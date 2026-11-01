@@ -99,7 +99,7 @@ func (s *PaymentService) CreatePaymentOrderFromPayment(template *crmPaymentDao.P
 	type svcInfo struct {
 		ID         int             `gorm:"column:id"`
 		CustomerID int             `gorm:"column:customer_id"`
-		TotalEnd   decimal.Decimal `gorm:"column:totalEnd"`
+		Payable    decimal.Decimal `gorm:"column:payable"` // totalEnd + VAT (bmad/order-vat D4)
 		Payment    decimal.Decimal `gorm:"column:payment"`
 	}
 
@@ -116,7 +116,7 @@ func (s *PaymentService) CreatePaymentOrderFromPayment(template *crmPaymentDao.P
 		var svcs []svcInfo
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Table("order_service_used").
-			Select("id, customer_id, totalEnd, COALESCE(payment, 0) as payment").
+			Select("id, customer_id, "+osuPayableSQL+" AS payable, COALESCE(payment, 0) as payment").
 			Where("order_plan_id = ? AND isLock = 1", parentId).Order("id").Find(&svcs).Error; err != nil {
 			return err
 		}
@@ -130,7 +130,7 @@ func (s *PaymentService) CreatePaymentOrderFromPayment(template *crmPaymentDao.P
 		}
 
 		for _, su := range svcs {
-			amount := su.TotalEnd.Sub(su.Payment)
+			amount := su.Payable.Sub(su.Payment)
 			if !amount.IsPositive() {
 				continue
 			}
@@ -170,7 +170,7 @@ func (s *PaymentService) CreatePaymentCustomer(params map[string]interface{}, us
 }
 
 // CreatePaymentCustomerFromPayment — typed entry. ids = serviceUsed_idArr.
-// amount phải <= tổng (totalEnd - payment) các dịch vụ đã chọn; nếu trả thiếu,
+// amount phải <= tổng (phải thu − payment; phải thu = totalEnd + VAT) các dịch vụ đã chọn; nếu trả thiếu,
 // phân bổ waterfall theo created_day ASC (dịch vụ cũ trả đủ trước, dư mới
 // chảy qua dịch vụ tiếp theo — không chia tỷ lệ).
 //
@@ -204,7 +204,7 @@ func (s *PaymentService) CreatePaymentCustomerFromPayment(template *crmPaymentDa
 		var svcs []serviceUsedDebt
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Table("order_service_used").
-			Select("id, customer_id, totalEnd, COALESCE(payment, 0) as payment, created_day").
+			Select("id, customer_id, "+osuPayableSQL+" AS payable, COALESCE(payment, 0) as payment, created_day").
 			Where("id IN ?", ids).Order("id").Find(&svcs).Error; err != nil {
 			return err
 		}
@@ -236,7 +236,7 @@ func (s *PaymentService) CreatePaymentCustomerFromPayment(template *crmPaymentDa
 
 		totalRequired := decimal.Zero
 		for _, su := range svcMap {
-			totalRequired = totalRequired.Add(su.TotalEnd.Sub(su.Payment))
+			totalRequired = totalRequired.Add(su.Payable.Sub(su.Payment))
 		}
 		// amount không được vượt tổng nợ (đọc dưới khoá FOR UPDATE, đã trừ mọi
 		// payment vừa commit từ request khác) — cho phép trả thiếu, phân bổ
@@ -271,11 +271,11 @@ func serviceUsedCustomers(db *gorm.DB, where string, args ...any) ([]int, error)
 }
 
 // serviceUsedDebt — dòng order_service_used cần biết để phân bổ payment: nợ
-// còn lại (totalEnd - payment) + created_day làm khoá thứ tự waterfall.
+// còn lại (phải thu − payment; phải thu = totalEnd + VAT) + created_day làm khoá thứ tự waterfall.
 type serviceUsedDebt struct {
 	ID         int             `gorm:"column:id"`
 	CustomerID int             `gorm:"column:customer_id"`
-	TotalEnd   decimal.Decimal `gorm:"column:totalEnd"`
+	Payable    decimal.Decimal `gorm:"column:payable"`
 	Payment    decimal.Decimal `gorm:"column:payment"`
 	CreatedDay *int64          `gorm:"column:created_day"`
 }
@@ -316,7 +316,7 @@ func allocatePaymentWaterfall(ids []int, svcMap map[int]serviceUsedDebt, amount 
 			break
 		}
 		su := svcMap[id]
-		due := su.TotalEnd.Sub(su.Payment)
+		due := su.Payable.Sub(su.Payment)
 		if !due.IsPositive() {
 			continue
 		}
@@ -528,7 +528,7 @@ func (s *PaymentService) CreateRefundOrderPlanFromPayment(p *crmPaymentDao.Payme
 //
 // lens-money M-1/M-4: số dư cọc VÀ nợ còn lại của dịch vụ đều đọc + so TRONG tx, dưới khoá
 // customer → order_service_used → phiếu cọc gốc. Chuyển cọc không được vượt nợ còn lại của dịch vụ
-// (totalEnd − payment, cùng guard với CreatePaymentCustomerFromPayment) — trước đây chỉ so số dư cọc
+// (phải thu − payment, phải thu = totalEnd + VAT; cùng guard với CreatePaymentCustomerFromPayment) — trước đây chỉ so số dư cọc
 // ⇒ chuyển 5tr vào dịch vụ 1tr làm công nợ âm 4tr.
 func (s *PaymentService) MoveDepositToPaymentFromPayment(depositID int, in *crmPaymentDao.Payment, userID int) (string, error) {
 	var deposit struct {
@@ -564,7 +564,7 @@ func (s *PaymentService) MoveDepositToPaymentFromPayment(depositID int, in *crmP
 		if derefInt(su.CustomerID) != *owner {
 			return errs.ErrDepositCustomerMismatch
 		}
-		debt := su.TotalEnd.Sub(su.Payment)
+		debt := su.Payable.Sub(su.Payment)
 		if in.Amount.GreaterThan(debt) {
 			return errs.NewLocalizedError("payment_amount_too_large", in.Amount.String(), debt.String())
 		}
@@ -782,8 +782,8 @@ func (s *PaymentService) guardPaymentUpdate(tx *gorm.DB, p *crmPaymentDao.Paymen
 			if err != nil {
 				return err
 			}
-			// Nợ còn lại nếu bỏ phiếu này ra = totalEnd − payment + oldAmount.
-			room := su.TotalEnd.Sub(su.Payment).Add(oldAmount)
+			// Nợ còn lại nếu bỏ phiếu này ra = phải thu (totalEnd + VAT) − payment + oldAmount.
+			room := su.Payable.Sub(su.Payment).Add(oldAmount)
 			if p.Amount.GreaterThan(oldAmount) && p.Amount.GreaterThan(room) {
 				return errs.NewLocalizedError("payment_amount_too_large", p.Amount.String(), room.String())
 			}

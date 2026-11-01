@@ -27,7 +27,6 @@ func RegisterRoutes(crm gin.IRouter, d handler.Deps) {
 		payment.GET("/list-deposit", h.ListDeposit)
 		payment.GET("/list-refund-deposit", h.ListRefundDeposit)
 		payment.GET("/list-refund-order-plan", h.ListRefundOrderPlan)
-		payment.GET("/get-order-plan/:id", h.GetOrderPlan)
 		payment.GET("/:id", h.GetPayment)
 		// Endpoint riêng cho màn CHI TIẾT phiếu thu (SlideOver) — xem docblock GetPaymentDetail.
 		payment.GET("/:id/detail", h.GetPaymentDetail)

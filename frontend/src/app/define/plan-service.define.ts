@@ -22,3 +22,9 @@ export const PAYMENT_STATUS_OPTION = [
   { value: 4, label: 'Hoàn thành thanh toán', labelKey: 'common.label.fully_paid' },
   { value: 5, label: 'Hoàn trả dịch vụ', labelKey: 'define.payment_status.refunded' },
 ];
+
+/** `order_service_used.isLock` — khớp BE `define.ServiceUsedIsLock` (pkg/define/order_service_used.go). */
+export const ORDER_SERVICE_USED_LOCK = {
+  NOT_LOCK: 1,
+  IS_LOCK: 2,
+} as const;

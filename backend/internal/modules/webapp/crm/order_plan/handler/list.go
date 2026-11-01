@@ -112,6 +112,8 @@ func (h *Handler) ListOrderPlan(c *gin.Context) {
 		Select(`order_plan.id, order_plan.code, order_plan.orderPlanType,
 			order_plan.customer_id, order_plan.appointment_id, order_plan.branch_id,
 			COALESCE((SELECT SUM(osu.totalEnd) FROM order_service_used osu WHERE osu.order_plan_id = order_plan.id), 0) AS total,
+			COALESCE((SELECT SUM(osu.vat_amount) FROM order_service_used osu WHERE osu.order_plan_id = order_plan.id), 0) AS vat_total,
+			order_plan.vat_rate,
 			order_plan.discount_other,
 			order_plan.paymentPlan, order_plan.debtsPlan,
 			order_plan.listRevenues, order_plan.source_id,
@@ -126,8 +128,10 @@ func (h *Handler) ListOrderPlan(c *gin.Context) {
 	}
 
 	for _, item := range items {
-		// `total` là alias (không phải cột của order_plan) ⇒ Paginate không parse decimal hộ.
-		helpers.ParseDecimalFields(item, "total")
+		// `total`/`vat_total` là alias (không phải cột của order_plan) ⇒ Paginate không parse decimal hộ.
+		helpers.ParseDecimalFields(item, "total", "vat_total")
+		// VAT (bmad/order-vat): `total` giữ tiền TRƯỚC thuế; `total_after_vat` = phải thu của đơn.
+		item["total_after_vat"] = helpers.ToDecimal(item["total"]).Add(helpers.ToDecimal(item["vat_total"]))
 		// FE dùng model.payment (alias cho paymentPlan).
 		item["payment"] = item["paymentPlan"]
 	}
@@ -145,7 +149,7 @@ func (h *Handler) ListOrderPlan(c *gin.Context) {
 			var svcRows []map[string]interface{}
 			tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
 				Select(`id, order_plan_id, service_id, quantity, unit_price, service_discount,
-					discount_other, rank_discount_amount, totalEnd, payment, status, isLock`).
+					discount_other, rank_discount_amount, totalEnd, vat_amount, payment, status, isLock`).
 				Where("order_plan_id IN ?", ids).Order("id ASC").Find(&svcRows)
 			if pagination.IsQueryError(tx.Error) {
 				pagination.FailQuery(c, tx.Error)

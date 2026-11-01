@@ -11,6 +11,7 @@ import { SLIDE_OVER_IMPORTS } from '@/share/components/slide-over';
 import { BaseDetailPanel } from '@/share/base/base-detail-panel';
 import { WhitespaceControlDirective } from '@/share/directive/whitespace-control.directive';
 import { DetailShareImports } from '@/share/import/detail-share-imports';
+import { vatRateLabel } from '@/share/utils/vat-label.util';
 
 /** 1 dịch vụ con trong đơn, sau khi qua `OrderServiceUsedService.addLabel`. */
 export type OrderPlanServiceRow = OrderServiceUsedModel;
@@ -102,14 +103,28 @@ export class OrderPlanDetailPanel extends BaseDetailPanel<OrderPlanDetailView> {
 
   private round2 = (value: number) => Math.round(value * 100) / 100;
 
-  /** Tổng giá trị đơn — BE đã cộng từ `totalEnd` của các dịch vụ con. */
+  /** Tổng giá trị đơn CHƯA VAT — BE đã cộng từ `totalEnd` của các dịch vụ con. */
   readonly orderTotal = computed(() => Number(this.model().total ?? 0));
+  /** Σ VAT các dịch vụ con (`vat_total` do BE cộng); đơn trước khi có VAT = 0. */
+  readonly vatTotal = computed(() => Number(this.model().vat_total) || 0);
+  /** Có VAT ⇒ hiện thêm dòng VAT + Tổng sau VAT; đơn cũ không VAT giữ nguyên giao diện. */
+  readonly hasVat = computed(() => this.vatTotal() > 0 || !!this.model().vat_rate);
+  readonly vatRateText = computed(() =>
+    vatRateLabel(this.model().vat_rate, (key) => this.translate.instant(key)),
+  );
+  /** Số phải thu của đơn = Σ(totalEnd + vat_amount); BE trả `total_after_vat`, thiếu thì tự cộng. */
+  readonly totalAfterVat = computed(() =>
+    this.round2(Number(this.model().total_after_vat ?? this.orderTotal() + this.vatTotal())),
+  );
   readonly collected = computed(() => Number(this.model().payment ?? 0));
   readonly refunded = computed(() => Number(this.model().refundServiceTotal ?? 0));
 
-  /** KHÔNG kẹp về 0: âm = thu vượt, đó là tín hiệu kế toán cần thấy chứ không phải "đã thu đủ". */
-  readonly remaining = computed(() =>
-    this.round2(this.orderTotal() - this.collected() - this.refunded()),
-  );
+  /**
+   * Còn phải thu = phải thu (đã gồm VAT) − tổng đã thu. KHÔNG trừ thêm `refundServiceTotal`: BE tính nợ đơn =
+   * phải thu − tiền đã thu ròng, tiền hoàn đã nằm trong con số thu ròng đó — trừ lần nữa là đếm hoàn hai lần
+   * và hiện số nợ thấp hơn BE (D11b). Dòng "Đã hoàn trả" ở template chỉ để tham khảo.
+   * KHÔNG kẹp về 0: âm = thu vượt, đó là tín hiệu kế toán cần thấy chứ không phải "đã thu đủ".
+   */
+  readonly remaining = computed(() => this.round2(this.totalAfterVat() - this.collected()));
   readonly isOverpaid = computed(() => this.remaining() < 0);
 }

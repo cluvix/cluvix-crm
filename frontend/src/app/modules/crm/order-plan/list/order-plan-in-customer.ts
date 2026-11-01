@@ -72,6 +72,7 @@ export class OrderPlanInCustomer extends BaseListV2<OrderServiceUsedModel> imple
     { label: 'Đơn vị tính', labelKey: 'common.label.unit', value: 'unit' },
     { label: this.translate.instant('common.label.quantity'), value: 'quantity' },
     { label: this.translate.instant('common.label.subtotal'), value: 'totalEnd' },
+    { label: this.translate.instant('crm.order_plan.form.vat'), value: 'vat_amount' },
     { label: 'Đã thanh toán', labelKey: 'common.status.paid', value: 'payment' },
     { label: 'Hoàn dịch vụ', labelKey: 'common.label.service_refund', value: 'refundServiceTotal' },
     { label: this.translate.instant('crm.order_plan.form.outstanding_balance'), value: 'conLai' },
@@ -91,6 +92,7 @@ export class OrderPlanInCustomer extends BaseListV2<OrderServiceUsedModel> imple
     'orderServiceUseds',
     'quantity',
     'totalEnd',
+    'vat_amount',
     'payment',
     'conLai',
     'created_time',
@@ -330,6 +332,22 @@ export class OrderPlanInCustomer extends BaseListV2<OrderServiceUsedModel> imple
           return parseInt(total + '') + parseInt(b + '');
         }, 0);
     }
+  }
+
+  /**
+   * Tổng VAT các dòng đang hiển thị. Tách khỏi `getTotal` vì dòng trước khi có VAT có thể thiếu `vat_amount`
+   * (`parseInt('undefined')` = NaN làm hỏng cả tổng).
+   */
+  getTotalVat(): number {
+    return (this.models() ?? []).reduce((sum: number, row: any) => sum + (Number(row?.vat_amount) || 0), 0);
+  }
+
+  /**
+   * Còn lại của 1 dòng = phải thu (Thành tiền chưa VAT + VAT) − đã thanh toán.
+   * KHÔNG trừ `refundServiceUsed`: cột Hoàn dịch vụ chỉ để tham khảo, BE tính nợ = phải thu − đã thu (D11b).
+   */
+  rowDebt(row: any): number {
+    return +row.totalEnd + (Number(row.vat_amount) || 0) - +row.payment;
   }
 
   /**

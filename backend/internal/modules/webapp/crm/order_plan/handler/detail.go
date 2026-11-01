@@ -21,7 +21,7 @@ import (
 // Tổng tiền đơn tính từ tổng `totalEnd` của các dịch vụ con, xem `total` trong response.
 const orderPlanDetailColumns = `id, code, old_code, orderPlanType, customer_id, appointment_id,
 	branch_id, source_id,
-	discount_other, paymentPlan, debtsPlan,
+	discount_other, vat_rate, paymentPlan, debtsPlan,
 	listRevenues,
 	status, note, created_time,
 	created_by, created_at, updated_by, updated_at`
@@ -34,7 +34,7 @@ const orderPlanServiceColumns = `id, code, service_id,
 	quantity,
 	unit_price, service_discount, discount_other,
 	rank_discount_amount, discountServiceLock,
-	totalEnd, payment, refundServiceUsed,
+	totalEnd, vat_amount, payment, refundServiceUsed,
 	isLock,
 	listRevenues`
 
@@ -47,7 +47,8 @@ const orderPlanServiceColumns = `id, code, service_id,
 //     hai màn cần hai hình dạng dữ liệu khác nhau, gộp chung sẽ kéo theo cột thừa cho cả hai.
 //
 // Response giữ đúng tên khoá mà FE `OrderPlanService.addLabel` đang dùng
-// (`orderServiceUseds`, `total`, `payment`, `refundServiceTotal`). story-10 crm-standalone: bỏ 2 khoá
+// (`orderServiceUseds`, `total`, `payment`, `refundServiceTotal`). VAT (bmad/order-vat): `total` giữ tiền TRƯỚC
+// thuế (Σ totalEnd); thêm `vat_total` (Σ vat_amount) và `total_after_vat` = phải thu của đơn. story-10 crm-standalone: bỏ 2 khoá
 // mã giảm giá của đơn + CTV giới thiệu cùng module loyalty.
 func (h *Handler) GetOrderPlanDetail(c *gin.Context) {
 	// id sai định dạng là input SAI → 422. 404 dành riêng cho id hợp lệ nhưng không tồn tại/ngoài
@@ -93,17 +94,26 @@ func (h *Handler) GetOrderPlanDetail(c *gin.Context) {
 	helpers.ParseDecimalFieldsForTables(services, "order_service_used")
 	item["orderServiceUseds"] = services
 
-	total := decimal.Zero
-	for _, svc := range services {
-		total = total.Add(helpers.ToDecimal(svc["totalEnd"]))
-	}
+	total, vatTotal := sumOrderPlanServices(services)
 	item["total"] = total
+	item["vat_total"] = vatTotal
+	item["total_after_vat"] = total.Add(vatTotal)
 
 	if !h.attachOrderPlanMoney(c, item, id) {
 		return
 	}
 
 	response.Data(c, item)
+}
+
+// sumOrderPlanServices — Σ totalEnd (giá trị đơn TRƯỚC thuế) và Σ vat_amount (VAT đơn) của dịch vụ con. Dùng chung
+// cho GET /:id và /:id/detail để `total`/`vat_total` hai màn không lệch nhau.
+func sumOrderPlanServices(services []map[string]interface{}) (total, vatTotal decimal.Decimal) {
+	for _, svc := range services {
+		total = total.Add(helpers.ToDecimal(svc["totalEnd"]))
+		vatTotal = vatTotal.Add(helpers.ToDecimal(svc["vat_amount"]))
+	}
+	return total, vatTotal
 }
 
 // attachOrderPlanMoney tính tiền đã thu + đã hoàn của đơn (đơn `id` đã qua branch scope ở caller).

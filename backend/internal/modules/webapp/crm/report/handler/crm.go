@@ -60,7 +60,7 @@ func placeholders(n int) string {
 // đã ra number đúng) — thêm vào list dùng chung vẫn AN TOÀN cho 2 hàm đó vì ToDecimal(int64) giữ
 // nguyên giá trị, JSON output không đổi (đã verify qua accountant/report cùng pattern).
 var dimStatDecimalAliases = []string{
-	"totalOrderPlan", "totalRevenue", "totalPayment", "totalDeposit",
+	"totalOrderPlan", "totalVat", "totalRevenue", "totalPayment", "totalDeposit",
 	"totalRefundDeposit", "totalRefundServiceUsed", "duKienThu", "tbKhach",
 	"totalLead", "totalAppointmentNew", "totalAppointment", "totalAppointmentDen", "totalAppointmentDongY",
 }
@@ -87,7 +87,7 @@ func paginateAndRespond(c *gin.Context, rows []map[string]interface{}) {
 		"totalLead": 0, "totalAppointmentNew": 0, "totalAppointment": 0,
 		"totalAppointmentDen": 0, "totalAppointmentDongY": 0,
 	}
-	var tOrderPlan, tRevenue, tPayment, tDeposit, tRefundDeposit, tRefundService decimal.Decimal
+	var tOrderPlan, tVat, tRevenue, tPayment, tDeposit, tRefundDeposit, tRefundService decimal.Decimal
 	for _, r := range rows {
 		totals["totalLead"] = totals["totalLead"].(int) + int(helpers.ToInt64(r["totalLead"]))
 		totals["totalAppointmentNew"] = totals["totalAppointmentNew"].(int) + int(helpers.ToInt64(r["totalAppointmentNew"]))
@@ -95,6 +95,7 @@ func paginateAndRespond(c *gin.Context, rows []map[string]interface{}) {
 		totals["totalAppointmentDen"] = totals["totalAppointmentDen"].(int) + int(helpers.ToInt64(r["totalAppointmentDen"]))
 		totals["totalAppointmentDongY"] = totals["totalAppointmentDongY"].(int) + int(helpers.ToInt64(r["totalAppointmentDongY"]))
 		tOrderPlan = tOrderPlan.Add(helpers.ToDecimal(r["totalOrderPlan"]))
+		tVat = tVat.Add(helpers.ToDecimal(r["totalVat"]))
 		tRevenue = tRevenue.Add(helpers.ToDecimal(r["totalRevenue"]))
 		tPayment = tPayment.Add(helpers.ToDecimal(r["totalPayment"]))
 		tDeposit = tDeposit.Add(helpers.ToDecimal(r["totalDeposit"]))
@@ -102,12 +103,14 @@ func paginateAndRespond(c *gin.Context, rows []map[string]interface{}) {
 		tRefundService = tRefundService.Add(helpers.ToDecimal(r["totalRefundServiceUsed"]))
 	}
 	totals["totalOrderPlan"] = tOrderPlan
+	totals["totalVat"] = tVat
 	totals["totalRevenue"] = tRevenue
 	totals["totalPayment"] = tPayment
 	totals["totalDeposit"] = tDeposit
 	totals["totalRefundDeposit"] = tRefundDeposit
 	totals["totalRefundServiceUsed"] = tRefundService
-	totals["duKienThu"] = tOrderPlan.Sub(tRevenue)
+	// Dự kiến thu = phải thu (doanh số TRƯỚC thuế + VAT, bmad/order-vat) − đã thu (CÓ thuế) của cùng tập dịch vụ.
+	totals["duKienThu"] = tOrderPlan.Add(tVat).Sub(tRevenue)
 	tLead := totals["totalLead"].(int)
 	tApp := totals["totalAppointment"].(int)
 	tDen := totals["totalAppointmentDen"].(int)
@@ -245,9 +248,10 @@ func (h *Handler) dimensionStatistics(c *gin.Context, masterTable, selectCols, d
 		COALESCE(BCD.totalAppointmentDen, 0) as totalAppointmentDen,
 		COALESCE(BCD.totalAppointmentDongY, 0) as totalAppointmentDongY,
 		COALESCE(P.totalOrderPlan, 0) AS totalOrderPlan,
+		COALESCE(P.totalVat, 0) AS totalVat,
 		COALESCE(Q.totalRevenue, 0) AS totalRevenue,
 		%s
-		(COALESCE(P.totalOrderPlan, 0) - COALESCE(Q.totalRevenue, 0)) AS duKienThu,
+		(COALESCE(P.totalOrderPlan, 0) + COALESCE(P.totalVat, 0) - COALESCE(Q.totalRevenue, 0)) AS duKienThu,
 		(CASE WHEN COALESCE(BCD.totalAppointmentDongY, 0) = 0 THEN 0
 			ELSE COALESCE(P.totalOrderPlan, 0) / COALESCE(BCD.totalAppointmentDongY, 0) END) AS tbKhach
 	FROM %s m
@@ -333,7 +337,7 @@ func (h *Handler) dimensionStatistics(c *gin.Context, masterTable, selectCols, d
 		// S, T (deposit/refund deposit) không có osu link → vẫn dùng customer.source_id
 		financialSQL = fmt.Sprintf(`
 LEFT JOIN (
-	SELECT osu.`+dimCol+`, SUM(osu.totalEnd) AS totalOrderPlan
+	SELECT osu.`+dimCol+`, SUM(osu.totalEnd) AS totalOrderPlan, SUM(osu.vat_amount) AS totalVat
 	FROM order_service_used osu
 	WHERE osu.`+dimCol+` IS NOT NULL AND osu.created_day BETWEEN ? AND ?%s
 	GROUP BY osu.`+dimCol+`
@@ -378,7 +382,7 @@ WHERE COALESCE(A.totalLead,0) != 0 OR COALESCE(E.totalAppointmentNew,0) != 0
 	} else {
 		financialSQL = fmt.Sprintf(`
 LEFT JOIN (
-	SELECT customer.`+dimCol+`, SUM(osu.totalEnd) AS totalOrderPlan
+	SELECT customer.`+dimCol+`, SUM(osu.totalEnd) AS totalOrderPlan, SUM(osu.vat_amount) AS totalVat
 	FROM order_service_used osu
 	LEFT JOIN customer ON customer.id = osu.customer_id
 	WHERE customer.`+dimCol+` IS NOT NULL AND osu.created_day BETWEEN ? AND ?%s
@@ -668,12 +672,13 @@ SELECT b.id, b.name,
 	COALESCE(BCD.totalAppointmentDen, 0) AS totalAppointmentDen,
 	COALESCE(BCD.totalAppointmentDongY, 0) AS totalAppointmentDongY,
 	COALESCE(P.totalOrderPlan, 0) AS totalOrderPlan,
+	COALESCE(P.totalVat, 0) AS totalVat,
 	COALESCE(Q.totalRevenue, 0) AS totalRevenue,
 	COALESCE(RSTU.totalPayment, 0) AS totalPayment,
 	COALESCE(RSTU.totalDeposit, 0) AS totalDeposit,
 	COALESCE(RSTU.totalRefundDeposit, 0) AS totalRefundDeposit,
 	COALESCE(RSTU.totalRefundServiceUsed, 0) AS totalRefundServiceUsed,
-	(COALESCE(P.totalOrderPlan, 0) - COALESCE(Q.totalRevenue, 0)) AS duKienThu,
+	(COALESCE(P.totalOrderPlan, 0) + COALESCE(P.totalVat, 0) - COALESCE(Q.totalRevenue, 0)) AS duKienThu,
 	(CASE WHEN COALESCE(BCD.totalAppointmentDongY, 0) = 0 THEN 0
 		ELSE COALESCE(P.totalOrderPlan, 0) / COALESCE(BCD.totalAppointmentDongY, 0) END) AS tbKhach
 FROM branch b
@@ -720,7 +725,7 @@ LEFT JOIN (
 	GROUP BY App.branch_id
 ) BCD ON b.id = BCD.branch_id
 LEFT JOIN (
-	SELECT osu.branch_id, SUM(osu.totalEnd) AS totalOrderPlan
+	SELECT osu.branch_id, SUM(osu.totalEnd) AS totalOrderPlan, SUM(osu.vat_amount) AS totalVat
 	FROM order_service_used osu
 	WHERE osu.branch_id IS NOT NULL AND osu.created_day BETWEEN ? AND ?%s
 	GROUP BY osu.branch_id
@@ -810,7 +815,7 @@ WHERE COALESCE(A.totalLead,0) != 0 OR COALESCE(E.totalAppointmentNew,0) != 0
 		"totalLead": 0, "totalAppointmentNew": 0, "totalAppointment": 0,
 		"totalAppointmentDen": 0, "totalAppointmentDongY": 0,
 	}
-	var tOrderPlan, tRevenue, tPayment, tDeposit, tRefundDeposit, tRefundService decimal.Decimal
+	var tOrderPlan, tVat, tRevenue, tPayment, tDeposit, tRefundDeposit, tRefundService decimal.Decimal
 	for _, r := range rows {
 		totals["totalLead"] = totals["totalLead"].(int) + int(helpers.ToInt64(r["totalLead"]))
 		totals["totalAppointmentNew"] = totals["totalAppointmentNew"].(int) + int(helpers.ToInt64(r["totalAppointmentNew"]))
@@ -818,6 +823,7 @@ WHERE COALESCE(A.totalLead,0) != 0 OR COALESCE(E.totalAppointmentNew,0) != 0
 		totals["totalAppointmentDen"] = totals["totalAppointmentDen"].(int) + int(helpers.ToInt64(r["totalAppointmentDen"]))
 		totals["totalAppointmentDongY"] = totals["totalAppointmentDongY"].(int) + int(helpers.ToInt64(r["totalAppointmentDongY"]))
 		tOrderPlan = tOrderPlan.Add(helpers.ToDecimal(r["totalOrderPlan"]))
+		tVat = tVat.Add(helpers.ToDecimal(r["totalVat"]))
 		tRevenue = tRevenue.Add(helpers.ToDecimal(r["totalRevenue"]))
 		tPayment = tPayment.Add(helpers.ToDecimal(r["totalPayment"]))
 		tDeposit = tDeposit.Add(helpers.ToDecimal(r["totalDeposit"]))
@@ -825,6 +831,7 @@ WHERE COALESCE(A.totalLead,0) != 0 OR COALESCE(E.totalAppointmentNew,0) != 0
 		tRefundService = tRefundService.Add(helpers.ToDecimal(r["totalRefundServiceUsed"]))
 	}
 	totals["totalOrderPlan"] = tOrderPlan
+	totals["totalVat"] = tVat
 	totals["totalRevenue"] = tRevenue
 	totals["totalPayment"] = tPayment
 	totals["totalDeposit"] = tDeposit
@@ -856,7 +863,8 @@ WHERE COALESCE(A.totalLead,0) != 0 OR COALESCE(E.totalAppointmentNew,0) != 0
 	} else {
 		totals["tbKhach"] = decimal.Zero
 	}
-	totals["duKienThu"] = tOrderPlan.Sub(tRevenue)
+	// Dự kiến thu = phải thu (doanh số TRƯỚC thuế + VAT, bmad/order-vat) − đã thu (CÓ thuế) của cùng tập dịch vụ.
+	totals["duKienThu"] = tOrderPlan.Add(tVat).Sub(tRevenue)
 
 	// Pagination (in-memory)
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -938,12 +946,13 @@ SELECT gs.id, gs.name,
     COALESCE(SUM(BCD.totalAppointmentDen), 0) AS totalAppointmentDen,
     COALESCE(SUM(BCD.totalAppointmentDongY), 0) AS totalAppointmentDongY,
     COALESCE(SUM(P.totalOrderPlan), 0) AS totalOrderPlan,
+    COALESCE(SUM(P.totalVat), 0) AS totalVat,
     COALESCE(SUM(Q.totalRevenue), 0) AS totalRevenue,
     COALESCE(SUM(R.totalPayment), 0) AS totalPayment,
     COALESCE(SUM(S.totalDeposit), 0) AS totalDeposit,
     COALESCE(SUM(T.totalRefundDeposit), 0) AS totalRefundDeposit,
     COALESCE(SUM(U.totalRefundServiceUsed), 0) AS totalRefundServiceUsed,
-    (COALESCE(SUM(P.totalOrderPlan), 0) - COALESCE(SUM(Q.totalRevenue), 0)) AS duKienThu,
+    (COALESCE(SUM(P.totalOrderPlan), 0) + COALESCE(SUM(P.totalVat), 0) - COALESCE(SUM(Q.totalRevenue), 0)) AS duKienThu,
     (CASE WHEN COALESCE(SUM(BCD.totalAppointmentDongY), 0) = 0 THEN 0
         ELSE COALESCE(SUM(P.totalOrderPlan), 0) / COALESCE(SUM(BCD.totalAppointmentDongY), 0) END) AS tbKhach
 FROM (
@@ -1004,7 +1013,7 @@ LEFT JOIN (
     -- Doi chieu: cung ky thuat nay THANG that trong dimensionStatistics (ca 4 khoi o do chi
     -- tra PK customer): 1 nam 0,055s -> 0,020s. Khac nhau la o CHI PHI MOI DONG, khong phai o
     -- so luot quet — dung suy tu cai nay sang cai kia.
-    SELECT osu.source_id, SUM(osu.totalEnd) AS totalOrderPlan
+    SELECT osu.source_id, SUM(osu.totalEnd) AS totalOrderPlan, SUM(osu.vat_amount) AS totalVat
     FROM order_service_used osu
     WHERE osu.source_id IS NOT NULL AND osu.created_day BETWEEN ? AND ?%s
     GROUP BY osu.source_id

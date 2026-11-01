@@ -4,6 +4,7 @@ import (
 	crmServiceDao "erpCluvix/internal/modules/webapp/crm/service/dao"
 	"erpCluvix/pkg/define"
 	"erpCluvix/pkg/errs"
+	"erpCluvix/pkg/helpers"
 	"erpCluvix/pkg/validation"
 
 	"github.com/shopspring/decimal"
@@ -15,10 +16,10 @@ import (
 //
 //	luôn thuộc 1 OrderPlan trong flow này).
 //
-// Cross-field: payment <= totalEnd.
+// Cross-field: payment <= totalEnd + vat_amount (số phải thu của dòng — bmad/order-vat D4).
 // Number min 0: unit_price, service_discount, discount_other, total,
 //
-//	discountServiceLock, rank_discount_percent, rank_discount_amount, totalEnd, payment.
+//	discountServiceLock, rank_discount_percent, rank_discount_amount, totalEnd, vat_amount, payment.
 //
 // quantity min 1.
 // Enum: service_discount_type ∈ {1, 2}.
@@ -44,9 +45,10 @@ func validateOrderServiceUsed(svc *crmServiceDao.OrderServiceUsed) error {
 	checkOSUDecimalNonNeg(v, svc.RankDiscountPercent, "% giảm theo hạng")
 	checkOSUDecimalNonNeg(v, svc.RankDiscountAmount, "Số tiền giảm theo hạng")
 	checkOSUDecimalNonNeg(v, svc.TotalEnd, "Tổng tiền cuối")
+	checkOSUDecimalNonNeg(v, &svc.VatAmount, "Tiền VAT")
 	checkOSUDecimalNonNeg(v, svc.Payment, "Đã thanh toán")
 
-	if svc.Payment != nil && svc.TotalEnd != nil && svc.Payment.Cmp(*svc.TotalEnd) > 0 {
+	if svc.Payment != nil && svc.TotalEnd != nil && svc.Payment.Cmp(serviceUsedPayable(svc)) > 0 {
 		v.Add("Thanh toán vượt quá giá trị dịch vụ")
 	}
 
@@ -102,6 +104,42 @@ func expectedServiceUsedMoney(svc *crmServiceDao.OrderServiceUsed) (total, total
 	}
 	totalEnd = total.Sub(derefDec(svc.DiscountOther)).Sub(svc.DiscountServiceLock).Round(0)
 	return total, totalEnd
+}
+
+// vatPercent — % thuế của mức VAT đơn (define.VatRatePercent); nil / mức lạ / KCT / 0 ⇒ 0.
+func vatPercent(rate *string) decimal.Decimal {
+	if rate == nil {
+		return decimal.Zero
+	}
+	return decimal.NewFromInt(define.VatRatePercent[*rate])
+}
+
+// expectedVatAmount — tiền VAT của 1 dòng = round(totalEnd × % / 100), làm tròn theo DÒNG (VAT đơn = Σ dòng),
+// khớp FE order-plan-form `_recalcMoney`. totalEnd là tiền trước thuế (bmad/order-vat D2–D3).
+func expectedVatAmount(totalEnd decimal.Decimal, rate *string) decimal.Decimal {
+	pct := vatPercent(rate)
+	if pct.IsZero() || !totalEnd.IsPositive() {
+		return decimal.Zero
+	}
+	return totalEnd.Mul(pct).Div(decimal.NewFromInt(100)).Round(0)
+}
+
+// serviceUsedPayable — số phải thu của dòng = totalEnd (trước thuế) + vat_amount.
+func serviceUsedPayable(svc *crmServiceDao.OrderServiceUsed) decimal.Decimal {
+	return derefDec(svc.TotalEnd).Add(svc.VatAmount)
+}
+
+// checkServiceUsedVat — vat_amount client gửi (nếu có) phải khớp số server tính (lệch ≤ serviceMoneyTolerance):
+// lệch nghĩa là FE tính VAT khác BE ⇒ số khách thấy trên form khác số lưu, chặn thay vì lưu âm thầm.
+func checkServiceUsedVat(svc *crmServiceDao.OrderServiceUsed, sent any) error {
+	if sent == nil {
+		return nil
+	}
+	got := helpers.ToDecimal(sent)
+	if got.Sub(svc.VatAmount).Abs().GreaterThan(serviceMoneyTolerance) {
+		return errs.NewLocalizedError("service_vat_mismatch", svc.VatAmount.StringFixed(0), got.StringFixed(0))
+	}
+	return nil
 }
 
 func derefDec(d *decimal.Decimal) decimal.Decimal {

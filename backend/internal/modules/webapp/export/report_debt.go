@@ -29,10 +29,12 @@ func serviceDebtExportCols(loc *time.Location, showPhone bool) []exportCol {
 		{"serviceName", "Dịch vụ", func(r map[string]interface{}) interface{} { return r["service_name"] }},
 		{"serviceUsedCreate", "Ngày lên đơn", func(r map[string]interface{}) interface{} { return fmtUnixDate(r["created_day"], loc) }},
 		{"serviceIncurred", "Phát sinh", func(r map[string]interface{}) interface{} { return toFloat(r["totalEnd"]) }},
+		{"serviceVat", "Tiền VAT", func(r map[string]interface{}) interface{} { return toFloat(r["vat_amount"]) }},
 		{"servicePaid", "Thanh toán", func(r map[string]interface{}) interface{} { return toFloat(r["payment"]) }},
 		{"serviceDebt", "Công nợ", func(r map[string]interface{}) interface{} {
-			// Tính bằng decimal; .InexactFloat64() chỉ ở ô Excel (kiểu số của Excel là double).
-			return helpers.ToDecimal(r["totalEnd"]).Sub(helpers.ToDecimal(r["payment"])).InexactFloat64()
+			// Công nợ = phải thu (totalEnd TRƯỚC thuế + VAT) − đã thu (CÓ thuế) — khớp predicate/cột debt của
+			// handler crm/report/debt. Tính bằng decimal; .InexactFloat64() chỉ ở ô Excel (kiểu số của Excel là double).
+			return osuPayableOf(r["totalEnd"], r["vat_amount"]).Sub(helpers.ToDecimal(r["payment"])).InexactFloat64()
 		}},
 		{"customerDeposit", "Cọc còn lại của khách", func(r map[string]interface{}) interface{} { return toFloat(r["totalDeposit"]) }},
 		{"branch_id", "Chi nhánh", func(r map[string]interface{}) interface{} { return r["branch_name"] }},
@@ -45,15 +47,16 @@ func ExportServiceDebts(c *gin.Context, q *gorm.DB) {
 	showPhone := phoneutil.CanSeePhoneExport(c, q.Session(&gorm.Session{NewDB: true}))
 	eq := q.Session(&gorm.Session{}).
 		Select(`order_service_used.id, order_service_used.code,
-			order_service_used.totalEnd, order_service_used.payment, order_service_used.created_day,
+			order_service_used.totalEnd, order_service_used.vat_amount, order_service_used.payment, order_service_used.created_day,
 			customer.code AS customer_code, customer.old_code AS customer_old_code,
 			customer.fullname AS customer_fullname, customer.phone AS customer_phone, customer.totalDeposit,
 			service.name AS service_name, br.name AS branch_name`).
 		Joins("LEFT JOIN branch br ON br.id = order_service_used.branch_id")
 
-	// Phát sinh/Thanh toán/Công nợ/Cọc render cứng trên màn — luôn giữ trong export.
+	// Phát sinh/Thanh toán/Công nợ/Cọc render cứng trên màn — luôn giữ trong export. Tiền VAT đi kèm luôn: thiếu
+	// nó thì Phát sinh − Thanh toán ≠ Công nợ trên file với dòng có VAT.
 	cols := filterExportCols(serviceDebtExportCols(loc, showPhone), c.Query("columns"),
-		"serviceIncurred", "servicePaid", "serviceDebt", "customerDeposit")
+		"serviceIncurred", "serviceVat", "servicePaid", "serviceDebt", "customerDeposit")
 	headers, rowFn := exportHeadersRow(cols)
 	url, err := doExport(c, eq, export.Config{
 		FileName:    "Cong_no_dich_vu",

@@ -8,6 +8,7 @@ import { PaymentModel } from '@/core/models/crm/payment.model';
 import { UserProfileModel } from '@/core/models/user-profile.model';
 import { UserModel } from '@/core/models/hr/user.model';
 import { AppointmentModel } from '@/core/models/crm/appointment.model';
+import { VatRate } from '@/define/order-vat.define';
 
 export interface OrderPlanModel extends Identifiable {
   id?: number;
@@ -37,6 +38,12 @@ export interface OrderPlanModel extends Identifiable {
   note?: string;
   paymentPlan?: number;
   debtsPlan?: number;
+  /** Mức VAT của cả đơn (`VAT_RATE`); `null` = đơn trước khi có VAT ⇒ không VAT. */
+  vat_rate?: VatRate | null;
+  /** Σ vat_amount các dòng (BE trả ở chi tiết/danh sách đơn). */
+  vat_total?: number;
+  /** Tổng sau VAT = Σ totalEnd + vat_total (BE trả ở chi tiết/danh sách đơn). */
+  total_after_vat?: number;
   created_time?: any;
   created_by?: number;
   updated_by?: number;

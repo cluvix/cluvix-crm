@@ -115,9 +115,13 @@ export class FormPaymentOrder extends BaseSignalForm<PaymentOrderFormModel> {
     // toàn cục) — ở đây chỉ tính toán đồng bộ, không cần gọi API/loading riêng nữa.
     // amount = tổng nợ các dịch vụ CHƯA KHOÁ — khớp đúng logic BE (CreatePaymentOrderFromPayment
     // luôn trả hết nợ mọi dịch vụ isLock=NOT_LOCK, bỏ qua giá trị amount FE gửi).
+    // Nợ mỗi dòng = phải thu (totalEnd chưa VAT + vat_amount) − đã thu.
     const payableAmount = (this.orderPlanModel.orderServiceUseds ?? [])
       .filter((svc: any) => svc.isLock === this.orderServiceUsedService.NOT_LOCK)
-      .reduce((sum: number, svc: any) => sum + Math.max(+svc.totalEnd - +svc.payment, 0), 0);
+      .reduce(
+        (sum: number, svc: any) => sum + Math.max(+svc.totalEnd + (Number(svc.vat_amount) || 0) - +svc.payment, 0),
+        0,
+      );
 
     this.initialValue = {
       ...this.initialValue,

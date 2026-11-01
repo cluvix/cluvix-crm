@@ -177,12 +177,13 @@ func (s *PaymentService) calculatorPaymentServiceUsed(tx *gorm.DB, serviceUsedId
 	absRefund := refundTotal.Abs()
 
 	// payment_status: Start=1 (chưa TT), Partly=3 (1 phần), Done=4 (đủ 100%)
+	// So với số PHẢI THU = totalEnd + VAT (bmad/order-vat D4): phiếu thu là tiền có thuế.
 	paymentStatus := define.ServicePaymentStatusStart
-	var totalEnd decimal.Decimal
-	tx.Table("order_service_used").Select("COALESCE(totalEnd, 0)").Where("id = ?", serviceUsedId).Scan(&totalEnd)
-	if paymentTotal.IsPositive() && paymentTotal.LessThan(totalEnd) {
+	var payable decimal.Decimal
+	tx.Table("order_service_used").Select(osuPayableSQL).Where("id = ?", serviceUsedId).Scan(&payable)
+	if paymentTotal.IsPositive() && paymentTotal.LessThan(payable) {
 		paymentStatus = define.ServicePaymentStatusPartly
-	} else if paymentTotal.GreaterThanOrEqual(totalEnd) && totalEnd.IsPositive() {
+	} else if paymentTotal.GreaterThanOrEqual(payable) && payable.IsPositive() {
 		paymentStatus = define.ServicePaymentStatusDone
 	}
 
@@ -194,8 +195,9 @@ func (s *PaymentService) calculatorPaymentServiceUsed(tx *gorm.DB, serviceUsedId
 }
 
 // calculatorOrderPlan: cập nhật paymentPlan + debtsPlan cho order_plan.
-// D20a (story-56): hoàn tiền giảm CẢ doanh thu lẫn đã thu ⇒ debtsPlan = (ΣtotalEnd − ΣrefundServiceUsed) − paymentPlan,
-// cùng công thức với customer.totalDebt (updateCustomerRevenue). Không có hoàn ⇒ refund = 0, số giữ nguyên.
+// D20a (story-56): hoàn tiền giảm CẢ phải thu lẫn đã thu ⇒ debtsPlan = (Σ phải thu − ΣrefundServiceUsed) − paymentPlan,
+// phải thu = totalEnd + VAT (bmad/order-vat D4); cùng công thức với customer.totalDebt (customerReceivable).
+// Không có hoàn ⇒ refund = 0, số giữ nguyên.
 func (s *PaymentService) calculatorOrderPlan(tx *gorm.DB, parentId int, paymentFor int) error {
 	if parentId == 0 {
 		return nil
@@ -219,16 +221,16 @@ func (s *PaymentService) calculatorOrderPlan(tx *gorm.DB, parentId int, paymentF
 		return fmt.Errorf("calculatorOrderPlan sum payment: %w", err)
 	}
 
-	var orderRevenue decimal.Decimal
+	var orderReceivable decimal.Decimal
 	if err := tx.Table("order_service_used").
-		Select("COALESCE(SUM(totalEnd), 0) - COALESCE(SUM(refundServiceUsed), 0)").
-		Where("order_plan_id = ?", parentId).Scan(&orderRevenue).Error; err != nil {
-		return fmt.Errorf("calculatorOrderPlan sum revenue: %w", err)
+		Select(osuReceivableSumSQL).
+		Where("order_plan_id = ?", parentId).Scan(&orderReceivable).Error; err != nil {
+		return fmt.Errorf("calculatorOrderPlan sum receivable: %w", err)
 	}
 
 	if err := tx.Table("order_plan").Where("id = ?", parentId).Updates(map[string]interface{}{
 		"paymentPlan": totalPayment,
-		"debtsPlan":   orderRevenue.Sub(totalPayment),
+		"debtsPlan":   orderReceivable.Sub(totalPayment),
 	}).Error; err != nil {
 		return fmt.Errorf("calculatorOrderPlan update: %w", err)
 	}
@@ -412,7 +414,7 @@ func (s *PaymentService) updateCustomer(tx *gorm.DB, p *crmPaymentDao.Payment) e
 		var count int64
 		tx.Raw(`SELECT COUNT(*) FROM order_service_used osu
 			INNER JOIN service s ON s.id = osu.service_id
-			WHERE osu.customer_id = ? AND osu.totalEnd = osu.payment`,
+			WHERE osu.customer_id = ? AND osu.totalEnd + osu.vat_amount = osu.payment`,
 			custID).Scan(&count)
 		if count > 0 {
 			custUpdates["status"] = define.CustomerStatusCustomer
@@ -466,10 +468,14 @@ func (s *PaymentService) updateCustomer(tx *gorm.DB, p *crmPaymentDao.Payment) e
 		tx.Table("payment").
 			Where("customer_id = ? AND payment_for IN ?", custID, []int{define.PaymentForRefundService, define.PaymentForOrder, define.PaymentForMoveDeposit}).
 			Select("COALESCE(SUM(amount), 0)").Scan(&payment)
-		var totalRevenue decimal.Decimal
-		tx.Table("customer").Select("COALESCE(totalRevenue, 0)").Where("id = ?", custID).Scan(&totalRevenue)
+		// Công nợ = (Σ phải thu có VAT − Σ hoàn) − đã thu ròng (bmad/order-vat D6) — không suy từ totalRevenue
+		// (doanh số trước thuế).
+		_, receivable, err := customerRevenueReceivable(tx, custID)
+		if err != nil {
+			return fmt.Errorf("updateCustomer receivable: %w", err)
+		}
 		custUpdates["totalPayment"] = payment
-		custUpdates["totalDebt"] = totalRevenue.Sub(payment)
+		custUpdates["totalDebt"] = receivable.Sub(payment)
 		flagOldOrNew = true
 
 		// Khi chuyển cọc → thanh toán, deposit_after của bản cọc gốc đã giảm
@@ -492,18 +498,16 @@ func (s *PaymentService) updateCustomer(tx *gorm.DB, p *crmPaymentDao.Payment) e
 			Select("COALESCE(SUM(amount), 0)").Scan(&totalPayment)
 		custUpdates["refundService"] = refundService
 		custUpdates["totalPayment"] = totalPayment
-		// D20a (story-56): hoàn tiền giảm CẢ doanh thu lẫn đã thu ⇒ tính lại ngay totalRevenue theo cùng
-		// định nghĩa với updateCustomerRevenue (ΣtotalEnd − ΣrefundServiceUsed; refundServiceUsed đã được
-		// calculatorPaymentServiceUsed cập nhật trước đó trong afterSaveAll/afterDeleteAll) rồi totalDebt.
+		// D20a (story-56): hoàn tiền giảm CẢ doanh thu lẫn đã thu ⇒ tính lại ngay totalRevenue + totalDebt theo
+		// cùng định nghĩa với updateCustomerRevenue (customerRevenueReceivable; refundServiceUsed đã được
+		// calculatorPaymentServiceUsed cập nhật trước đó trong afterSaveAll/afterDeleteAll).
 		// (Hành vi cũ kiểu Yii2 không tính lại totalDebt ở nhánh này — đã bỏ theo D20.)
-		var totalRevenue decimal.Decimal
-		if err := tx.Table("order_service_used").
-			Select("COALESCE(SUM(totalEnd), 0) - COALESCE(SUM(refundServiceUsed), 0)").
-			Where("customer_id = ?", custID).Scan(&totalRevenue).Error; err != nil {
+		totalRevenue, receivable, err := customerRevenueReceivable(tx, custID)
+		if err != nil {
 			return fmt.Errorf("updateCustomer refund revenue: %w", err)
 		}
 		custUpdates["totalRevenue"] = totalRevenue
-		custUpdates["totalDebt"] = totalRevenue.Sub(totalPayment)
+		custUpdates["totalDebt"] = receivable.Sub(totalPayment)
 	}
 
 	if flagOldOrNew {

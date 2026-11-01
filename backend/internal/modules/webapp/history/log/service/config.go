@@ -44,7 +44,7 @@ var PaymentDeleteFields = withDeleteIdentity(PaymentIncludeFields)
 
 var OrderServiceUsedIncludeFields = []string{
 	"service_id", "quantity", "unit_price",
-	"service_discount", "service_discount_type", "discount_other", "totalEnd",
+	"service_discount", "service_discount_type", "discount_other", "totalEnd", "vat_amount",
 	"note", "branch_id", "created_day",
 	"appointment_id", "source_id", "listRevenues",
 }

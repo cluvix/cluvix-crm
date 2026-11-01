@@ -109,6 +109,22 @@ func callDebt(t *testing.T, fn func(*gin.Context), rawQuery string, active, user
 	return body
 }
 
+// stripVatKeys — bản cũ có trước VAT (bmad/order-vat) nên không có `vat_amount` từng dòng / `vatAmount` ở tổng.
+// Seed ở đây đều vat_amount = 0 ⇒ mọi con số khác phải khớp tuyệt đối; chỉ bỏ 2 khoá mới trước khi so.
+func stripVatKeys(body map[string]any) map[string]any {
+	if tot, ok := body["total"].(map[string]any); ok {
+		delete(tot, "vatAmount")
+	}
+	if items, ok := body["items"].([]any); ok {
+		for _, it := range items {
+			if row, ok := it.(map[string]any); ok {
+				delete(row, "vat_amount")
+			}
+		}
+	}
+	return body
+}
+
 func sdRange(from, to int64) string {
 	return fmt.Sprintf("_orderCreatedTime[gte]=%d&_orderCreatedTime[lte]=%d", from, to)
 }
@@ -140,7 +156,7 @@ func TestServiceDebts_ParityVaTinhTay(t *testing.T) {
 		}
 		for _, q := range queries {
 			oldB := callDebt(t, h.legacyServiceDebts, q, s.active, s.user, all)
-			newB := callDebt(t, h.ServiceDebts, q, s.active, s.user, all)
+			newB := stripVatKeys(callDebt(t, h.ServiceDebts, q, s.active, s.user, all))
 			if !reflect.DeepEqual(oldB, newB) {
 				t.Fatalf("[%s] %q: old != new\nold: %v\nnew: %v", s.name, q, oldB, newB)
 			}
@@ -217,7 +233,7 @@ func TestServiceDebtQuery_OsuLuonDanTruocService(t *testing.T) {
 	for _, want := range []string{
 		"STRAIGHT_JOIN service ON service.id = order_service_used.service_id",
 		"FORCE INDEX (" + serviceDebtDateIndex + ")",
-		"(order_service_used.totalEnd <> order_service_used.payment) = 1",
+		"((order_service_used.totalEnd + order_service_used.vat_amount) <> order_service_used.payment) = 1",
 		"order_service_used.branch_id",
 	} {
 		require.Contains(t, s, want)

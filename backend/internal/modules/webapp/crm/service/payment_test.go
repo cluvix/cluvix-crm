@@ -227,7 +227,7 @@ func svcDebt(id int, totalEnd, payment int64, createdDay *int64) serviceUsedDebt
 	return serviceUsedDebt{
 		ID:         id,
 		CustomerID: 1,
-		TotalEnd:   decimal.NewFromInt(totalEnd),
+		Payable:    decimal.NewFromInt(totalEnd),
 		Payment:    decimal.NewFromInt(payment),
 		CreatedDay: createdDay,
 	}

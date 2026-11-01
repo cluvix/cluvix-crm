@@ -32,6 +32,9 @@
       "new": "New order",
       "old": "Old order"
     },
+    "vat_rate": {
+      "kct": "Not subject to VAT"
+    },
     "payment_status": {
       "refunded": "Refunded"
     },
@@ -1134,9 +1137,12 @@
         "tab_info": "Order information",
         "tab_expand": "Expand",
         "expires_at": "Expires",
-        "total_service": "Total services",
         "pick_service_placeholder": "Search by service name",
-        "total_payment": "Total payment",
+        "total_before_vat": "Total before VAT",
+        "vat": "VAT",
+        "vat_none": "No VAT",
+        "total_after_vat": "Total after VAT",
+        "vat_rate_8_expired": "The 8% VAT rate only applies to orders dated on or before {{date}}",
         "edit_price_in_range": "Edit price within range",
         "price_not_editable": "Price not editable",
         "installment_period": "Installment period",
@@ -1151,7 +1157,9 @@
         "outstanding_balance": "Outstanding balance",
         "tooltip_col_coupon": "(4) = Line discount (legacy value)",
         "tooltip_col_subtotal": "(4) = (1)×(2)−(3)",
-        "tooltip_col_total": "(6) = (4)−(5)"
+        "tooltip_col_total": "(6) = (4)−(5)",
+        "add_service": "Add service",
+        "quick_subtotal_hint": "Before customer tier discount"
       },
       "order_type": "Order type (new/old)",
       "change_service": {
@@ -1494,6 +1502,8 @@
     },
     "label": {
       "payable": "Amount due",
+      "vat_amount": "VAT amount",
+      "receivable": "Receivable",
       "receipt_date": "Receipt date",
       "id": "ID",
       "code": "Code",
@@ -1934,6 +1944,8 @@
     },
     "message": {
       "no_permission": "You do not have permission",
+      "quick_add_enter_hint": "Press Enter to add quickly",
+      "quick_add_merged": "Added {{qty}} to the existing line «{{name}}»",
       "field_required": "This field is required",
       "confirm_export": "Do you want to download the data?",
       "export_success": "Export successful",

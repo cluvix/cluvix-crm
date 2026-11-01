@@ -78,6 +78,8 @@ func treatmentServicesCols() []exportCol {
 		{"numService", "Số lượng dịch vụ", func(r map[string]interface{}) interface{} { return r["numService"] }},
 		{"numQuantity", "Số đơn vị sử dụng", func(r map[string]interface{}) interface{} { return r["quantity"] }},
 		{"totalTotalEnd", "Doanh số", func(r map[string]interface{}) interface{} { return toFloat(r["totalEnd"]) }},
+		// VAT (bmad/order-vat): Doanh số giữ TRƯỚC thuế; Thanh toán là tiền CÓ thuế ⇒ thêm cột VAT để đối chiếu.
+		{"totalVat", "Tiền VAT", func(r map[string]interface{}) interface{} { return toFloat(r["vat_amount"]) }},
 		{"totalPayment", "Thanh toán", func(r map[string]interface{}) interface{} { return toFloat(r["payment"]) }},
 		{"totalDiscountService", "Giảm dịch vụ", func(r map[string]interface{}) interface{} { return toFloat(r["service_discount_amount"]) }},
 		{"totalDiscountOther", "Giảm khác", func(r map[string]interface{}) interface{} { return toFloat(r["discount_other"]) }},
@@ -104,6 +106,7 @@ func ExportTreatmentServices(c *gin.Context, q *gorm.DB) {
 			COUNT(order_service_used.id) as numService,
 			SUM(quantity) as quantity,
 			SUM(totalEnd) as totalEnd,
+			SUM(order_service_used.vat_amount) as vat_amount,
 			SUM(payment) as payment,
 			SUM(CASE WHEN service_discount_type = 2 THEN (service_discount * unit_price * quantity / 100) ELSE service_discount END) as service_discount_amount,
 			SUM(discount_other) as discount_other,

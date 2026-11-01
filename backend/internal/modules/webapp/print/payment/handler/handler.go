@@ -148,7 +148,7 @@ func (h *Handler) PrintPayment(c *gin.Context) {
 	if suID := helpers.ToInt64(payment["serviceUsed_id"]); suID > 0 {
 		var osu map[string]interface{}
 		tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
-			Select("order_service_used.id, order_service_used.code, order_service_used.service_id, order_service_used.quantity, order_service_used.unit_price, order_service_used.service_discount_type, order_service_used.service_discount, order_service_used.discount_other, order_service_used.totalEnd, order_service_used.payment, order_service_used.refundServiceUsed, service.name AS service_name").
+			Select("order_service_used.id, order_service_used.code, order_service_used.service_id, order_service_used.quantity, order_service_used.unit_price, order_service_used.service_discount_type, order_service_used.service_discount, order_service_used.discount_other, order_service_used.totalEnd, order_service_used.vat_amount, order_service_used.payment, order_service_used.refundServiceUsed, service.name AS service_name").
 			Joins("LEFT JOIN service ON service.id = order_service_used.service_id").
 			Where("order_service_used.id = ?", suID).Limit(1).Scan(&osu)
 		if pagination.IsQueryError(tx.Error) {
@@ -158,8 +158,11 @@ func (h *Handler) PrintPayment(c *gin.Context) {
 		if len(osu) > 0 {
 			osu["service"] = map[string]interface{}{"name": osu["service_name"]}
 			delete(osu, "service_name")
-			helpers.ParseDecimalFields(osu, "unit_price", "service_discount", "discount_other", "totalEnd", "payment", "refundServiceUsed")
+			helpers.ParseDecimalFields(osu, "unit_price", "service_discount", "discount_other", "totalEnd", "vat_amount", "payment", "refundServiceUsed")
 			helpers.ParseJSONFieldForTable(osu, "order_service_used")
+			// VAT (bmad/order-vat): totalEnd là tiền TRƯỚC thuế, phiếu thu là tiền CÓ thuế ⇒ phiếu in "còn lại"
+			// phải so totalPayment với total_after_vat (phải thu dòng), không với totalEnd.
+			osu["total_after_vat"] = helpers.ToDecimal(osu["totalEnd"]).Add(helpers.ToDecimal(osu["vat_amount"]))
 			payment["orderServiceUsed"] = osu
 		}
 	}
@@ -211,7 +214,7 @@ func (h *Handler) PrintPayment(c *gin.Context) {
 
 // PrintMultiPayment GET /api/print/multi-payment?ids=1,2,3&customerId=X
 // In phieu thanh toan tuy chon nhieu payment.
-// Shape: { "customer": {...}, "payment": [{serviceName, totalEnd, amount, note}...] }
+// Shape: { "customer": {...}, "payment": [{serviceName, totalEnd, vat_amount, total_after_vat, amount, note}...] }
 func (h *Handler) PrintMultiPayment(c *gin.Context) {
 	idsParam := c.Query("ids")
 	customerIdParam := c.Query("customerId")
@@ -254,6 +257,7 @@ func (h *Handler) PrintMultiPayment(c *gin.Context) {
 		ANY_VALUE(payment.note) AS note,
 		ANY_VALUE(service.name) AS serviceName,
 		ANY_VALUE(order_service_used.totalEnd) AS totalEnd,
+		ANY_VALUE(order_service_used.vat_amount) AS vat_amount,
 		SUM(payment.amount) AS amount
 		FROM payment
 		LEFT JOIN order_service_used ON order_service_used.id = payment.serviceUsed_id
@@ -274,7 +278,9 @@ func (h *Handler) PrintMultiPayment(c *gin.Context) {
 
 	// Parse decimal fields
 	for _, p := range payments {
-		helpers.ParseDecimalFields(p, "totalEnd", "amount")
+		helpers.ParseDecimalFields(p, "totalEnd", "vat_amount", "amount")
+		// VAT (bmad/order-vat): totalEnd TRƯỚC thuế; phải thu dòng = total_after_vat (tiền thu là CÓ thuế).
+		p["total_after_vat"] = helpers.ToDecimal(p["totalEnd"]).Add(helpers.ToDecimal(p["vat_amount"]))
 	}
 
 	// Neu chua co customer tu param, lay tu payment dau tien

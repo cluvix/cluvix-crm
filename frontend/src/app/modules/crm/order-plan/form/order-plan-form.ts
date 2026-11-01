@@ -1,6 +1,7 @@
-import {ChangeDetectionStrategy, Component, effect, inject, signal, untracked} from '@angular/core';
+import {afterNextRender, ChangeDetectionStrategy, Component, computed, effect, inject, Injector, signal, untracked, viewChild} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {applyEach, disabled, FormField, minError, required, schema, SchemaPathTree, validate} from '@angular/forms/signals';
+import {Table} from 'primeng/table';
 import {catchError, finalize, of} from 'rxjs';
 
 import {ServiceModel} from '@/core/models/config/clinic/service.model';
@@ -13,8 +14,14 @@ import {ShowOtherBranch} from '@/modules/utilities/popup-show-other-branch/show-
 import {BaseSignalForm} from '@/share/base/base-signal-form';
 import {
   CONFIG_OPTION_CRM_SELECT,
+  ORDER_SERVICE_USED_LOCK,
   PERMISSION_SELECT,
   SERVICE_DISCOUNT_TYPE_SELECT,
+  VAT_RATE,
+  VAT_RATE_8_LAST_DAY,
+  VAT_RATE_OPTION,
+  VAT_RATE_PERCENT,
+  VatRate,
 } from '@/define';
 import {FormShareImports} from '@/share/import/form-share-imports';
 import {UserCacheService, UserMultiSelectFormControl} from '@/indexeddb/config/components/user';
@@ -25,6 +32,9 @@ import {CustomerRankServicesHelperService} from '@/indexeddb/config/components/c
 import {CustomerRanksHelperService} from '@/indexeddb/config/components/customer-ranks';
 import {ChangeServiceDialog} from '@/modules/crm/order-plan/change-service-dialog/change-service-dialog';
 import {isRowFieldLocked, LockableRowField} from '@/modules/crm/order-plan/form/order-plan-row-lock';
+import {ServiceQuickAdd, ServiceQuickAddEvent} from '@/share/components/service-quick-add/service-quick-add';
+import {findQuickAddMergeIndex, moveMergedRowToTop} from '@/share/components/service-quick-add/service-quick-add-merge';
+import {flashFields} from '@/share/utils/flash-fields.util';
 
 /**
  * Bộ đếm khoá dòng (`_uid`). Module-level, tăng dần trong 1 phiên tab — chỉ cần duy nhất trong phạm vi
@@ -32,6 +42,25 @@ import {isRowFieldLocked, LockableRowField} from '@/modules/crm/order-plan/form/
  * nhiều dòng mới cùng lúc sẽ trùng khoá.
  */
 let rowUidCounter = 0;
+
+/**
+ * VAT 1 dòng = round(totalEnd × % / 100), làm tròn theo DÒNG — khớp BE `expectedVatAmount`
+ * (order_service_used_validate.go); BE tính lại và chặn nếu lệch > 1đ. KCT / 0% / chưa chọn ⇒ 0.
+ */
+function rowVatAmount(totalEnd: number, rate: VatRate | null | undefined): number {
+  const pct = rate ? (VAT_RATE_PERCENT[rate] ?? 0) : 0;
+  if (!pct || totalEnd <= 0) return 0;
+  return Math.round((totalEnd * pct) / 100);
+}
+
+/** Ngày lịch (yyyy-mm-dd) của giá trị ô Ngày đơn — Date của p-datepicker là wall-clock theo giờ thương hiệu. */
+function orderDay(value: unknown): string | null {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value as any);
+  if (isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 /**
  * 1 dòng dịch vụ rỗng — tương đương `fb.group({...})` trong `addServiceUsed()` bản Reactive Forms.
@@ -63,6 +92,7 @@ function emptyServiceRow(seed?: Partial<OrderServiceUsedRow>): OrderServiceUsedR
     discountServiceLock: 0,
     unitName: null,
     rank_discount_percent: 0,
+    vat_amount: 0,
     _uid: ++rowUidCounter,
     unitPriceLocked: false,
     serviceLocked: false,
@@ -87,6 +117,7 @@ function emptyOrderPlanModel(): OrderPlanModel {
     created_time: null,
     note: null as any,
     source_id: null as any,
+    vat_rate: null,
     updated_at: null as any,
     services_used: [],
   };
@@ -152,11 +183,14 @@ const serviceRowSchema = schema<OrderServiceUsedRow>((item) => {
   selector: 'app-order-plan-form',
   templateUrl: 'order-plan-form.html',
   standalone: true,
-  imports: [...FormShareImports, FormField, UserMultiSelectFormControl],
+  imports: [...FormShareImports, FormField, UserMultiSelectFormControl, ServiceQuickAdd],
   styleUrls: ['./order-plan-form.scss'],
 })
 export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   modelService = inject(OrderPlanService);
+  private readonly quickAddInjector = inject(Injector);
+  /** Bảng dòng dịch vụ — tô sáng dòng vừa chèn (`onQuickAdd`). */
+  private readonly servicesTable = viewChild<Table>('servicesTable');
   public maxDate: Date = this.timezoneService.todayEnd();
   public minDate!: Date;
   optionsTimeBefore: boolean = false;
@@ -169,7 +203,31 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   readonly changedFromServiceName = signal<Map<number, string>>(new Map());
   latestAppointment!: any;
   readonly customer = signal<CustomerModel>({});
-  readonly totalRankDiscount = signal<number>(0);
+  /** Mức VAT đã lưu của đơn + ngày đơn lúc mở — đơn đã lưu 8% (trong hạn) giữ được 8% khi sửa phần khác sau mốc. */
+  private originalVatRate: VatRate | null = null;
+  private originalOrderDay: string | null = null;
+
+  /** Σ VAT các dòng · Tổng sau VAT (= Σ totalEnd + VAT) — số phải thu của đơn. */
+  readonly vatTotal = computed(() =>
+    (this.model().services_used ?? []).reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0),
+  );
+  readonly totalAfterVat = computed(() => (Number(this.model().total) || 0) + this.vatTotal());
+
+  /**
+   * Mức 8% chỉ cho đơn có ngày tới hết `VAT_RATE_8_LAST_DAY` (BE `checkOrderVatRate8` chặn lại cùng luật). Đơn đã lưu
+   * 8% mà chưa đổi ngày vẫn thấy 8% để giữ nguyên.
+   */
+  private readonly vatRate8Allowed = computed(() => {
+    const day = orderDay(this.model().created_time);
+    if (this.originalVatRate === VAT_RATE.RATE_8 && day === this.originalOrderDay) return true;
+    return !day || day <= VAT_RATE_8_LAST_DAY;
+  });
+  readonly vatRateOptions = computed(() =>
+    VAT_RATE_OPTION.filter((o) => o.value !== VAT_RATE.RATE_8 || this.vatRate8Allowed()).map((o) => ({
+      value: o.value,
+      label: o.labelKey ? this.translate.instant(o.labelKey) : o.label,
+    })),
+  );
 
   /**
    * SNAPSHOT BẤT BIẾN lúc mở dialog — `BaseSignalForm.model()` là nguồn SỐNG 2 chiều (mọi phím user gõ
@@ -231,6 +289,8 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     if (dialogModel) {
       this.originalServiceUseds = dialogModel.orderServiceUseds ?? [];
       this.originalPayment = dialogModel.payment ?? 0;
+      this.originalVatRate = dialogModel.vat_rate ?? null;
+      this.originalOrderDay = orderDay(dialogModel.created_time);
       if (!this.permissionsService.getPermission(PERMISSION_SELECT.permissionUpdatePlanOrder)) {
         if (!this.optionsTimeBefore) {
           const createdDate = new Date(dialogModel.created_time);
@@ -271,9 +331,10 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
    */
   private _applyModel(model: OrderPlanModel): void {
     const source = model.orderServiceUseds;
+    // Không còn dòng trống sẵn: dịch vụ thêm qua khung "Thêm dịch vụ" (`onQuickAdd`, chèn đầu bảng).
     const rows: OrderServiceUsedRow[] =
       typeof source !== 'object' || !source || source.length === 0
-        ? [this._buildRow(null, model)]
+        ? []
         : source.map((item) =>
             this._buildRow(
               {...item, serviceInfo: item.serviceInfo ?? this.servicesHelper.getServiceInfo(item.service_id!)} as OrderServiceUsedModel,
@@ -323,6 +384,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       discountServiceLock: orderServiceItem?.discountServiceLock || 0,
       unitName: this.unitHelper.getLabel(orderServiceItem?.serviceInfo?.unit_id) ?? null,
       rank_discount_percent: orderServiceItem?.rank_discount_percent || 0,
+      vat_amount: orderServiceItem?.vat_amount || 0,
       serviceLocked: rowLocked,
       unitPriceLocked: false,
     });
@@ -379,7 +441,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
             [r.quantity, r.unit_price, r.service_discount, r.service_discount_type, r.discount_other, r.service_id].join('|'),
           )
           .join(';');
-        return `${rowKey}#${this.customer()?.customer_rank_id ?? ''}`;
+        return `${rowKey}#${this.customer()?.customer_rank_id ?? ''}#${this.model().vat_rate ?? ''}`;
       },
       () => untracked(() => void this._recalcMoney()),
     );
@@ -427,26 +489,61 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     void this._recalcMoney();
   }
 
-  addServiceUsed(orderServiceItem: OrderServiceUsedModel | null = null) {
-    const dataTableWrapper = document.querySelector('.p-dialog .p-datatable-wrapper');
-    if (dataTableWrapper) {
-      const isScrollable = dataTableWrapper.scrollHeight > dataTableWrapper.clientHeight;
-      if (isScrollable) {
-        dataTableWrapper.scrollTo(0, dataTableWrapper.scrollHeight);
-      }
+  /**
+   * Khung "Thêm dịch vụ" (`app-service-quick-add`) chốt 1 dòng ⇒ CHÈN LÊN ĐẦU bảng (BE gán thứ tự theo vị trí trong payload
+   * ⇒ thứ tự hiển thị = thứ tự lưu). Dòng dựng qua `_buildRow` rồi chạy ĐÚNG luồng chọn dịch vụ trên dòng
+   * (`onSelectService`: `unitPriceLocked`, tooltip giá — mọi side-state theo `_uid` nên các dòng cũ dịch index +1 không
+   * lệch), sau đó ghi đè các ô đã nhập ở khung (khung đã kẹp giá trong [min_price, max_price]). Giảm theo hạng do
+   * `_recalcMoney()` tự tính trên dòng. Port từ ERP (bỏ phần răng / trả góp / chốt dự toán — CRM không có).
+   */
+  onQuickAdd(e: ServiceQuickAddEvent): void {
+    // Trùng dịch vụ ⇒ CỘNG DỒN vào dòng có sẵn rồi đưa lên đầu (luật chung `findQuickAddMergeIndex` + điều kiện riêng Đơn
+    // hàng `canMergeQuickAdd`). Effect tiền (`_recalcMoney`) key theo `quantity` ⇒ tự chạy.
+    const mergeIndex = findQuickAddMergeIndex(this.model().services_used ?? [], e, (row) => this.canMergeQuickAdd(row));
+    if (mergeIndex >= 0) {
+      this.model.update(m => ({...m, services_used: moveMergedRowToTop(m.services_used ?? [], mergeIndex, e.quantity)}));
+      this.noti.infoMsg(this.translate.instant('common.message.quick_add_merged', {qty: e.quantity, name: e.service.name ?? ''}));
+      this.flashQuickAddRow();
+      return;
     }
+    const row = this._buildRow(null, this.model());
+    this.model.update(m => ({...m, services_used: [row, ...(m.services_used ?? [])]}));
+    this.onSelectService(e.service, 0);
+    this._patchRowByUid(row._uid, {
+      quantity: e.quantity,
+      unit_price: e.unit_price,
+      service_discount: e.service_discount,
+      service_discount_type: e.service_discount_type,
+      // Giảm khác KHÔNG có ở khung ⇒ giữ mặc định của `_buildRow`, sửa trên dòng.
+    });
+    this.flashQuickAddRow();
+  }
 
-    // BE không attach serviceInfo (data đã có trong IndexedDB cache: services).
-    // Resolve từ cache theo service_id để form đọc servicePosition / department_type / min-max…
-    if (orderServiceItem && !orderServiceItem.serviceInfo && orderServiceItem.service_id) {
-      const fromCache = this.servicesHelper.getServiceInfo(orderServiceItem.service_id);
-      if (fromCache) {
-        orderServiceItem = {...orderServiceItem, serviceInfo: fromCache} as OrderServiceUsedModel;
-      }
-    }
+  /**
+   * Điều kiện riêng Đơn hàng để cộng dồn vào 1 dòng có sẵn: dòng không khoá dịch vụ (`serviceLocked` = đã có thanh toán,
+   * xem `_buildRow`), chưa thanh toán (`payment > 0`), và chưa bị khoá ở BE (`isServiceUsedLocked`).
+   */
+  private canMergeQuickAdd(row: OrderServiceUsedRow): boolean {
+    if (row.serviceLocked) return false;
+    if ((Number(row.payment) || 0) > 0) return false;
+    return !this.isServiceUsedLocked(row);
+  }
 
-    const row = this._buildRow(orderServiceItem, this.model());
-    this.model.update(m => ({...m, services_used: [...(m.services_used ?? []), row]}));
+  /**
+   * Dòng đã lưu đang bị khoá ở BE (`isLock = 2`): BE không cho xoá và báo cáo công nợ bỏ qua dòng khoá ⇒ SL cộng thêm vào
+   * sẽ rơi khỏi công nợ. Tra từ SNAPSHOT lúc mở (`originalServiceUseds`) theo `id` — cờ này KHÔNG được đưa vào
+   * model/payload dòng (mass-assignment).
+   */
+  private isServiceUsedLocked(row: OrderServiceUsedRow): boolean {
+    if (row.id == null) return false;
+    return this.originalServiceUseds.find((s) => s.id === row.id)?.isLock === ORDER_SERVICE_USED_LOCK.IS_LOCK;
+  }
+
+  /** Tô sáng dòng đầu bảng (vừa chèn / vừa cộng dồn) ~1s — đổi màu nền, không đổi kích thước ⇒ không xô layout. */
+  private flashQuickAddRow(): void {
+    afterNextRender(() => flashFields(this.servicesTable()?.el.nativeElement, ['.p-datatable-tbody > tr:first-child > td']), {
+      injector: this.quickAddInjector,
+    });
   }
 
   changeDiscountType(value: number, index: number) {
@@ -485,6 +582,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         : 0;
 
     const rows = this.model().services_used ?? [];
+    const vatRate = this.model().vat_rate;
 
     let rowsChanged = false;
     const updated = rows.map((row) => {
@@ -528,12 +626,18 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
 
       const nextTotal = Math.round(total);
       const nextTotalEnd = Math.round(totalEnd);
-      // Giữ NGUYÊN tham chiếu khi 3 field tính ra không đổi — mỗi phím gõ đều chạy qua đây, tạo object
+      // VAT dòng theo mức VAT đơn. Dòng đã KHOÁ giữ VAT chốt lúc khoá (BE `applyServiceUsedVat` không tính lại).
+      const nextVat =
+        originalSvc?.isLock === ORDER_SERVICE_USED_LOCK.IS_LOCK
+          ? Number(originalSvc?.vat_amount) || 0
+          : rowVatAmount(nextTotalEnd, vatRate);
+      // Giữ NGUYÊN tham chiếu khi các field tính ra không đổi — mỗi phím gõ đều chạy qua đây, tạo object
       // mới cho cả mảng làm mọi binding trong bảng phải so lại (và trước khi có `[rowTrackBy]` thì còn
       // dựng lại DOM). Chỉ dòng thực sự đổi số mới cần object mới.
       if (
         row.total === nextTotal &&
         row.totalEnd === nextTotalEnd &&
+        row.vat_amount === nextVat &&
         row.rank_discount_percent === rankDiscountPercent
       ) {
         return row;
@@ -543,27 +647,21 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         ...row,
         total: nextTotal,
         totalEnd: nextTotalEnd,
+        vat_amount: nextVat,
         rank_discount_percent: rankDiscountPercent,
       };
     });
 
-    // Tổng giảm giá theo hạng — tương đương `calculateRankDiscount()` gốc (cả 2 nhánh edit/create đều
-    // cộng `totalEnd * phần trăm dòng / 100` cho dòng có totalEnd > 0).
-    let totalRankDiscount = 0;
+    // Tổng đơn = Σ totalEnd (trước thuế) — ĐÚNG số BE cho thu. Giảm theo hạng (`rank_discount_amount`) BE chỉ lưu,
+    // KHÔNG trừ vào số phải thu ⇒ không trừ ở đây (bản cũ trừ ⇒ form hiện "còn lại" thấp hơn số BE thu — order-vat D11a).
     let total = 0;
     let discountOther = 0;
     updated.forEach((row) => {
-      const rowTotalEnd = Number(row.totalEnd) || 0;
-      const pct = Number(row.rank_discount_percent) || 0;
-      if (customerRankId && rowTotalEnd > 0 && pct > 0) {
-        totalRankDiscount += (rowTotalEnd * pct) / 100;
-      }
-      total += rowTotalEnd;
+      total += Number(row.totalEnd) || 0;
       discountOther += Number(row.discount_other) || 0;
     });
 
-    this.totalRankDiscount.set(totalRankDiscount);
-    const nextTotal = Math.round(total - totalRankDiscount);
+    const nextTotal = Math.round(total);
     const nextDiscountOther = Math.round(discountOther);
     const current = this.model();
     // Không ghi lại `model` khi KHÔNG có gì đổi — mỗi lần `update()` sinh object model mới, kéo theo
@@ -746,6 +844,13 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       return;
     }
 
+    // Mức 8% hết hạn theo ngày đơn (đổi ngày sau khi đã chọn 8%) — BE cũng chặn, báo sớm ở đây cho rõ.
+    if (this.model().vat_rate === VAT_RATE.RATE_8 && !this.vatRate8Allowed()) {
+      const [y, mo, d] = VAT_RATE_8_LAST_DAY.split('-');
+      this.noti.warnMsg(this.translate.instant('crm.order_plan.form.vat_rate_8_expired', {date: `${d}/${mo}/${y}`}));
+      return;
+    }
+
     this.isSubmitting.set(true);
 
     const raw = this.getPayload();
@@ -814,6 +919,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       created_time: m.created_time,
       note: m.note,
       source_id: m.source_id,
+      vat_rate: m.vat_rate,
       updated_at: m.updated_at,
       services_used: (m.services_used ?? []).map((r) => ({
         id: r.id,
@@ -835,6 +941,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         discountServiceLock: r.discountServiceLock,
         unitName: r.unitName,
         rank_discount_percent: r.rank_discount_percent,
+        vat_amount: r.vat_amount,
       })),
     };
   }

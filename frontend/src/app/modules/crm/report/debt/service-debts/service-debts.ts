@@ -14,7 +14,7 @@ import { FillHeightDirective } from '@/share/directive/fill-height.directive';
 
 /**
  * Công nợ theo dịch vụ — BE GET crm/report/debt/service: từng dòng dịch vụ/liệu trình còn nợ
- * (totalEnd ≠ payment), lọc theo ngày lên đơn `_orderCreatedTime`.
+ * (totalEnd + vat_amount ≠ payment; totalEnd là tiền TRƯỚC VAT nên cột VAT đứng ngay sau Phát sinh), lọc theo ngày lên đơn `_orderCreatedTime`.
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,6 +27,7 @@ export class ServiceDebts extends BaseListV2<any> implements OnInit {
   modelService = inject(ReportDebtCrmService);
   @ViewChild('dt') dt!: Table;
   totalEnd = signal(0);
+  totalVat = signal(0);
   totalPayment = signal(0);
   totalDebt = signal(0);
   totalDeposit = signal(0);
@@ -56,7 +57,7 @@ export class ServiceDebts extends BaseListV2<any> implements OnInit {
     super();
     effect(() => {
       const len = this.selectedColumns()?.length ?? 0;
-      this.padCols.set(len + 6); // # + 4 cột tiền cố định + cột thao tác
+      this.padCols.set(len + 7); // # + 5 cột tiền cố định (phát sinh, VAT, thanh toán, nợ, cọc) + cột thao tác
     });
   }
 
@@ -98,6 +99,7 @@ export class ServiceDebts extends BaseListV2<any> implements OnInit {
       switchMap(async (response: any) => {
         const total = response?.total ?? {};
         this.totalEnd.set(total.totalEnd ?? 0);
+        this.totalVat.set(total.vatAmount ?? 0);
         this.totalPayment.set(total.totalPayment ?? 0);
         this.totalDebt.set(total.totalDebt ?? 0);
         this.totalDeposit.set(total.totalDeposit ?? 0);

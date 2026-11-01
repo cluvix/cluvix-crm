@@ -245,6 +245,8 @@ var en = map[string]string{
 	"list_revenues_invalid":              "Invalid consultant list (must be an array of user IDs)",
 	"order_customer_change_blocked":      "Cannot change the customer of an order that already has services or payments",
 	"service_total_mismatch":             "Service amount does not match unit price, quantity and discounts (expected: %s, received: %s)",
+	"vat_rate_8_expired":                 "The 8%% VAT rate only applies to orders dated on or before %s",
+	"service_vat_mismatch":               "Service VAT does not match the order VAT rate (expected: %s, received: %s)",
 	"service_change_permission_denied":   "You do not have permission to change a paid service",
 	"customer_status_invalid_transition": "Cannot transition status from %d to %d",
 

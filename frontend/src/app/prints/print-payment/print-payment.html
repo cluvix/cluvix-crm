@@ -95,6 +95,17 @@
           </tr>
         </ng-template>
         <ng-template #footer>
+          <!-- VAT: cột trên là Thành tiền TRƯỚC thuế; khách trả = Thành tiền + VAT. Dịch vụ không VAT thì không in 2 dòng này. -->
+          @if (vatAmount() !== 0) {
+            <tr>
+              <td class="!text-right" colspan="5">{{ 'common.label.vat_amount' | translate }}</td>
+              <td class="text-right">{{ vatAmount() | currencyFormat }}</td>
+            </tr>
+            <tr class="font-semibold">
+              <td class="!text-right" colspan="5">{{ 'crm.order_plan.form.total_after_vat' | translate }}</td>
+              <td class="text-right">{{ payable() | currencyFormat }}</td>
+            </tr>
+          }
           @for (item of model().historyPayment; track $index) {
             <tr class="font-semibold">
               <td class="!text-right" colspan="5">
@@ -110,11 +121,7 @@
               <span class="block text-right">{{ 'crm.order_plan.form.outstanding_balance' | translate }}</span>
             </td>
             <td class="text-right">
-              {{
-                model().payment?.orderServiceUsed?.totalEnd -
-                model().totalPayment -
-                +model().payment?.orderServiceUsed?.refundServiceUsed | currencyFormat
-              }}
+              {{ outstanding() | currencyFormat }}
             </td>
           </tr>
         </ng-template>

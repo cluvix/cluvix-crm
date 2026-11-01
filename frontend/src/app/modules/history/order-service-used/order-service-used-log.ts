@@ -37,7 +37,7 @@ export class OrderServiceUsedLog extends BaseListV2<any> implements OnInit {
   private sourceHelper = inject(SourceHelperService);
   private localeService = inject(LocaleService);
 
-  private moneyFields = new Set(['unit_price', 'service_discount', 'discount', 'discount_other', 'totalEnd']);
+  private moneyFields = new Set(['unit_price', 'service_discount', 'discount', 'discount_other', 'totalEnd', 'vat_amount']);
 
   private fieldLabels: Record<string, string> = {
     service_id: 'Dịch vụ',
@@ -48,6 +48,7 @@ export class OrderServiceUsedLog extends BaseListV2<any> implements OnInit {
     discount: 'Giảm coupon',
     discount_other: 'Giảm khác',
     totalEnd: 'Thành tiền',
+    vat_amount: 'Tiền VAT',
     expires_at: 'Hiệu lực đến',
     note: 'Ghi chú',
     branch_id: 'Chi nhánh',

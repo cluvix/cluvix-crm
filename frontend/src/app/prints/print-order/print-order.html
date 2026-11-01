@@ -173,6 +173,29 @@
         }
       </p-table>
 
+      <!-- VAT: bảng trên là giá TRƯỚC thuế; số khách phải trả = tổng trước VAT + VAT. Đơn không VAT thì không in khối này. -->
+      @if (showVat) {
+        <div class="flex flex-col items-end gap-1 mt-2">
+          <div class="flex gap-6">
+            <span>{{ 'crm.order_plan.form.total_before_vat' | translate }}</span>
+            <span class="min-w-[120px] text-right">{{ totalSerices | currencyFormat }}</span>
+          </div>
+          <div class="flex gap-6">
+            <span>
+              {{ 'crm.order_plan.form.vat' | translate }}
+              @if (vatRateText) {
+                ({{ vatRateText }})
+              }
+            </span>
+            <span class="min-w-[120px] text-right">{{ totalVat | currencyFormat }}</span>
+          </div>
+          <div class="flex gap-6 font-semibold">
+            <span>{{ 'crm.order_plan.form.total_after_vat' | translate }}</span>
+            <span class="min-w-[120px] text-right">{{ totalAfterVat | currencyFormat }}</span>
+          </div>
+        </div>
+      }
+
       @if (model()?.orderPlan?.note) {
         <div>
           {{ 'common.label.note' | translate }}:

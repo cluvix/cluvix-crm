@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
 	"erpCluvix/internal/phoneutil"
@@ -45,6 +46,27 @@ func filterOrderCols(c *gin.Context, allCols []orderCol) []orderCol {
 	return filtered
 }
 
+// osuPayableOf — phải thu của 1 dòng dịch vụ (bmad/order-vat): totalEnd (TRƯỚC thuế) + vat_amount. Phiếu thu là
+// tiền CÓ thuế ⇒ mọi so sánh với đã thu (trạng thái thanh toán, còn nợ) dùng số này, không dùng totalEnd.
+func osuPayableOf(totalEnd, vat interface{}) decimal.Decimal {
+	return helpers.ToDecimal(totalEnd).Add(helpers.ToDecimal(vat))
+}
+
+// osuPaymentStatusLabel — nhãn "Trạng thái thanh toán" của 1 dòng dịch vụ theo phải thu (có VAT) và đã thu. So
+// bằng decimal (bản cũ so float64 — số lẻ có thể lệch). Dòng không VAT ⇒ nhãn y như trước.
+func osuPaymentStatusLabel(payable, paid decimal.Decimal) string {
+	switch {
+	case payable.IsZero():
+		return "Dịch vụ miễn phí"
+	case paid.IsZero():
+		return "Chưa thanh toán"
+	case payable.Equal(paid):
+		return "Hoàn thành thanh toán"
+	default:
+		return "Thanh toán 1 phần"
+	}
+}
+
 // orderExport build headers + row từ cols đã chọn rồi chạy doExport.
 func orderExport(c *gin.Context, eq *gorm.DB, fileName string, cols []orderCol) {
 	headers := make([]string, len(cols))
@@ -73,6 +95,9 @@ func orderExport(c *gin.Context, eq *gorm.DB, fileName string, cols []orderCol) 
 func ExportOrderPlan(c *gin.Context, q *gorm.DB) {
 	loc := tz.LocFromContext(c, q.Session(&gorm.Session{NewDB: true}))
 	totalByPlanID := loadSumByFilteredIDs(q, "order_plan.id", "order_service_used", "order_plan_id", "totalEnd")
+	// VAT đơn (bmad/order-vat): giá trị đơn giữ TRƯỚC thuế; phải thu = giá trị + VAT — "Còn nợ" so phải thu
+	// với đã thu (paymentPlan là tiền CÓ thuế).
+	vatByPlanID := loadSumByFilteredIDs(q, "order_plan.id", "order_service_used", "order_plan_id", "vat_amount")
 	nameByID := loadNameMap(q, "user_profile", "user_id", "fullname")
 	showPhone := phoneutil.CanSeePhoneExport(c, q.Session(&gorm.Session{NewDB: true}))
 
@@ -103,9 +128,17 @@ func ExportOrderPlan(c *gin.Context, q *gorm.DB) {
 		{"total", "Giá trị đơn hàng", func(r map[string]interface{}) interface{} {
 			return totalByPlanID[toInt(r["plan_id"])].InexactFloat64()
 		}},
+		{"vat_total", "Tiền VAT", func(r map[string]interface{}) interface{} {
+			return vatByPlanID[toInt(r["plan_id"])].InexactFloat64()
+		}},
+		{"total_after_vat", "Tổng sau VAT", func(r map[string]interface{}) interface{} {
+			id := toInt(r["plan_id"])
+			return totalByPlanID[id].Add(vatByPlanID[id]).InexactFloat64()
+		}},
 		{"payment", "Đã thanh toán", func(r map[string]interface{}) interface{} { return toFloat(r["payment"]) }},
 		{"report-debt", "Còn nợ", func(r map[string]interface{}) interface{} {
-			return totalByPlanID[toInt(r["plan_id"])].Sub(helpers.ToDecimal(r["payment"])).InexactFloat64()
+			id := toInt(r["plan_id"])
+			return totalByPlanID[id].Add(vatByPlanID[id]).Sub(helpers.ToDecimal(r["payment"])).InexactFloat64()
 		}},
 		{"tuVan", "Tư vấn viên", func(r map[string]interface{}) interface{} { return firstUserName(r["listRevenues"], nameByID) }},
 		{"created_time", "Ngày lên đơn", func(r map[string]interface{}) interface{} { return fmtUnixDateTime(r["created_time"], loc) }},
@@ -222,7 +255,7 @@ func ExportOrderServiceUsed(c *gin.Context, q *gorm.DB) {
 			order_service_used.unit_price, order_service_used.quantity,
 			order_service_used.service_discount, order_service_used.service_discount_type,
 			order_service_used.discount_other, order_service_used.rank_discount_amount,
-			order_service_used.totalEnd, order_service_used.payment,
+			order_service_used.totalEnd, order_service_used.vat_amount, order_service_used.payment,
 			order_service_used.dayComplete, order_service_used.created_day,
 			order_service_used.created_at, order_service_used.updated_at,
 			order_service_used.listRevenues,
@@ -265,20 +298,13 @@ func ExportOrderServiceUsed(c *gin.Context, q *gorm.DB) {
 		{"discount_other", "Giảm giá khác", func(r map[string]interface{}) interface{} { return toFloat(r["discount_other"]) }},
 		{"rank_discount_amount", "Giảm hạng thành viên", func(r map[string]interface{}) interface{} { return toFloat(r["rank_discount_amount"]) }},
 		{"totalEnd", "Doanh số", func(r map[string]interface{}) interface{} { return toFloat(r["totalEnd"]) }},
+		{"vat_amount", "Tiền VAT", func(r map[string]interface{}) interface{} { return toFloat(r["vat_amount"]) }},
+		{"total_after_vat", "Tổng sau VAT", func(r map[string]interface{}) interface{} {
+			return osuPayableOf(r["totalEnd"], r["vat_amount"]).InexactFloat64()
+		}},
 		{"thanhToan", "Thanh toán", func(r map[string]interface{}) interface{} { return toFloat(r["payment"]) }},
 		{"statusPayment", "Trạng thái thanh toán", func(r map[string]interface{}) interface{} {
-			te := toFloat(r["totalEnd"])
-			pm := toFloat(r["payment"])
-			switch {
-			case te == 0:
-				return "Dịch vụ miễn phí"
-			case pm == 0:
-				return "Chưa thanh toán"
-			case te == pm:
-				return "Hoàn thành thanh toán"
-			default:
-				return "Thanh toán 1 phần"
-			}
+			return osuPaymentStatusLabel(osuPayableOf(r["totalEnd"], r["vat_amount"]), helpers.ToDecimal(r["payment"]))
 		}},
 		{"note", "Ghi chú", func(r map[string]interface{}) interface{} { return stripHTML(r["plan_note"]) }},
 		{"dayComplete", "Ngày hoàn thành sử dụng", func(r map[string]interface{}) interface{} { return fmtUnixDateTime(r["dayComplete"], loc) }},
@@ -312,7 +338,7 @@ func ExportOrderServiceUsedWithAppt(c *gin.Context, q *gorm.DB) {
 			order_service_used.unit_price, order_service_used.quantity,
 			order_service_used.service_discount, order_service_used.service_discount_type,
 			order_service_used.discount_other, order_service_used.rank_discount_amount,
-			order_service_used.totalEnd, order_service_used.payment,
+			order_service_used.totalEnd, order_service_used.vat_amount, order_service_used.payment,
 			order_service_used.listRevenues,
 			osrc.name as source_name, cust.address as customer_address,
 			order_service_used.created_day, order_service_used.created_at, uc.fullname as user_created_fullname`).
@@ -342,6 +368,10 @@ func ExportOrderServiceUsedWithAppt(c *gin.Context, q *gorm.DB) {
 		{"discount_other", "Giảm giá khác", func(r map[string]interface{}) interface{} { return toFloat(r["discount_other"]) }},
 		{"rank_discount_amount", "Giảm hạng thành viên", func(r map[string]interface{}) interface{} { return toFloat(r["rank_discount_amount"]) }},
 		{"totalEnd", "Doanh số", func(r map[string]interface{}) interface{} { return toFloat(r["totalEnd"]) }},
+		{"vat_amount", "Tiền VAT", func(r map[string]interface{}) interface{} { return toFloat(r["vat_amount"]) }},
+		{"total_after_vat", "Tổng sau VAT", func(r map[string]interface{}) interface{} {
+			return osuPayableOf(r["totalEnd"], r["vat_amount"]).InexactFloat64()
+		}},
 		{"thanhToan", "Thanh toán", func(r map[string]interface{}) interface{} { return toFloat(r["payment"]) }},
 		{"source_id", "Nguồn dịch vụ", func(r map[string]interface{}) interface{} { return r["source_name"] }},
 		{"address", "Địa chỉ", func(r map[string]interface{}) interface{} { return r["customer_address"] }},

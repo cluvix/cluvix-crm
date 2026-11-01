@@ -56,9 +56,19 @@
       </p-floatlabel>
     </div>
 
+    <!-- Khung "Thêm dịch vụ": chốt ⇒ dòng mới CHÈN LÊN ĐẦU bảng (`onQuickAdd`), trùng dịch vụ thì cộng dồn. -->
+    <div class="col-span-12">
+      <app-service-quick-add
+        [enforcePriceRange]="true"
+        [subtotalBeforePromotions]="true"
+        (add)="onQuickAdd($event)"
+      />
+    </div>
+
     <!-- Services table -->
     <div class="col-span-12 content-start">
       <p-table
+        #servicesTable
         [lazy]="true"
         [paginator]="false"
         [rowHover]="true"
@@ -222,19 +232,9 @@
             </tr>
           }
         </ng-template>
-        <ng-template #footer>
+        <ng-template #emptymessage>
           <tr>
-            <td [attr.colspan]="(model().services_used ?? []).length > 1 ? 9 : 8" class="!p-2">
-              <button
-                pButton
-                (click)="addServiceUsed()"
-                severity="success"
-                [text]="true"
-                size="small"
-                type="button"
-                class="!w-auto"
-              ><span>{{ 'common.label.add' | translate }}</span></button>
-            </td>
+            <td colspan="9" class="py-4"><div class="flex justify-center w-full text-muted-color">{{ 'common.label.please_add_at_least_1_service' | translate }}</div></td>
           </tr>
         </ng-template>
       </p-table>
@@ -260,19 +260,33 @@
           <div class="grid grid-cols-1 gap-4 items-start">
             <div class="w-full">
               <div class="sub-total border border-[var(--p-content-border-color)] rounded-md p-4 bg-[var(--p-content-hover-background)] space-y-1">
-                @if (totalRankDiscount() > 0) {
-                  <div class="flex items-center justify-between text-sm">
-                    <span class="text-[var(--p-text-muted-color)]">{{ 'crm.order_plan.form.total_service' | translate }}</span>
-                    <span class="tabular-nums">{{ ($any(rootField.total!().value()) + totalRankDiscount()) | numberFormat }}</span>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-[var(--p-text-muted-color)]">{{ 'crm.order_plan.form.total_before_vat' | translate }}</span>
+                  <span class="tabular-nums">{{ rootField.total!().value() | numberFormat }}</span>
+                </div>
+                <!-- VAT cả đơn: giá dịch vụ CHƯA gồm VAT, VAT tính theo từng dòng rồi cộng vào số phải thu. -->
+                <div class="flex items-center justify-between gap-3 text-sm">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <label for="vat_rate" class="text-[var(--p-text-muted-color)] shrink-0">{{ 'crm.order_plan.form.vat' | translate }}</label>
+                    <p-select
+                      inputId="vat_rate"
+                      [formField]="$any(rootField.vat_rate!)"
+                      [options]="vatRateOptions()"
+                      optionLabel="label"
+                      optionValue="value"
+                      [showClear]="true"
+                      [placeholder]="'crm.order_plan.form.vat_none' | translate"
+                      [fluid]="false"
+                      appendTo="body"
+                      size="small"
+                      class="w-44"
+                    ></p-select>
                   </div>
-                  <div class="flex items-center justify-between text-sm">
-                    <span class="text-[var(--p-text-muted-color)]">{{ 'common.label.membership_rank_discount' | translate }}</span>
-                    <span class="text-[#10B981] tabular-nums">-{{ totalRankDiscount() | numberFormat }}</span>
-                  </div>
-                }
+                  <span class="tabular-nums">{{ vatTotal() | numberFormat }}</span>
+                </div>
                 <div class="flex items-center justify-between">
-                  <span class="font-semibold">{{ 'crm.order_plan.form.total_payment' | translate }}</span>
-                  <span class="text-[#E53935] font-semibold tabular-nums">{{ rootField.total!().value() | numberFormat }}</span>
+                  <span class="font-semibold">{{ 'crm.order_plan.form.total_after_vat' | translate }}</span>
+                  <span class="text-[#E53935] font-semibold tabular-nums">{{ totalAfterVat() | numberFormat }}</span>
                 </div>
                 @if (isEditMode()) {
                   <div class="flex items-center justify-between text-sm">
@@ -281,7 +295,7 @@
                   </div>
                   <div class="flex items-center justify-between bg-[#E539351A] -mx-4 mt-2 px-4 py-2 border-y border-[#E5393540]">
                     <span class="font-bold text-[#E53935]">{{ 'crm.order_plan.form.outstanding_balance' | translate }}</span>
-                    <span class="text-[#E53935] text-lg font-bold tabular-nums">{{ (($any(rootField.total!().value()) ?? 0) - paidAmount) | numberFormat }}</span>
+                    <span class="text-[#E53935] text-lg font-bold tabular-nums">{{ (totalAfterVat() - paidAmount) | numberFormat }}</span>
                   </div>
                 }
               </div>

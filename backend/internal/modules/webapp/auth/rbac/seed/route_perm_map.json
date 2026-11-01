@@ -451,15 +451,6 @@
  },
  {
   "method": "GET",
-  "path": "/api/crm/payment/get-order-plan/:id",
-  "module": "crm",
-  "perm": "viewPayment",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": "payment handler has manual hasPermission"
- },
- {
-  "method": "GET",
   "path": "/api/crm/payment/:id",
   "module": "crm",
   "perm": "viewPayment",

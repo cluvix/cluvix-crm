@@ -20,6 +20,7 @@ type OrderPlan struct {
 	ListRevenues  datatypes.JSON   `gorm:"column:listRevenues;type:json;comment:JSON array tư vấn viên phụ trách (1-nhiều)" json:"listRevenues"`
 	SourceId      *int             ` gorm:"column:source_id;index;comment:Nguồn khách hàng" json:"source_id"`
 	CreatedTime   *int64           ` gorm:"column:created_time;index;comment:Ngày nhập đơn hàng" json:"created_time"`
+	VatRate       *string          ` gorm:"column:vat_rate;size:4;comment:Mức VAT của đơn: KCT, 0, 5, 8, 10 (%). NULL = không VAT" json:"vat_rate"`
 	Note          string           ` gorm:"comment:Ghi chú" json:"note"`
 }
 

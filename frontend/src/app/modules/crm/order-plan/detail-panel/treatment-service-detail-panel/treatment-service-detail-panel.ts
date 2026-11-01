@@ -116,22 +116,29 @@ export class TreatmentServiceDetailPanel extends BaseDetailPanel<OrderServiceUse
     );
   });
 
+  /** Tiền VAT của dòng (0 với dịch vụ trước khi có VAT). */
+  readonly vatAmount = computed(() => Number(this.model().vat_amount) || 0);
+
+  /** Phải thu = Thành tiền (`totalEnd`, CHƯA VAT) + VAT — tiền khách thực trả đã gồm VAT. */
+  readonly payable = computed(() => this.round2(Number(this.model().totalEnd ?? 0) + this.vatAmount()));
+
   readonly collected = computed(() => Number(this.model().payment ?? 0));
   readonly refunded = computed(() => Number(this.model().refundServiceUsed ?? 0));
 
   /**
-   * Còn phải thu — trừ cả phần đã hoàn trả, khớp công thức form thanh toán.
+   * Còn phải thu = phải thu (gồm VAT) − đã thu. KHÔNG trừ thêm phần đã hoàn trả: BE tính nợ = phải thu − tiền đã
+   * thu ròng, tiền hoàn đã nằm trong số thu ròng — trừ lần nữa là đếm hoàn hai lần, panel hiện nợ thấp hơn BE và
+   * lệch cả công thức form thanh toán (D11b). Dòng "Đã hoàn trả" ở template chỉ để tham khảo.
    * KHÔNG kẹp về 0: giá trị âm nghĩa là **thu vượt** (đổi giá sau khi đã thu, gán nhầm phiếu) — đó
    * đúng là tín hiệu kế toán cần thấy, kẹp lại là biến nó thành "đã thu đủ" y như ca bình thường.
    */
-  readonly remaining = computed(() =>
-    this.round2(Number(this.model().totalEnd ?? 0) - this.collected() - this.refunded()),
-  );
+  readonly remaining = computed(() => this.round2(this.payable() - this.collected()));
 
   readonly isOverpaid = computed(() => this.remaining() < 0);
 
   readonly paymentState = computed<TreatmentPaymentState>(() => {
-    const total = Number(this.model().totalEnd ?? 0);
+    // So với số PHẢI THU (gồm VAT): trả đúng Thành tiền mà còn VAT thì vẫn là thu một phần.
+    const total = this.payable();
     const paid = this.collected();
     if (total === 0) return 'free';
     if (paid === 0) return 'pending';

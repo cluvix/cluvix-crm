@@ -13,10 +13,15 @@
   <app-slide-over-section label="crm.order_plan.detail_panel.section_money">
     <div class="grid grid-cols-3 gap-2">
       <div class="rounded-lg border border-surface px-3 py-2">
+        <!-- Có VAT: ô này là số PHẢI THU (sau VAT) để còn lại = ô này − đã thu; giá trước VAT nằm ở các dòng dưới. -->
         <div class="text-xs text-muted-color">
-          {{ 'crm.order_plan.detail_panel.order_total' | translate }}
+          @if (hasVat()) {
+            {{ 'crm.order_plan.form.total_after_vat' | translate }}
+          } @else {
+            {{ 'crm.order_plan.detail_panel.order_total' | translate }}
+          }
         </div>
-        <div class="text-sm font-semibold">{{ orderTotal() | currencyFormat }}</div>
+        <div class="text-sm font-semibold">{{ (hasVat() ? totalAfterVat() : orderTotal()) | currencyFormat }}</div>
       </div>
       <div class="rounded-lg border border-surface px-3 py-2">
         <div class="text-xs text-muted-color">
@@ -40,6 +45,18 @@
         </div>
       </div>
     </div>
+
+    @if (hasVat()) {
+      <app-slide-over-row label="crm.order_plan.form.total_before_vat">
+        {{ orderTotal() | currencyFormat }}
+      </app-slide-over-row>
+      <app-slide-over-row label="crm.order_plan.form.vat">
+        @if (vatRateText()) {
+          <span class="text-muted-color font-normal">{{ vatRateText() }} · </span>
+        }
+        {{ vatTotal() | currencyFormat }}
+      </app-slide-over-row>
+    }
 
     @if (refunded()) {
       <app-slide-over-row label="common.label.refunded">
@@ -73,7 +90,14 @@
                   }
                 </div>
               </div>
-              <span class="text-sm font-semibold shrink-0">{{ svc.totalEnd | currencyFormat }}</span>
+              <div class="flex flex-col items-end shrink-0">
+                <span class="text-sm font-semibold">{{ svc.totalEnd | currencyFormat }}</span>
+                @if (svc.vat_amount) {
+                  <span class="text-xs text-muted-color">
+                    {{ 'crm.order_plan.form.vat' | translate }}: {{ svc.vat_amount | currencyFormat }}
+                  </span>
+                }
+              </div>
             </div>
 
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-color">

@@ -371,6 +371,14 @@
           @case ('totalEnd') {
             <td class="text-blue-500">{{ model.orderServiceUsed?.totalEnd | currencyFormat }}</td>
           }
+          @case ('vatAmount') {
+            <td class="text-blue-500">{{ model.orderServiceUsed?.vat_amount || 0 | currencyFormat }}</td>
+          }
+          @case ('totalAfterVat') {
+            <td class="text-blue-500">
+              {{ (model.orderServiceUsed?.totalEnd || 0) + (model.orderServiceUsed?.vat_amount || 0) | currencyFormat }}
+            </td>
+          }
           @case ('serviceType') {
             <td>{{ model.serviceTypeLabel || '—' }}</td>
           }
@@ -378,11 +386,11 @@
             <td>
               @if (!model.orderServiceUsed) {
                 —
-              } @else if (model.orderServiceUsed.totalEnd === 0) {
+              } @else if (model.orderServiceUsed.totalEnd + (model.orderServiceUsed.vat_amount || 0) === 0) {
                 {{ 'common.label.free_service' | translate }}
               } @else if (model.orderServiceUsed.payment === 0) {
                 <span class="text-red-500">{{ 'common.status.unpaid' | translate }}</span>
-              } @else if (model.orderServiceUsed.totalEnd === model.orderServiceUsed.payment) {
+              } @else if (model.orderServiceUsed.totalEnd + (model.orderServiceUsed.vat_amount || 0) === model.orderServiceUsed.payment) {
                 <span class="text-blue-500">{{ 'common.label.fully_paid' | translate }}</span>
               } @else {
                 <span class="text-yellow-600">{{ 'common.label.partial_payment' | translate }}</span>

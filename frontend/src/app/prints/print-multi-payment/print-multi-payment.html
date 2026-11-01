@@ -26,6 +26,9 @@
             </th>
             <th>{{ 'common.label.service' | translate }}</th>
             <th>{{ 'common.label.subtotal' | translate }}</th>
+            @if (hasVat()) {
+              <th>{{ 'crm.order_plan.form.vat' | translate }}</th>
+            }
             <th>{{ 'common.status.paid' | translate }}</th>
             <th>{{ 'crm.order_plan.form.outstanding_balance' | translate }}</th>
           </tr>
@@ -42,14 +45,20 @@
               }
             </td>
             <td>{{ model.totalEnd | numberFormat }}</td>
+            @if (hasVat()) {
+              <td>{{ model.vat_amount || 0 | numberFormat }}</td>
+            }
             <td>{{ model.amount | numberFormat }}</td>
-            <td>{{ model.totalEnd - model.amount | numberFormat }}</td>
+            <td>{{ residual(model) | numberFormat }}</td>
           </tr>
         </ng-template>
         <ng-template #footer>
           <tr class="font-semibold">
             <td class="!text-right border-r-0" colspan="2">{{ 'common.label.total' | translate }}</td>
             <td>{{ calculatorTotalEnd(models()) | currencyFormat }}</td>
+            @if (hasVat()) {
+              <td>{{ calculatorVat(models()) | currencyFormat }}</td>
+            }
             <td>{{ calculatorAmount(models()) | currencyFormat }}</td>
             <td>{{ residualTotal(models()) | currencyFormat }}</td>
           </tr>

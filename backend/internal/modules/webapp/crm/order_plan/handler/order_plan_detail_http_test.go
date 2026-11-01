@@ -123,8 +123,10 @@ func TestGetOrderPlanDetail_ReturnsOrderWithServicesAndMoney(t *testing.T) {
 
 	tenant := testhelpers.FreshTenant(t, testDB)
 	orderID := seedOrderPlan(t, tenant)
-	seedOrderService(t, tenant, orderID, 1_000_000, 400_000, 0)
+	svcVat := seedOrderService(t, tenant, orderID, 1_000_000, 400_000, 0)
 	seedOrderService(t, tenant, orderID, 500_000, 100_000, 50_000)
+	// VAT (bmad/order-vat) chỉ trên 1 dòng — dòng kia vat_amount = 0 (DEFAULT) ⇒ vat_total chỉ là của dòng này.
+	require.NoError(t, testDB.Exec("UPDATE order_service_used SET vat_amount = 80000 WHERE id = ?", svcVat).Error)
 
 	seedOrderPayment(t, tenant, orderID, 400_000, define.PaymentForOrder)
 	seedOrderPayment(t, tenant, orderID, 100_000, define.PaymentForMoveDeposit)
@@ -142,7 +144,10 @@ func TestGetOrderPlanDetail_ReturnsOrderWithServicesAndMoney(t *testing.T) {
 	require.True(t, ok, "phải có mảng orderServiceUseds")
 	require.Len(t, services, 2)
 
-	assert.Equal(t, "1500000", fmt.Sprint(data["total"]), "total = tổng totalEnd của dịch vụ con")
+	assert.Equal(t, "1500000", fmt.Sprint(data["total"]), "total = tổng totalEnd của dịch vụ con (TRƯỚC thuế)")
+	assert.Equal(t, "80000", fmt.Sprint(data["vat_total"]), "vat_total = tổng vat_amount của dịch vụ con")
+	assert.Equal(t, "1580000", fmt.Sprint(data["total_after_vat"]), "total_after_vat = total + vat_total")
+	assert.Contains(t, data, "vat_rate", "chi tiết đơn phải trả mức VAT của đơn")
 	assert.Equal(t, "500000", fmt.Sprint(data["payment"]), "chỉ cộng phiếu thu payment_for IN (order, move_deposit)")
 	assert.Equal(t, "50000", fmt.Sprint(data["refundServiceTotal"]))
 

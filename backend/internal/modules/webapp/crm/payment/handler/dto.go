@@ -83,7 +83,7 @@ func (in *CreatePaymentOrderInput) ToPayment() *paymentDao.Payment {
 }
 
 // CreatePaymentCustomerInput — POST /payment/customer, thanh toán 1+ dịch vụ
-// (serviceUsed_idArr). amount phải <= tổng (totalEnd - payment) các dịch vụ
+// (serviceUsed_idArr). amount phải <= tổng (totalEnd + vat_amount - payment) các dịch vụ
 // đã chọn; nếu trả thiếu, service phân bổ waterfall theo created_day ASC
 // (dịch vụ cũ được trả đủ trước) — xem CreatePaymentCustomerFromPayment.
 type CreatePaymentCustomerInput struct {

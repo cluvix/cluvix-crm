@@ -124,6 +124,13 @@ func TestOrderPlanDebts_PeriodMathIgnoresRefund(t *testing.T) {
 	require.EqualValues(t, plan, row["id"])
 	requireMoney(t, 1000, row["totalEndOrder"], "row.totalEndOrder")
 
+	// VAT (bmad/order-vat): phải thu = totalEnd + vat_amount — dòng trong kỳ thêm VAT 50 ⇒ phát sinh và còn nợ cùng +50.
+	require.NoError(t, testDB.Exec("UPDATE order_service_used SET vat_amount = 50 WHERE id = ?", osuNew).Error)
+	total = getJSON(t, tn.BranchID, fmt.Sprintf(
+		"/crm/report/debt/order-plan?filter[created_time][gte]=%d&filter[created_time][lte]=%d", from, to))["total"].(map[string]any)
+	requireMoney(t, 550, total["totalEndIn"], "totalEndIn có VAT")
+	requireMoney(t, 1050, total["totalEndOrder"], "totalEndOrder có VAT")
+
 	// Tham số ngày không phải số ⇒ 422, không đi vào SQL.
 	r := testhelpers.NewGin()
 	Register(r.Group("/crm", testhelpers.AuthMiddleware(tn.BranchID, 0)), &deps.Deps{DB: testDB})
@@ -153,4 +160,20 @@ func TestCustomerAndServiceDebts_Totals(t *testing.T) {
 	requireMoney(t, 600, total["totalDebt"], "totalDebt")
 	requireMoney(t, 50, total["totalDeposit"], "totalDeposit")
 	require.Len(t, body["items"].([]any), 1)
+
+	// VAT (bmad/order-vat): nợ = (totalEnd + vat_amount) − payment; totalEnd giữ tiền TRƯỚC thuế.
+	require.NoError(t, testDB.Exec("UPDATE order_service_used SET vat_amount = 100 WHERE id = ?", osu).Error)
+	body = getJSON(t, tn.BranchID, fmt.Sprintf("/crm/report/debt/service?_orderCreatedTime[gte]=%d&_orderCreatedTime[lte]=%d&_keyword=DV", now-60, now+60))
+	total = body["total"].(map[string]any)
+	requireMoney(t, 700, total["totalDebt"], "totalDebt có VAT")
+	requireMoney(t, 1000, total["totalEnd"], "totalEnd trước thuế")
+	requireMoney(t, 100, total["vatAmount"], "vatAmount")
+	requireMoney(t, 700, body["items"].([]any)[0].(map[string]any)["debt"], "row.debt có VAT")
+	// Thu đủ phần có thuế ⇒ hết nợ (trước VAT, payment = totalEnd đã coi là hết nợ — giờ thì chưa).
+	require.NoError(t, testDB.Exec("UPDATE order_service_used SET payment = 1000 WHERE id = ?", osu).Error)
+	body = getJSON(t, tn.BranchID, fmt.Sprintf("/crm/report/debt/service?_orderCreatedTime[gte]=%d&_orderCreatedTime[lte]=%d&_keyword=DV", now-60, now+60))
+	require.Len(t, body["items"].([]any), 1, "payment = totalEnd nhưng còn VAT ⇒ vẫn nợ")
+	require.NoError(t, testDB.Exec("UPDATE order_service_used SET payment = 1100 WHERE id = ?", osu).Error)
+	body = getJSON(t, tn.BranchID, fmt.Sprintf("/crm/report/debt/service?_orderCreatedTime[gte]=%d&_orderCreatedTime[lte]=%d&_keyword=DV", now-60, now+60))
+	require.Len(t, body["items"].([]any), 0, "thu đủ totalEnd + VAT ⇒ hết nợ")
 }

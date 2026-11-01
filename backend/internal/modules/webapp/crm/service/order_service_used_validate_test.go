@@ -68,3 +68,80 @@ func TestExpectedServiceUsedMoney_NoLineDiscount(t *testing.T) {
 		}
 	}
 }
+
+// VAT dòng (bmad/order-vat D2): round(totalEnd × % / 100) theo DÒNG; KCT / 0% / nil / mức lạ ⇒ 0.
+func TestExpectedVatAmount(t *testing.T) {
+	d := decimal.NewFromInt
+	rate := func(s string) *string { return &s }
+	cases := []struct {
+		name     string
+		totalEnd decimal.Decimal
+		rate     *string
+		want     decimal.Decimal
+	}{
+		{"10%", d(850_000), rate("10"), d(85_000)},
+		{"8% làm tròn lên", d(123_456), rate("8"), d(9_876)},   // 9876.48
+		{"5% làm tròn .5 lên", d(10), rate("5"), d(1)},         // 0.5
+		{"8% làm tròn xuống", d(123_440), rate("8"), d(9_875)}, // 9875.2
+		{"KCT", d(500_000), rate("KCT"), d(0)},
+		{"0%", d(500_000), rate("0"), d(0)},
+		{"đơn cũ (nil)", d(500_000), nil, d(0)},
+		{"mức lạ", d(500_000), rate("7"), d(0)},
+		{"totalEnd 0", d(0), rate("10"), d(0)},
+	}
+	for _, tc := range cases {
+		if got := expectedVatAmount(tc.totalEnd, tc.rate); !got.Equal(tc.want) {
+			t.Fatalf("%s: muốn %s, có %s", tc.name, tc.want, got)
+		}
+	}
+}
+
+// Dòng đã KHOÁ giữ VAT chốt lúc khoá; dòng thường tính lại theo mức VAT đơn.
+func TestApplyServiceUsedVat_LockedFrozen(t *testing.T) {
+	ten := "10"
+	svc := baseValidOSU()
+	te := decimal.NewFromInt(200_000)
+	svc.TotalEnd = &te
+	applyServiceUsedVat(svc, &ten)
+	if !svc.VatAmount.Equal(decimal.NewFromInt(20_000)) {
+		t.Fatalf("dòng thường: muốn VAT 20000, có %s", svc.VatAmount)
+	}
+	svc.IsLock = 2
+	svc.VatAmount = decimal.NewFromInt(7_000)
+	applyServiceUsedVat(svc, &ten)
+	if !svc.VatAmount.Equal(decimal.NewFromInt(7_000)) {
+		t.Fatalf("dòng khoá phải giữ VAT 7000, có %s", svc.VatAmount)
+	}
+}
+
+// Đã thu được tới totalEnd + VAT (số phải thu), vượt mới chặn.
+func TestValidateOrderServiceUsed_PayableIncludesVat(t *testing.T) {
+	svc := baseValidOSU()
+	te, pay := decimal.NewFromInt(100_000), decimal.NewFromInt(110_000)
+	svc.TotalEnd, svc.Payment, svc.VatAmount = &te, &pay, decimal.NewFromInt(10_000)
+	if err := validateOrderServiceUsed(svc); err != nil {
+		t.Fatalf("đã thu = totalEnd + VAT phải hợp lệ, có %v", err)
+	}
+	pay = decimal.NewFromInt(110_001)
+	if err := validateOrderServiceUsed(svc); err == nil {
+		t.Fatal("đã thu > totalEnd + VAT phải bị chặn")
+	}
+	svc.Payment, svc.VatAmount = nil, decimal.NewFromInt(-1)
+	if err := validateOrderServiceUsed(svc); err == nil {
+		t.Fatal("VAT âm phải bị chặn")
+	}
+}
+
+// vat_amount FE gửi: không gửi ⇒ bỏ qua; lệch ≤ 1đ ⇒ qua; lệch hơn ⇒ chặn.
+func TestCheckServiceUsedVat(t *testing.T) {
+	svc := baseValidOSU()
+	svc.VatAmount = decimal.NewFromInt(9_876)
+	for _, sent := range []any{nil, 9_876, "9877", 9_875.0} {
+		if err := checkServiceUsedVat(svc, sent); err != nil {
+			t.Fatalf("gửi %v phải qua, có %v", sent, err)
+		}
+	}
+	if err := checkServiceUsedVat(svc, 9_878); err == nil {
+		t.Fatal("lệch 2đ phải bị chặn")
+	}
+}

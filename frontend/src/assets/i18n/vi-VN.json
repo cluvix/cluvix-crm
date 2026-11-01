@@ -32,6 +32,9 @@
       "new": "Đơn hàng mới",
       "old": "Đơn hàng cũ"
     },
+    "vat_rate": {
+      "kct": "Không chịu thuế (KCT)"
+    },
     "payment_status": {
       "refunded": "Hoàn trả dịch vụ"
     },
@@ -1134,9 +1137,12 @@
         "tab_info": "Thông tin đơn hàng",
         "tab_expand": "Mở rộng",
         "expires_at": "Hiệu lực",
-        "total_service": "Tổng dịch vụ",
         "pick_service_placeholder": "Tìm theo tên dịch vụ",
-        "total_payment": "Tổng thanh toán",
+        "total_before_vat": "Tổng trước VAT",
+        "vat": "VAT",
+        "vat_none": "Không tính VAT",
+        "total_after_vat": "Tổng sau VAT",
+        "vat_rate_8_expired": "Mức VAT 8% chỉ áp dụng cho đơn có ngày tới hết {{date}}",
         "edit_price_in_range": "Chỉnh sửa giá trong khoảng",
         "price_not_editable": "Giá không cho chỉnh sửa",
         "installment_period": "Kỳ hạn trả góp",
@@ -1151,7 +1157,9 @@
         "outstanding_balance": "Số tiền còn lại",
         "tooltip_col_coupon": "(4) = Giảm giá dòng dịch vụ (giá trị lịch sử)",
         "tooltip_col_subtotal": "(4) = (1)×(2)−(3)",
-        "tooltip_col_total": "(6) = (4)−(5)"
+        "tooltip_col_total": "(6) = (4)−(5)",
+        "add_service": "Thêm dịch vụ",
+        "quick_subtotal_hint": "Chưa trừ giảm theo hạng khách"
       },
       "order_type": "Đơn hàng mới/cũ",
       "change_service": {
@@ -1494,6 +1502,8 @@
     },
     "label": {
       "payable": "Cần thanh toán",
+      "vat_amount": "Tiền VAT",
+      "receivable": "Phải thu",
       "receipt_date": "Ngày thu",
       "id": "ID",
       "code": "Mã",
@@ -1934,6 +1944,8 @@
     },
     "message": {
       "no_permission": "Bạn không có quyền",
+      "quick_add_enter_hint": "Nhập xong nhấn Enter để thêm nhanh",
+      "quick_add_merged": "Đã cộng thêm {{qty}} vào dòng «{{name}}» có sẵn",
       "field_required": "Trường này là bắt buộc",
       "confirm_export": "Bạn có muốn tải dữ liệu?",
       "export_success": "Export thành công",

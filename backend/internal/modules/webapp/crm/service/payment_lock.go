@@ -68,14 +68,14 @@ func derefInt(p *int) int {
 type lockedServiceUsed struct {
 	ID         int             `gorm:"column:id"`
 	CustomerID *int            `gorm:"column:customer_id"`
-	TotalEnd   decimal.Decimal `gorm:"column:totalEnd"`
+	Payable    decimal.Decimal `gorm:"column:payable"` // totalEnd + VAT (bmad/order-vat D4)
 	Payment    decimal.Decimal `gorm:"column:payment"`
 }
 
 // lockServiceUsed khoá + đọc 1 dòng order_service_used.
 func lockServiceUsed(tx *gorm.DB, id int) (*lockedServiceUsed, error) {
 	var su lockedServiceUsed
-	if err := tx.Raw("SELECT id, customer_id, COALESCE(totalEnd, 0) AS totalEnd, COALESCE(payment, 0) AS payment "+
+	if err := tx.Raw("SELECT id, customer_id, "+osuPayableSQL+" AS payable, COALESCE(payment, 0) AS payment "+
 		"FROM order_service_used WHERE id = ? FOR UPDATE", id).Scan(&su).Error; err != nil {
 		return nil, err
 	}

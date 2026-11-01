@@ -418,7 +418,8 @@ func (h *Handler) expandPaymentItems(c *gin.Context, items []map[string]interfac
 	if len(serviceUsedIds) > 0 {
 		oseRows := make([]map[string]interface{}, 0)
 		tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
-			Select("id, code, service_id, quantity, totalEnd, payment, isLock, created_day, listRevenues, source_id").
+			// vat_amount (bmad/order-vat): phải thu dòng = totalEnd + vat_amount — FE so với payment ra còn nợ.
+			Select("id, code, service_id, quantity, totalEnd, vat_amount, payment, isLock, created_day, listRevenues, source_id").
 			Where("id IN ?", serviceUsedIds).Find(&oseRows)
 		if pagination.IsQueryError(tx.Error) {
 			pagination.FailQuery(c, tx.Error)

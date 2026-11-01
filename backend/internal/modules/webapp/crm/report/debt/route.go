@@ -10,9 +10,11 @@
 //   - "Công nợ theo dịch vụ" (ERP: công nợ điều trị) bỏ treatmentCourseLast + completion_percent
 //     (CRM không còn treatment_course).
 //
-// Quy tắc tiền CRM (D20a — đừng đổi ở đây): hoàn tiền = huỷ bớt dịch vụ, công nợ = doanh thu − đã thu ròng.
-// Các báo cáo dưới tính nợ dịch vụ = totalEnd − Σ thu (payment_for 4,5). Hai cách viết BẰNG NHAU vì phiếu hoàn
-// (payment_for 1) lưu số ÂM đúng bằng −refundServiceUsed: (totalEnd − refund) − (thu45 − refund) = totalEnd − thu45.
+// Quy tắc tiền CRM (D20a — đừng đổi ở đây): hoàn tiền = huỷ bớt dịch vụ, công nợ = phải thu − đã thu ròng.
+// Các báo cáo dưới tính nợ dịch vụ = phải thu − Σ thu (payment_for 4,5), phải thu = totalEnd + vat_amount
+// (bmad/order-vat: totalEnd là tiền TRƯỚC thuế, phiếu thu là tiền CÓ thuế; dòng không VAT ⇒ phải thu = totalEnd
+// như trước). Hai cách viết BẰNG NHAU vì phiếu hoàn (payment_for 1) lưu số ÂM đúng bằng −refundServiceUsed:
+// (phải thu − refund) − (thu45 − refund) = phải thu − thu45.
 package debt
 
 import (

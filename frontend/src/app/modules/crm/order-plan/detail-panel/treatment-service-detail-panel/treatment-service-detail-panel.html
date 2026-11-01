@@ -43,8 +43,15 @@
     <!-- Bảng số: doanh số / đã thu / còn lại là 3 con số người dùng đối chiếu nhiều nhất -->
     <div class="grid grid-cols-3 gap-2">
       <div class="rounded-lg border border-surface px-3 py-2">
-        <div class="text-xs text-muted-color">{{ 'common.label.total_sales' | translate }}</div>
-        <div class="text-sm font-semibold">{{ model().totalEnd | currencyFormat }}</div>
+        <!-- Có VAT: ô này là số PHẢI THU (gồm VAT) để còn lại = ô này − đã thu; doanh số trước VAT nằm ở chi tiết dưới. -->
+        <div class="text-xs text-muted-color">
+          @if (vatAmount()) {
+            {{ 'common.label.receivable' | translate }}
+          } @else {
+            {{ 'common.label.total_sales' | translate }}
+          }
+        </div>
+        <div class="text-sm font-semibold">{{ (vatAmount() ? payable() : model().totalEnd) | currencyFormat }}</div>
       </div>
       <div class="rounded-lg border border-surface px-3 py-2">
         <div class="text-xs text-muted-color">{{ 'common.label.collected' | translate }}</div>
@@ -110,6 +117,14 @@
       @if (model().discountServiceLock) {
         <app-slide-over-row label="crm.treatment_service.detail.lock_discount">
           −{{ model().discountServiceLock | currencyFormat }}
+        </app-slide-over-row>
+      }
+      @if (vatAmount()) {
+        <app-slide-over-row label="common.label.total_sales">
+          {{ model().totalEnd | currencyFormat }}
+        </app-slide-over-row>
+        <app-slide-over-row label="common.label.vat_amount">
+          {{ vatAmount() | currencyFormat }}
         </app-slide-over-row>
       }
       @if (refunded()) {

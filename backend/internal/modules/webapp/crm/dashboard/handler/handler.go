@@ -129,7 +129,11 @@ func (h *Handler) CrmPaymentInMonth(c *gin.Context) {
 		pagination.FailQuery(c, err)
 		return
 	}
-	congNo := doanhSo.Sub(doanhThu)
+	congNo, err := h.queryCongNo(c, from, to, branchID)
+	if pagination.IsQueryError(err) {
+		pagination.FailQuery(c, err)
+		return
+	}
 
 	// So sánh kỳ liền trước: kỳ = đúng 1 tháng dương lịch ⇒ tháng trước (hành vi cũ); khác ⇒ cùng độ dài.
 	lastFrom, lastToExcl := lastPeriod(f.From, f.To, loc)
@@ -211,12 +215,17 @@ func (h *Handler) CrmPaymentToday(c *gin.Context) {
 		pagination.FailQuery(c, err)
 		return
 	}
+	congNo, err := h.queryCongNo(c, from, to, branchID)
+	if pagination.IsQueryError(err) {
+		pagination.FailQuery(c, err)
+		return
+	}
 
 	result := gin.H{
 		"doanhSo":  doanhSo,
 		"doanhThu": doanhThu,
 		"thucThu":  thucThu,
-		"congNo":   doanhSo.Sub(doanhThu),
+		"congNo":   congNo,
 	}
 	if h.Cache != nil {
 		h.Cache.Set(cacheKey, result, 300*time.Second)
@@ -1298,6 +1307,32 @@ func (h *Handler) queryDoanhSo(c *gin.Context, from, to int64, branchID int) (de
 	args := append([]any{from, to}, scopeArgs...)
 	var v decimal.Decimal
 	tx := h.DB.Raw(`SELECT COALESCE(SUM(osu.totalEnd), 0) FROM order_service_used osu WHERE osu.created_day BETWEEN ? AND ?`+scope, args...).Scan(&v)
+	if pagination.IsQueryError(tx.Error) {
+		return decimal.Zero, tx.Error
+	}
+	if h.Cache != nil {
+		h.Cache.Set(cacheKey, v, 300*time.Second)
+	}
+	return v, nil
+}
+
+// queryCongNo — công nợ của các dòng dịch vụ lên trong kỳ = Σ phải thu − Σ đã thu của CHÍNH các dòng đó.
+// Phải thu = totalEnd (TRƯỚC thuế) + vat_amount; osu.payment là tiền CÓ thuế (bmad/order-vat). Bản cũ lấy
+// doanhSo − doanhThu: trừ doanh số (trước thuế, theo dòng dịch vụ) cho tiền thu theo ĐƠN lên trong kỳ — hai tập
+// khác nhau, và sai thêm phần VAT khi đơn có thuế. Dòng khoá (isLock=2) chốt phải thu = payment ⇒ tự ra 0.
+func (h *Handler) queryCongNo(c *gin.Context, from, to int64, branchID int) (decimal.Decimal, error) {
+	cacheKey := helperCacheKey(c, "crm_cong_no", from, to, branchID)
+	if h.Cache != nil {
+		var v decimal.Decimal
+		if err := h.Cache.Get(cacheKey, &v); err == nil {
+			return v, nil
+		}
+	}
+	scope, scopeArgs := buildDashboardScopeOpt(c, "osu", branchID)
+	args := append([]any{from, to}, scopeArgs...)
+	var v decimal.Decimal
+	tx := h.DB.Raw(`SELECT COALESCE(SUM(COALESCE(osu.totalEnd, 0) + osu.vat_amount - COALESCE(osu.payment, 0)), 0)
+		FROM order_service_used osu WHERE osu.created_day BETWEEN ? AND ?`+scope, args...).Scan(&v)
 	if pagination.IsQueryError(tx.Error) {
 		return decimal.Zero, tx.Error
 	}

@@ -11,6 +11,7 @@ import (
 
 	"erpCluvix/internal/phoneutil"
 	"erpCluvix/pkg/export"
+	"erpCluvix/pkg/helpers"
 	"erpCluvix/pkg/response"
 	"erpCluvix/pkg/tz"
 )
@@ -105,20 +106,14 @@ func paymentColsFor(c *gin.Context, loc *time.Location, nameByID map[int]string,
 		{"service", "Dịch vụ", func(r map[string]interface{}) interface{} { return r["ose_service_name"] }},
 		{"quantity", "Số lượng", func(r map[string]interface{}) interface{} { return r["ose_quantity"] }},
 		{"totalEnd", "Thành tiền", func(r map[string]interface{}) interface{} { return toFloat(r["ose_totalEnd"]) }},
+		{"vat_amount", "Tiền VAT", func(r map[string]interface{}) interface{} { return toFloat(r["ose_vat_amount"]) }},
+		{"total_after_vat", "Tổng sau VAT", func(r map[string]interface{}) interface{} {
+			return osuPayableOf(r["ose_totalEnd"], r["ose_vat_amount"]).InexactFloat64()
+		}},
 		{"serviceType", "Nhóm dịch vụ", func(r map[string]interface{}) interface{} { return r["service_type_name"] }},
 		{"statusPayment", "Trạng thái thanh toán", func(r map[string]interface{}) interface{} {
-			totalEnd := toFloat(r["ose_totalEnd"])
-			osePayment := toFloat(r["ose_payment"])
-			switch {
-			case totalEnd == 0:
-				return "Dịch vụ miễn phí"
-			case osePayment == 0:
-				return "Chưa thanh toán"
-			case totalEnd == osePayment:
-				return "Hoàn thành thanh toán"
-			default:
-				return "Thanh toán 1 phần"
-			}
+			// Phải thu = totalEnd + VAT (bmad/order-vat): dòng có VAT mà đã thu = totalEnd là MỚI thu 1 phần.
+			return osuPaymentStatusLabel(osuPayableOf(r["ose_totalEnd"], r["ose_vat_amount"]), helpers.ToDecimal(r["ose_payment"]))
 		}},
 		{"type", "Loại thanh toán", func(r map[string]interface{}) interface{} { return r["paymentFor"] }},
 		{"method", "Hình thức", func(r map[string]interface{}) interface{} { return r["payment_method_name"] }},
@@ -160,6 +155,10 @@ func paymentReceiptColsFor(loc *time.Location, showPhone bool) []paymentReceiptC
 		{"service", "Dịch vụ", func(r map[string]interface{}) interface{} { return r["service_name"] }},
 		{"quantity", "Số lượng", func(r map[string]interface{}) interface{} { return r["ose_quantity"] }},
 		{"totalEnd", "Thành tiền", func(r map[string]interface{}) interface{} { return toFloat(r["ose_totalEnd"]) }},
+		{"vat_amount", "Tiền VAT", func(r map[string]interface{}) interface{} { return toFloat(r["ose_vat_amount"]) }},
+		{"total_after_vat", "Tổng sau VAT", func(r map[string]interface{}) interface{} {
+			return osuPayableOf(r["ose_totalEnd"], r["ose_vat_amount"]).InexactFloat64()
+		}},
 		{"serviceType", "Nhóm dịch vụ", func(r map[string]interface{}) interface{} { return r["service_type_name"] }},
 		{"type", "Loại thanh toán", func(r map[string]interface{}) interface{} { return r["payment_for_name"] }},
 		{"method", "Hình thức", func(r map[string]interface{}) interface{} { return r["payment_method_name"] }},
@@ -215,7 +214,7 @@ func ExportPayment(c *gin.Context, q *gorm.DB) {
 			customer.phone as customer_phone,
 			otp.code as plan_code,
 			ose.code as ose_code, svc.code as ose_service_code, svc.name as ose_service_name,
-			ose.quantity as ose_quantity, ose.totalEnd as ose_totalEnd, ose.payment as ose_payment,
+			ose.quantity as ose_quantity, ose.totalEnd as ose_totalEnd, ose.vat_amount as ose_vat_amount, ose.payment as ose_payment,
 			ose.created_day as ose_created_day,
 			st.name as service_type_name, cst.name as customer_service_type_name,
 			src.name as source_name, csrc.name as customer_source_name,
@@ -502,7 +501,7 @@ func ExportPaymentReceipts(c *gin.Context, q *gorm.DB) {
 			customer.phone as customer_phone,
 			otp.code as plan_code,
 			ose.code as ose_code, svc.code as service_code, svc.name as service_name,
-			ose.quantity as ose_quantity, ose.totalEnd as ose_totalEnd,
+			ose.quantity as ose_quantity, ose.totalEnd as ose_totalEnd, ose.vat_amount as ose_vat_amount,
 			st.name as service_type_name, cst.name as customer_service_type_name,
 			src.name as source_name, csrc.name as customer_source_name,
 			prov.name as customer_province_name, ctry.CommonName as customer_country_name,

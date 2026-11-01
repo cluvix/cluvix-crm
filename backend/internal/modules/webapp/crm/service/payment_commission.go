@@ -22,9 +22,13 @@ const serviceCategoryFee = define.ServiceCategoryFee
 // osuCommissionCtx gộp dữ liệu order_service_used cần cho hoa hồng + doanh số telesale — nạp 1 lần
 // bằng loadOSUCommissionContext(), dùng chung cho handleTelesaleCommission + handleRevenueTelesale.
 // Rate đã được RESOLVE SẴN (ưu tiên snapshot, fallback theo orderPlanType).
+//
+// bmad/order-vat D5: phiếu thu/hoàn là tiền CÓ thuế; hoa hồng + doanh số tính trên phần TRƯỚC thuế của phiếu
+// (preTaxShare theo tỷ lệ totalEnd / (totalEnd + VatAmount) của dòng). Dòng không VAT ⇒ nguyên số phiếu.
 type osuCommissionCtx struct {
 	ListRevenues []int
 	TotalEnd     decimal.Decimal
+	VatAmount    decimal.Decimal
 
 	TelesaleRate decimal.Decimal
 	TelesaleType int
@@ -39,6 +43,7 @@ func loadOSUCommissionContext(tx *gorm.DB, serviceUsedId int) (*osuCommissionCtx
 	var row struct {
 		ListRevenues []byte          `gorm:"column:list_revenues"`
 		TotalEnd     decimal.Decimal `gorm:"column:total_end"`
+		VatAmount    decimal.Decimal `gorm:"column:vat_amount"`
 
 		TelesaleSnap     *decimal.Decimal `gorm:"column:telesale_snap"`
 		TelesaleTypeSnap *int             `gorm:"column:telesale_type_snap"`
@@ -55,6 +60,7 @@ func loadOSUCommissionContext(tx *gorm.DB, serviceUsedId int) (*osuCommissionCtx
 		SELECT
 			osu.listRevenues AS list_revenues,
 			COALESCE(osu.totalEnd, 0) AS total_end,
+			osu.vat_amount AS vat_amount,
 			osu.commission_telesale_snap AS telesale_snap,
 			osu.commission_telesale_type_snap AS telesale_type_snap,
 			COALESCE(s.commission_telesale, 0) AS telesale_live,
@@ -72,6 +78,7 @@ func loadOSUCommissionContext(tx *gorm.DB, serviceUsedId int) (*osuCommissionCtx
 
 	ctx := &osuCommissionCtx{
 		TotalEnd:          row.TotalEnd,
+		VatAmount:         row.VatAmount,
 		ServiceCategoryID: row.ServiceCategoryID,
 	}
 	if len(row.ListRevenues) > 0 {
@@ -155,6 +162,8 @@ func (s *PaymentService) handleTelesaleCommission(tx *gorm.DB, ctx *osuCommissio
 		return
 	}
 
+	// Hoa hồng trên phần TRƯỚC thuế của phiếu (D5); cột amount cũng ghi số trước thuế.
+	amount = preTaxShare(amount, ctx.TotalEnd, ctx.VatAmount)
 	shares := distributeCommission(amount, ctx.TotalEnd, ctx.TelesaleRate, ctx.TelesaleType, dem)
 
 	for i, telesaleId := range ctx.ListRevenues {
@@ -188,7 +197,9 @@ func handleRevenueTelesale(tx *gorm.DB, ctx *osuCommissionCtx, paymentID uint, s
 		return
 	}
 
-	// lens-money M-18: chia đều, người cuối nhận phần dư ⇒ Σ doanh số = đúng số tiền phiếu (bản cũ
+	// Doanh số = phần TRƯỚC thuế của phiếu (bmad/order-vat D5); cột amount cũng ghi số trước thuế.
+	amount = preTaxShare(amount, ctx.TotalEnd, ctx.VatAmount)
+	// lens-money M-18: chia đều, người cuối nhận phần dư ⇒ Σ doanh số = đúng số tiền (trước thuế) của phiếu (bản cũ
 	// Round(0) từng người: 1.000.001 / 3 ⇒ 333.334 × 3 = 1.000.002).
 	shares := splitEvenLastRemainder(amount, len(ctx.ListRevenues))
 	for i, id := range ctx.ListRevenues {
@@ -206,8 +217,9 @@ func handleRevenueTelesale(tx *gorm.DB, ctx *osuCommissionCtx, paymentID uint, s
 }
 
 // resyncRevenueForOSU tính lại order_revenue_telesale cho TẤT CẢ payment đã có của 1
-// order_service_used — gọi khi staff sửa đơn (đổi listRevenues) sau khi dịch vụ đã có payment. amount
-// của mỗi payment giữ nguyên (không đổi số tiền đã thanh toán), chỉ chia lại theo list member mới nhất.
+// order_service_used — gọi khi staff sửa đơn (đổi listRevenues, hoặc đổi VAT dòng ⇒ đổi phần trước thuế) sau khi
+// dịch vụ đã có payment. amount của mỗi payment giữ nguyên (không đổi số tiền đã thanh toán), chỉ chia lại theo
+// list member + tỷ lệ trước thuế mới nhất.
 // Idempotent: handleRevenueTelesale tự DELETE+INSERT theo payment_id, an toàn gọi lại nhiều lần.
 // ctx (list member) nạp 1 lần cho toàn bộ payment — list không đổi giữa các payment của cùng osu.
 func resyncRevenueForOSU(tx *gorm.DB, serviceUsedId, parentId, customerId int) {

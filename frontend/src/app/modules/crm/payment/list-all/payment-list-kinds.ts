@@ -28,6 +28,8 @@ export type PaymentCell =
   | 'service'
   | 'quantity'
   | 'totalEnd'
+  | 'vatAmount'
+  | 'totalAfterVat'
   | 'serviceType'
   | 'statusPayment'
   | 'type'
@@ -149,6 +151,8 @@ export const PAYMENT_LIST_KINDS: Record<PaymentListKind, PaymentListKindConfig> 
       col('service', 'common.label.service', 'service', 'min-w-[250px]'),
       col('quantity', 'common.label.quantity', 'quantity', 'min-w-[60px]'),
       col('totalEnd', 'common.label.subtotal', 'totalEnd', 'min-w-[120px]'),
+      col('vat_amount', 'common.label.vat_amount', 'vatAmount', 'min-w-[110px]'),
+      col('total_after_vat', 'crm.order_plan.form.total_after_vat', 'totalAfterVat', 'min-w-[130px]'),
       col('serviceType', 'common.label.service_group', 'serviceType'),
       col('statusPayment', 'crm.payment_list.col.payment_status', 'statusPayment', 'min-w-[200px]'),
       col('type', 'crm.payment_list.col.transaction_type', 'type'),
@@ -193,6 +197,8 @@ export const PAYMENT_LIST_KINDS: Record<PaymentListKind, PaymentListKindConfig> 
       col('service', 'common.label.service', 'service', 'min-w-[250px]'),
       col('quantity', 'common.label.quantity', 'quantity', 'min-w-[60px]'),
       col('totalEnd', 'common.label.subtotal', 'totalEnd', 'min-w-[120px]'),
+      col('vat_amount', 'common.label.vat_amount', 'vatAmount', 'min-w-[110px]'),
+      col('total_after_vat', 'crm.order_plan.form.total_after_vat', 'totalAfterVat', 'min-w-[130px]'),
       col('serviceType', 'common.label.service_group', 'serviceType'),
       col('type', 'crm.payment_list.col.transaction_type', 'type'),
       col('method', 'common.label.payment_method', 'method', 'min-w-[120px]'),

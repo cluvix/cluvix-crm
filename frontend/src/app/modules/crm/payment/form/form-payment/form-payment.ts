@@ -357,7 +357,9 @@ export class FormPayment extends BaseSignalForm<PaymentFormModel> {
 
   /**
    * Hàm tính số tiền thanh toán còn lại — khớp 100% guard BE (crm/service/payment_crud.go):
-   * tạo: nợ = totalEnd − payment; sửa: totalEnd − payment + số tiền đang lưu của phiếu.
+   * tạo: nợ = (totalEnd + vat_amount) − payment; sửa: cộng thêm số tiền đang lưu của phiếu.
+   * `totalEnd` là Thành tiền CHƯA VAT, tiền khách trả (`payment`) đã gồm VAT ⇒ phải thu = totalEnd + vat_amount
+   * (dòng cũ không VAT: vat_amount = 0/thiếu ⇒ số như trước).
    * `payment` (order_service_used) là tổng thu GỘP (thanh toán + chuyển cọc), KHÔNG trừ hoàn:
    * hoàn = huỷ bớt dịch vụ, công nợ không đổi và vẫn thu tiếp được (R-2) — KHÔNG trừ refundServiceUsed.
    * @param serviceUsed
@@ -365,7 +367,8 @@ export class FormPayment extends BaseSignalForm<PaymentFormModel> {
   getMaxAmount(serviceUsed: OrderServiceUsedModel | null = null) {
     let maxAmount = 0;
     if (serviceUsed !== null) {
-      const due = parseFloat((serviceUsed?.totalEnd ?? 0) - (serviceUsed?.payment ?? 0) + '');
+      const payable = (serviceUsed?.totalEnd ?? 0) + (Number(serviceUsed?.vat_amount) || 0);
+      const due = parseFloat(payable - (serviceUsed?.payment ?? 0) + '');
       maxAmount = (this.model().id ? due + parseFloat(this.model().amount + '') : due) || 0;
     } else {
       maxAmount = 0;

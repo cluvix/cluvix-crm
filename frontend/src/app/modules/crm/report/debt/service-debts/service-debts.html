@@ -157,6 +157,7 @@
         <th class="min-w-[130px]">{{ 'common.label.order_date' | translate }}</th>
       }
       <th class="min-w-[130px]">{{ 'crm.report.debt.label.incurred' | translate }}</th>
+      <th class="min-w-[110px]">{{ 'common.label.vat_amount' | translate }}</th>
       <th class="min-w-[130px]">{{ 'common.label.payment' | translate }}</th>
       <th class="min-w-[130px]">{{ 'common.label.debt' | translate }}</th>
       <th class="min-w-[130px]">{{ 'crm.report.debt.label.customer_deposit' | translate }}</th>
@@ -198,6 +199,7 @@
         <td>{{ model.created_dayFormatted }}</td>
       }
       <td class="text-blue-500">{{ model.totalEnd | currencyFormat }}</td>
+      <td class="text-blue-500">{{ model.vat_amount || 0 | currencyFormat }}</td>
       <td class="text-green-600">{{ model.payment | currencyFormat }}</td>
       <td class="text-red-500">{{ model.debt | currencyFormat }}</td>
       <td>{{ model.customer?.totalDeposit | currencyFormat }}</td>
@@ -228,6 +230,7 @@
       @if (isColVisible('serviceName')()) { <td></td> }
       @if (isColVisible('serviceUsedCreate')()) { <td></td> }
       <td><b class="text-blue-500">{{ totalEnd() | currencyFormat }}</b></td>
+      <td><b class="text-blue-500">{{ totalVat() | currencyFormat }}</b></td>
       <td><b class="text-green-600">{{ totalPayment() | currencyFormat }}</b></td>
       <td><b class="text-red-500">{{ totalDebt() | currencyFormat }}</b></td>
       <td><b>{{ totalDeposit() | currencyFormat }}</b></td>

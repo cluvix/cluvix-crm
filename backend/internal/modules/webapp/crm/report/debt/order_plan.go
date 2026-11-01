@@ -40,11 +40,14 @@ type orderPlanDebtSummary struct {
 
 // orderPlanDebtSQL — mảnh SQL dùng chung cho câu trang và câu tổng của kỳ [from, to] (Unix, đã parse số).
 //
-// Ngữ nghĩa từng đơn (giữ nguyên ERP):
+// Ngữ nghĩa từng đơn (giữ nguyên ERP, "phải thu" thay cho totalEnd từ khi có VAT — bmad/order-vat):
 //
-//	totalEndBefore = Σ totalEnd dịch vụ tạo < from − Σ thu (payment_of_date < from) của CHÍNH các dịch vụ đó
-//	totalEndIn     = Σ totalEnd dịch vụ tạo trong kỳ
+//	totalEndBefore = Σ phải thu dịch vụ tạo < from − Σ thu (payment_of_date < from) của CHÍNH các dịch vụ đó
+//	totalEndIn     = Σ phải thu dịch vụ tạo trong kỳ
 //	daThuTrongKy   = Σ thu trong kỳ của MỌI dịch vụ của đơn
+//
+// Phải thu dòng = totalEnd (TRƯỚC thuế) + vat_amount: các số trên đều đem trừ với phiếu thu (tiền CÓ thuế) nên
+// phải cùng gốc có thuế. Tên khoá JSON giữ nguyên (FE đang đọc). Dòng cũ vat_amount = 0 ⇒ số không đổi.
 //
 // "Thu" = payment_for IN (Order, MoveDeposit). KHÔNG cộng phiếu hoàn dịch vụ: hoàn = huỷ bớt dịch vụ (doanh thu
 // và đã thu cùng giảm) ⇒ không đổi công nợ — khớp order_plan.debtsPlan / customer.totalDebt (xem route.go).
@@ -64,10 +67,10 @@ func newOrderPlanDebtSQL(from, to int64) orderPlanDebtSQL {
 			SUM(CASE WHEN payment_of_date BETWEEN %[1]s AND %[2]s THEN amount END) AS pi
 			FROM payment WHERE payment.serviceUsed_id = osu.id AND payment_for IN (%[3]d, %[4]d)) AS P ON TRUE`,
 			f, t, define.PaymentForOrder, define.PaymentForMoveDeposit),
-		// %[3]s = alias có created_day/totalEnd, %[4]s = alias có pb/pi.
-		sumsFmt: `COALESCE(SUM(CASE WHEN %[3]s.created_day < %[1]s THEN %[3]s.totalEnd END), 0) AS teBefore,
+		// %[3]s = alias có created_day/totalEnd/vat_amount, %[4]s = alias có pb/pi.
+		sumsFmt: `COALESCE(SUM(CASE WHEN %[3]s.created_day < %[1]s THEN %[3]s.totalEnd + %[3]s.vat_amount END), 0) AS teBefore,
 		COALESCE(SUM(CASE WHEN %[3]s.created_day < %[1]s THEN %[4]s.pb END), 0) AS payBefore,
-		COALESCE(SUM(CASE WHEN %[3]s.created_day BETWEEN %[1]s AND %[2]s THEN %[3]s.totalEnd END), 0) AS teIn,
+		COALESCE(SUM(CASE WHEN %[3]s.created_day BETWEEN %[1]s AND %[2]s THEN %[3]s.totalEnd + %[3]s.vat_amount END), 0) AS teIn,
 		COALESCE(SUM(%[4]s.pi), 0) AS paidIn`,
 	}
 }
@@ -101,7 +104,7 @@ func (h *Handler) orderPlanDebtPage(c *gin.Context, s orderPlanDebtSQL, withCust
 // orderPlanDebtTotals — câu TỔNG: đơn trong phạm vi → dịch vụ → phiếu thu (LATERAL), gom theo đơn rồi cộng.
 func (h *Handler) orderPlanDebtTotals(c *gin.Context, s orderPlanDebtSQL, withCustomer bool) (orderPlanDebtSummary, error) {
 	perService := h.orderPlanScoped(c, withCustomer).
-		Select("order_plan.id AS plan, osu.created_day, osu.totalEnd, P.pb, P.pi").
+		Select("order_plan.id AS plan, osu.created_day, osu.totalEnd, osu.vat_amount, P.pb, P.pi").
 		Joins("JOIN order_service_used osu ON osu.order_plan_id = order_plan.id").
 		Joins(s.paymentLateral)
 	perPlan := h.DB.Table("(?) AS u", perService).

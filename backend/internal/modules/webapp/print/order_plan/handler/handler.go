@@ -30,13 +30,18 @@ func (h *Handler) PrintOrderPlan(c *gin.Context) {
 
 	var orderPlan map[string]interface{}
 	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", tenant.IsCrossBranchServiceEnabled(c, h.DB)).Table("order_plan").
-		Select("id, code, branch_id, customer_id, note, discount_other, paymentPlan, debtsPlan, created_time, COALESCE((SELECT SUM(osu.totalEnd) FROM order_service_used osu WHERE osu.order_plan_id = order_plan.id), 0) AS total").
+		// VAT (bmad/order-vat): `total` giữ tiền TRƯỚC thuế (Σ totalEnd); `vat_total` = Σ vat_amount; phải thu của
+		// đơn = `total_after_vat` (tính dưới). debtsPlan do service tính sẵn theo phải thu có VAT.
+		Select("id, code, branch_id, customer_id, note, discount_other, vat_rate, paymentPlan, debtsPlan, created_time, "+
+			"COALESCE((SELECT SUM(osu.totalEnd) FROM order_service_used osu WHERE osu.order_plan_id = order_plan.id), 0) AS total, "+
+			"COALESCE((SELECT SUM(osu.vat_amount) FROM order_service_used osu WHERE osu.order_plan_id = order_plan.id), 0) AS vat_total").
 		Where("id = ?", id).Limit(1).Scan(&orderPlan).Error; err != nil || len(orderPlan) == 0 {
 		response.NotFound(c)
 		return
 	}
 
-	helpers.ParseDecimalFields(orderPlan, "discount_other", "total", "paymentPlan", "debtsPlan")
+	helpers.ParseDecimalFields(orderPlan, "discount_other", "total", "vat_total", "paymentPlan", "debtsPlan")
+	orderPlan["total_after_vat"] = helpers.ToDecimal(orderPlan["total"]).Add(helpers.ToDecimal(orderPlan["vat_total"]))
 
 	if custID := helpers.ToInt64(orderPlan["customer_id"]); custID > 0 {
 		var customer map[string]interface{}
@@ -51,7 +56,7 @@ func (h *Handler) PrintOrderPlan(c *gin.Context) {
 
 	var services []map[string]interface{}
 	tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
-		Select("order_service_used.id, order_service_used.service_id, order_service_used.quantity, order_service_used.unit_price, order_service_used.service_discount_type, order_service_used.service_discount, order_service_used.discount_other, order_service_used.totalEnd, service.name AS service_name").
+		Select("order_service_used.id, order_service_used.service_id, order_service_used.quantity, order_service_used.unit_price, order_service_used.service_discount_type, order_service_used.service_discount, order_service_used.discount_other, order_service_used.totalEnd, order_service_used.vat_amount, service.name AS service_name").
 		Joins("LEFT JOIN service ON service.id = order_service_used.service_id").
 		Where("order_service_used.order_plan_id = ?", id).
 		Find(&services)
@@ -62,7 +67,7 @@ func (h *Handler) PrintOrderPlan(c *gin.Context) {
 	for _, svc := range services {
 		svc["service"] = map[string]interface{}{"name": svc["service_name"]}
 		delete(svc, "service_name")
-		helpers.ParseDecimalFields(svc, "unit_price", "service_discount", "discount_other", "totalEnd")
+		helpers.ParseDecimalFields(svc, "unit_price", "service_discount", "discount_other", "totalEnd", "vat_amount")
 	}
 	helpers.ParseJSONFieldsForTables(services, "order_service_used")
 	orderPlan["orderServiceUseds"] = services

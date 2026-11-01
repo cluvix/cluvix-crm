@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   inject,
   OnInit,
@@ -33,6 +34,16 @@ export class PrintPayment extends BasePrint implements OnInit {
 
   /** HTML đã render từ template cấu hình; null = dùng layout mặc định */
   readonly renderedHtml = signal<string | null>(null);
+
+  /** Tiền VAT của dịch vụ trên phiếu (0 với dịch vụ trước khi có VAT). */
+  readonly vatAmount = computed(() => Number(this.model().payment?.orderServiceUsed?.vat_amount) || 0);
+  /** Phải thu = Thành tiền (`totalEnd`, CHƯA VAT) + VAT. */
+  readonly payable = computed(() => (Number(this.model().payment?.orderServiceUsed?.totalEnd) || 0) + this.vatAmount());
+  /**
+   * Còn lại = phải thu − tổng đã thu. KHÔNG trừ thêm `refundServiceUsed`: BE tính nợ = phải thu − tiền đã thu ròng,
+   * tiền hoàn đã nằm trong số thu ròng đó — trừ lần nữa là đếm hoàn hai lần, phiếu in ra nợ thấp hơn sổ sách (D11b).
+   */
+  readonly outstanding = computed(() => this.payable() - (Number(this.model().totalPayment) || 0));
 
   ngOnInit() {
     this.activatedRoute.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((queryParams: any) => {
@@ -101,10 +112,9 @@ export class PrintPayment extends BasePrint implements OnInit {
         date: now.toLocaleDateString('vi-VN'),
         note: p?.note ?? '',
         total: m?.totalPayment ?? 0,
-        outstanding:
-          (p?.orderServiceUsed?.totalEnd ?? 0) -
-          (m?.totalPayment ?? 0) -
-          +(p?.orderServiceUsed?.refundServiceUsed ?? 0),
+        outstanding: this.outstanding(),
+        vat: this.vatAmount(),
+        total_after_vat: this.payable(),
       },
       services: p?.orderServiceUsed
         ? [
@@ -115,6 +125,8 @@ export class PrintPayment extends BasePrint implements OnInit {
               subtotal: (p.orderServiceUsed.unit_price ?? 0) * (p.orderServiceUsed.quantity ?? 0),
               discount: 0,
               total: p.orderServiceUsed.totalEnd ?? 0,
+              vat: this.vatAmount(),
+              total_after_vat: this.payable(),
             },
           ]
         : [],

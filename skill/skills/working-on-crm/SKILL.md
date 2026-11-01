@@ -205,7 +205,6 @@ Xử lý tất cả loại thanh toán: đặt cọc, thanh toán đơn hàng, h
 - `POST ""` / `PUT :id` — Thu/chi phòng khám (CreatePaymentClinic / UpdatePaymentClinic)
 - `PUT :id/update-payment-customer` — Cập nhật
 - `DELETE :id/delete-payment-customer` — Xóa
-- `GET get-order-plan/:id` — Lấy đơn hàng
 - `GET :id` — Chi tiết payment
 - `POST :id/move-deposit-to-payment` / `PUT :id/move-deposit-to-payment` — Chuyển cọc thành thanh toán
 

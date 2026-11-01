@@ -18,7 +18,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
@@ -26,7 +25,6 @@ import (
 
 	orderPlanDao "erpCluvix/internal/modules/webapp/crm/order_plan/dao"
 	otpRepo "erpCluvix/internal/modules/webapp/crm/order_plan/repo"
-	crmPaymentDao "erpCluvix/internal/modules/webapp/crm/payment/dao"
 	crmServiceDao "erpCluvix/internal/modules/webapp/crm/service/dao"
 	history "erpCluvix/internal/modules/webapp/history/log/service"
 	"erpCluvix/pkg/brand"
@@ -142,6 +140,9 @@ func (s *OrderPlanService) Create(req *OrderPlanRequest, userID int) error {
 
 		// Validate mỗi ID trong listRevenues là user thật — reject cứng nếu không.
 		if err := validateAssignedUsersExist(tx, order.ListRevenues); err != nil {
+			return err
+		}
+		if err := checkOrderVatRate8(brand.Location(tx), order, nil); err != nil {
 			return err
 		}
 
@@ -269,6 +270,9 @@ func (s *OrderPlanService) Update(req *OrderPlanRequest, userID int, scopedDB *g
 				return err
 			}
 		}
+		if err := checkOrderVatRate8(brand.Location(tx), &merged, &current); err != nil {
+			return err
+		}
 
 		uid := uint(userID)
 		if err := optlock.Save(tx.Set("userID", uid), &merged, current.UpdatedAt); err != nil {
@@ -308,9 +312,18 @@ func (s *OrderPlanService) Update(req *OrderPlanRequest, userID int, scopedDB *g
 			tx.Table("customer").Where("id = ?", merged.CustomerId).Updates(custUpdates)
 		}
 
-		// Xử lý services (update mode)
-		if len(req.ServicesData) > 0 {
-			if err := s.handleServices(tx, &merged, req.ServicesData, true, uid); err != nil {
+		// Xử lý services (update mode). Đổi mức VAT mà body không gửi dòng ⇒ nạp mọi dòng đang có (chỉ id +
+		// số lượng ⇒ mergeServiceData giữ nguyên) để VAT từng dòng được tính lại qua đúng luồng guard + log.
+		servicesData := req.ServicesData
+		if len(servicesData) == 0 && !sameVatRate(current.VatRate, merged.VatRate) {
+			rows, err := existingServiceRowsData(tx, merged.ID)
+			if err != nil {
+				return err
+			}
+			servicesData = rows
+		}
+		if len(servicesData) > 0 {
+			if err := s.handleServices(tx, &merged, servicesData, true, uid); err != nil {
 				return err
 			}
 		}
@@ -459,6 +472,32 @@ func (s *OrderPlanService) recalcDebtsPlan(tx *gorm.DB, orderID uint) error {
 	return (&PaymentService{DB: tx}).calculatorOrderPlan(tx, int(orderID), define.PaymentForOrder)
 }
 
+// sameVatRate — 2 mức VAT có cùng giá trị (nil ≡ nil).
+func sameVatRate(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
+}
+
+// existingServiceRowsData — mọi dòng dịch vụ đang có của đơn dưới dạng payload tối thiểu cho handleServices
+// (id + quantity; các field khác không gửi ⇒ giữ nguyên giá trị đang lưu).
+func existingServiceRowsData(tx *gorm.DB, orderID uint) ([]map[string]interface{}, error) {
+	var rows []struct {
+		ID       uint `gorm:"column:id"`
+		Quantity int  `gorm:"column:quantity"`
+	}
+	if err := tx.Table("order_service_used").Select("id, COALESCE(quantity, 0) AS quantity").
+		Where("order_plan_id = ?", orderID).Order("id").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]map[string]interface{}, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, map[string]interface{}{"id": r.ID, "quantity": r.Quantity})
+	}
+	return out, nil
+}
+
 // parseListRevenues xử lý trường hợp FE gửi listRevenues dạng JSON string lồng.
 func (s *OrderPlanService) parseListRevenues(order *orderPlanDao.OrderPlan) {
 	if order.ListRevenues != nil {
@@ -558,15 +597,18 @@ func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.Order
 			}
 			// Update: selective merge, giữ nguyên ID + base fields
 			mergeServiceData(&svc, svcData)
-			// Guard: chỉ kiểm tra khi FE tường minh gửi totalEnd (tránh false-reject với legacy
-			// row có totalEnd = NULL khi FE chỉ update các field khác như note).
+			prevVat := svc.VatAmount
+			applyServiceUsedVat(&svc, order.VatRate)
+			// Guard: chỉ kiểm tra khi FE tường minh gửi totalEnd hoặc VAT dòng đổi theo mức VAT đơn (tránh
+			// false-reject với legacy row có totalEnd = NULL khi FE chỉ update các field khác như note).
 			// payment trên order_service_used là SUM thực tế từ bảng payment — không thể hoàn tác.
-			if _, totalEndSent := svcData["totalEnd"]; totalEndSent {
+			// So với số PHẢI THU (totalEnd + VAT): payment là tiền có thuế (bmad/order-vat D4).
+			if _, totalEndSent := svcData["totalEnd"]; totalEndSent || !prevVat.Equal(svc.VatAmount) {
 				existingPayment := helpers.DerefDecimal(svc.Payment)
-				newTotalEnd := helpers.DerefDecimal(svc.TotalEnd)
-				if existingPayment.IsPositive() && newTotalEnd.LessThan(existingPayment) {
+				payable := serviceUsedPayable(&svc)
+				if existingPayment.IsPositive() && payable.LessThan(existingPayment) {
 					return errs.NewLocalizedError("total_end_below_payment",
-						newTotalEnd.StringFixed(0), existingPayment.StringFixed(0))
+						payable.StringFixed(0), existingPayment.StringFixed(0))
 				}
 			}
 		} else {
@@ -591,6 +633,7 @@ func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.Order
 			svc.IsLock = 0 // 0 ⇒ GORM bỏ cột ⇒ DB default (bình thường)
 			svc.CommissionTelesaleSnap = nil
 			svc.CommissionTelesaleTypeSnap = nil
+			applyServiceUsedVat(&svc, order.VatRate)
 		}
 
 		// Load service master info (serviceCategory_id, time_reminder) — dùng cho dayReExploitation
@@ -644,6 +687,12 @@ func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.Order
 		if err := checkServiceUsedMoney(&svc, prevSvc); err != nil {
 			return err
 		}
+		// VAT dòng đã KHOÁ là số chốt lúc khoá (applyServiceUsedVat không tính lại) ⇒ không đối chiếu với FE.
+		if svc.IsLock != define.ServiceUsedIsLock {
+			if err := checkServiceUsedVat(&svc, svcData["vat_amount"]); err != nil {
+				return err
+			}
+		}
 		if svc.ID == 0 {
 			// Tái khai thác cho SẢN PHẨM (serviceCategory_id=2): set 1 lần lúc lên đơn.
 			if svc.DayReExploitation == nil && svc.CreatedDay != nil &&
@@ -663,10 +712,13 @@ func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.Order
 				return fmt.Errorf("Lỗi lưu dịch vụ: %w", err)
 			}
 			// Tính lại order_revenue_telesale cho các payment đã có của dịch vụ này — CHỈ khi staff
-			// thực sự đổi listRevenues (tránh DELETE+INSERT thừa mỗi lần sửa đơn không liên quan,
-			// vd. chỉ đổi note). totalEnd đổi KHÔNG cần resync vì revenue tính theo payment.amount
-			// thực nhận, không theo totalEnd.
-			if !foundExisting ||
+			// thực sự đổi listRevenues, hoặc tỷ lệ trước thuế của dòng đổi (VAT dòng đổi, hoặc totalEnd đổi
+			// trên dòng có VAT — doanh số = phần trước thuế của phiếu, bmad/order-vat D5). Tránh DELETE+INSERT
+			// thừa mỗi lần sửa đơn không liên quan (vd. chỉ đổi note); dòng không VAT đổi totalEnd thì doanh số
+			// vẫn = payment.amount, không cần resync.
+			preTaxRatioChanged := !existing.VatAmount.Equal(svc.VatAmount) ||
+				(svc.VatAmount.IsPositive() && !helpers.DerefDecimal(existing.TotalEnd).Equal(helpers.DerefDecimal(svc.TotalEnd)))
+			if !foundExisting || preTaxRatioChanged ||
 				string(existing.ListRevenues) != string(svc.ListRevenues) {
 				resyncRevenueForOSU(tx, int(svc.ID), int(order.ID), svc.CustomerId)
 			}
@@ -676,23 +728,18 @@ func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.Order
 				history.OrderServiceUsedIncludeFields, history.OrderServiceUsedSkipNullFields, int(userID))
 		}
 
-		// Installment handling (giống PHP createOrderInstallments)
-		if cfgRaw, ok := svcData["installment_config"]; ok && cfgRaw != nil {
-			if err := s.handleInstallments(tx, &svc, cfgRaw); err != nil {
-				return err
-			}
-		} else {
-			if err := tx.Exec("DELETE FROM order_installment WHERE order_service_used_id = ?", svc.ID).Error; err != nil {
-				return fmt.Errorf("delete installments for service_used %d: %w", svc.ID, err)
-			}
+		// Trả góp đã gỡ khỏi sản phẩm (bmad/order-vat D12 gỡ luôn handleInstallments): dọn kỳ góp cũ còn sót của dòng.
+		if err := tx.Exec("DELETE FROM order_installment WHERE order_service_used_id = ?", svc.ID).Error; err != nil {
+			return fmt.Errorf("delete installments for service_used %d: %w", svc.ID, err)
 		}
 
-		// lens-money M-9: sửa totalEnd (hoặc lịch trả góp) của dòng ĐÃ có ⇒ tính lại payment_status + phân bổ
-		// kỳ trả góp theo số đã thu (bản cũ giữ Done khi nâng totalEnd, kỳ góp giữ paid_amount cũ).
+		// lens-money M-9: sửa totalEnd / VAT của dòng ĐÃ có ⇒ tính lại payment_status theo số đã thu (bản cũ giữ Done
+		// khi nâng totalEnd). FE vẫn gửi khoá `installment_config: null` ở mọi dòng để luôn tính lại.
 		if isExisting {
 			prev := existingSvcMap[svc.ID]
 			_, hasInstallment := svcData["installment_config"]
-			if hasInstallment || !helpers.DerefDecimal(prev.TotalEnd).Equal(helpers.DerefDecimal(svc.TotalEnd)) {
+			if hasInstallment || !helpers.DerefDecimal(prev.TotalEnd).Equal(helpers.DerefDecimal(svc.TotalEnd)) ||
+				!prev.VatAmount.Equal(svc.VatAmount) {
 				ps := &PaymentService{DB: tx}
 				ps.calculatorPaymentServiceUsed(tx, int(svc.ID))
 				ps.updateInstallmentPayment(tx, int(svc.ID))
@@ -760,17 +807,16 @@ func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.Order
 }
 
 // updateCustomerRevenue tính lại totalRevenue + totalDebt cho customer sau khi services thay đổi.
-// totalRevenue = ΣtotalEnd − ΣrefundServiceUsed; totalDebt = totalRevenue − đã thu ròng.
+// totalRevenue = doanh số TRƯỚC thuế (ΣtotalEnd − phần trước thuế của hoàn); totalDebt = (Σ phải thu có VAT −
+// Σ hoàn) − đã thu ròng (bmad/order-vat D6 — không còn suy từ totalRevenue).
 // lens-money M-2: đã thu ròng tính từ NGUỒN (SUM phiếu thanh toán + chuyển cọc + hoàn) — bản cũ đọc
 // cột customer.totalPayment, có thể là số cũ nếu phiếu thu commit xen giữa. Caller đã khoá customer.
 func (s *OrderPlanService) updateCustomerRevenue(tx *gorm.DB, customerID int) {
 	if customerID == 0 {
 		return
 	}
-	var totalRevenue, totalPayment decimal.Decimal
-	tx.Table("order_service_used").
-		Select("COALESCE(SUM(totalEnd), 0) - COALESCE(SUM(refundServiceUsed), 0)").
-		Where("customer_id = ?", customerID).Scan(&totalRevenue)
+	var totalPayment decimal.Decimal
+	totalRevenue, receivable, _ := customerRevenueReceivable(tx, customerID)
 	tx.Table("payment").
 		Select("COALESCE(SUM(amount), 0)").
 		Where("customer_id = ? AND payment_for IN ?", customerID, netPaidPaymentFors).Scan(&totalPayment)
@@ -778,7 +824,7 @@ func (s *OrderPlanService) updateCustomerRevenue(tx *gorm.DB, customerID int) {
 	tx.Table("customer").Where("id = ?", customerID).Updates(map[string]interface{}{
 		"totalRevenue": totalRevenue,
 		"totalPayment": totalPayment,
-		"totalDebt":    totalRevenue.Sub(totalPayment),
+		"totalDebt":    receivable.Sub(totalPayment),
 	})
 }
 
@@ -794,159 +840,14 @@ func RecalcAfterServiceUsedLock(tx *gorm.DB, orderPlanID, customerID int) error 
 	return nil
 }
 
-// handleInstallments tạo/cập nhật kỳ trả góp cho 1 service.
-// Flow:
-//   - Parse installment_config (period, deposit_amount, amount_per_period, period_interval_days)
-//   - Nếu số kỳ thay đổi → xoá hết tạo mới
-//   - Kỳ 0: deposit (trả trước). Kỳ 1-N: trả góp, mỗi kỳ cách period_interval_days ngày
-//   - Phân bổ số tiền đã thanh toán (svc.Payment) vào từng kỳ: PAID/PARTIAL/UNPAID
-func (s *OrderPlanService) handleInstallments(tx *gorm.DB, svc *crmServiceDao.OrderServiceUsed, cfgRaw interface{}) error {
-	cfgBytes, _ := json.Marshal(cfgRaw)
-	var cfgRawData struct {
-		Period             int             `json:"period"`
-		DepositAmount      decimal.Decimal `json:"deposit_amount"`
-		AmountPerPeriod    decimal.Decimal `json:"amount_per_period"`
-		PeriodIntervalDays int             `json:"period_interval_days"`
+// applyServiceUsedVat — vat_amount của dòng theo mức VAT của đơn (server tính, KHÔNG nhận từ body). Dòng đã
+// KHOÁ giữ nguyên vat_amount đang lưu: khoá chốt totalEnd + VAT theo số đã thu (bmad/order-vat D7), đổi mức VAT
+// đơn sau đó không được làm lệch dòng đã chốt.
+func applyServiceUsedVat(svc *crmServiceDao.OrderServiceUsed, rate *string) {
+	if svc.IsLock == define.ServiceUsedIsLock {
+		return
 	}
-	if err := json.Unmarshal(cfgBytes, &cfgRawData); err != nil {
-		return nil
-	}
-	if cfgRawData.PeriodIntervalDays == 0 {
-		cfgRawData.PeriodIntervalDays = 30
-	}
-	if cfgRawData.Period <= 0 || !cfgRawData.AmountPerPeriod.IsPositive() {
-		return nil
-	}
-	depositAmount := cfgRawData.DepositAmount
-	amountPerPeriod := cfgRawData.AmountPerPeriod
-
-	// Lấy các kỳ hiện tại
-	var existing []crmPaymentDao.OrderInstallment
-	tx.Where("order_service_used_id = ?", svc.ID).Order("period_number ASC").Find(&existing)
-	existMap := map[int]*crmPaymentDao.OrderInstallment{}
-	for i := range existing {
-		existMap[existing[i].PeriodNumber] = &existing[i]
-	}
-
-	// Nếu số kỳ thay đổi, xóa hết và tạo mới
-	expectedCount := cfgRawData.Period + 1 // +1 cho kỳ 0
-	if len(existing) > 0 && len(existing) != expectedCount {
-		if err := tx.Exec("DELETE FROM order_installment WHERE order_service_used_id = ?", svc.ID).Error; err != nil {
-			return fmt.Errorf("delete installments for service_used %d: %w", svc.ID, err)
-		}
-		existMap = map[int]*crmPaymentDao.OrderInstallment{}
-	}
-
-	// Tính totalPaid và lastPaymentDate
-	totalPaid := helpers.DerefDecimal(svc.Payment)
-	var lastPaymentDate *string
-	if totalPaid.IsPositive() {
-		var payDate *int64
-		tx.Table("payment").
-			Select("payment_of_date").
-			Where("serviceUsed_id = ? AND payment_for IN (?, ?)", svc.ID, define.PaymentForOrder, define.PaymentForMoveDeposit).
-			Order("payment_of_date DESC").Limit(1).Scan(&payDate)
-		if payDate != nil {
-			lastPaymentDate = new(time.Unix(*payDate, 0).Format("2006-01-02"))
-		}
-	}
-
-	// Base date — dùng timezone của thương hiệu (pkg/brand, story-37) để due dates tính đúng ngày địa phương
-	loc := brand.Location(tx)
-	var baseDate time.Time
-	if svc.CreatedDay != nil {
-		baseDate = time.Unix(*svc.CreatedDay, 0).In(loc)
-	} else {
-		baseDate = time.Now().In(loc)
-	}
-
-	remainingPaid := totalPaid
-
-	// Kỳ 0: Trả trước (Deposit)
-	if inst, ok := existMap[0]; ok {
-		inst.Amount = depositAmount
-		remainingPaid = remainingPaid.Sub(helpers.DerefDecimal(inst.PaidAmount))
-		if err := tx.Save(inst).Error; err != nil {
-			return fmt.Errorf("save installment period 0 for service_used %d: %w", svc.ID, err)
-		}
-	} else {
-		inst := crmPaymentDao.OrderInstallment{
-			OrderServiceUsedId: int(svc.ID),
-			PeriodNumber:       0,
-			Amount:             depositAmount,
-			DueDate:            baseDate,
-		}
-		paid, status := allocatePayment(remainingPaid, depositAmount)
-		inst.PaidAmount = &paid
-		inst.Status = &status
-		if status == 2 && lastPaymentDate != nil { // STATUS_PAID
-			t, _ := time.Parse("2006-01-02", *lastPaymentDate)
-			inst.PaidDate = &t
-		}
-		remainingPaid = remainingPaid.Sub(paid)
-		if err := tx.Create(&inst).Error; err != nil {
-			return fmt.Errorf("create installment period 0 for service_used %d: %w", svc.ID, err)
-		}
-	}
-
-	// Kỳ cuối nhận phần dư để tổng kỳ = totalEnd - deposit (tránh lệch do Math.ceil FE)
-	totalEnd := helpers.DerefDecimal(svc.TotalEnd)
-	remainder := totalEnd.Sub(depositAmount).Sub(amountPerPeriod.Mul(decimal.NewFromInt(int64(cfgRawData.Period - 1))))
-	if remainder.LessThan(decimal.Zero) {
-		remainder = decimal.Zero
-	}
-
-	// Kỳ 1-N
-	for i := 1; i <= cfgRawData.Period; i++ {
-		periodAmount := amountPerPeriod
-		if i == cfgRawData.Period {
-			periodAmount = remainder
-		}
-		if inst, ok := existMap[i]; ok {
-			inst.Amount = periodAmount
-			remainingPaid = remainingPaid.Sub(helpers.DerefDecimal(inst.PaidAmount))
-			if err := tx.Save(inst).Error; err != nil {
-				return fmt.Errorf("save installment period %d for service_used %d: %w", i, svc.ID, err)
-			}
-		} else {
-			dueDate := baseDate.AddDate(0, 0, i*cfgRawData.PeriodIntervalDays)
-			inst := crmPaymentDao.OrderInstallment{
-				OrderServiceUsedId: int(svc.ID),
-				PeriodNumber:       i,
-				Amount:             periodAmount,
-				DueDate:            dueDate,
-			}
-			paid, status := allocatePayment(remainingPaid, periodAmount)
-			inst.PaidAmount = &paid
-			inst.Status = &status
-			if status == 2 && lastPaymentDate != nil {
-				t, _ := time.Parse("2006-01-02", *lastPaymentDate)
-				inst.PaidDate = &t
-			}
-			remainingPaid = remainingPaid.Sub(paid)
-			if err := tx.Create(&inst).Error; err != nil {
-				return fmt.Errorf("create installment period %d for service_used %d: %w", i, svc.ID, err)
-			}
-		}
-	}
-
-	return nil
-}
-
-// allocatePayment: phân bổ số tiền đã thanh toán vào kỳ, trả về (paid, status)
-// status: 1=UNPAID, 2=PAID, 3=PARTIAL
-func allocatePayment(remaining, amount decimal.Decimal) (decimal.Decimal, int) {
-	if !remaining.IsPositive() {
-		return decimal.Zero, 1 // UNPAID
-	}
-	paid := remaining
-	if paid.GreaterThan(amount) {
-		paid = amount
-	}
-	if paid.GreaterThanOrEqual(amount) {
-		return paid, 2 // PAID
-	}
-	return paid, 3 // PARTIAL
+	svc.VatAmount = expectedVatAmount(helpers.DerefDecimal(svc.TotalEnd), rate)
 }
 
 // mergeServiceData ghi đè selective các field từ FE map vào existing OrderServiceUsed.
@@ -1019,6 +920,9 @@ func (s *OrderPlanService) mergeOrder(dst *orderPlanDao.OrderPlan, src *orderPla
 	}
 	if src.SourceId != nil {
 		dst.SourceId = src.SourceId
+	}
+	if src.VatRate != nil {
+		dst.VatRate = src.VatRate
 	}
 	if src.CreatedTime != nil {
 		dst.CreatedTime = src.CreatedTime
