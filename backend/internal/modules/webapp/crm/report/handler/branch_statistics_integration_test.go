@@ -57,8 +57,8 @@ func seedBranchStatistics(t *testing.T) {
 		}
 	}
 	must("branch", testDB.Exec(`INSERT INTO branch (id, name) VALUES (?, 'CN QA')`, bsBranch).Error)
-	must("customer", testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, created_day)
-		VALUES (4421, ?, 'KH', ?)`, bsBranch, bsFrom+100).Error)
+	must("customer", testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, created_day, stage_id)
+		VALUES (4421, ?, 'KH', ?, (SELECT id FROM customer_stage WHERE is_default = 1))`, bsBranch, bsFrom+100).Error)
 	for id, rev := range map[int]int{bsType: 1, bsTypeNo: 0} {
 		must("appointment_type", testDB.Exec(`INSERT INTO appointment_type (id, name, isTypeRevenue) VALUES (?, 'LH', ?)`, id, rev).Error)
 	}

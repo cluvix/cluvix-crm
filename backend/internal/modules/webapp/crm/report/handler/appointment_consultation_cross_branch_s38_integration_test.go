@@ -35,8 +35,8 @@ func TestAppointmentConsultation_AttachKhachChiNhanhKhac(t *testing.T) {
 		t.Fatalf("seed appointment_type: %v", err)
 	}
 	// Khách thuộc chi nhánh 2 — KHÁC chi nhánh của lịch hẹn (chi nhánh 1).
-	if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, phone)
-		VALUES (601, ?, 'Khach Chi Nhanh Khac', '0900000099')`, branchOfCustomer).Error; err != nil {
+	if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, phone, stage_id)
+		VALUES (601, ?, 'Khach Chi Nhanh Khac', '0900000099', (SELECT id FROM customer_stage WHERE is_default = 1))`, branchOfCustomer).Error; err != nil {
 		t.Fatalf("seed customer: %v", err)
 	}
 	if err := testDB.Exec(`INSERT INTO appointment

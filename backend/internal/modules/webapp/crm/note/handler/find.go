@@ -103,13 +103,14 @@ func (h *Handler) GetAllNote(c *gin.Context) {
 
 	// Customer-table filters chỉ join customer khi cần
 	if query.GetFilterValue(c, "branch_id") != "" || query.GetFilterValue(c, "type_service_id") != "" ||
-		query.GetFilterValue(c, "status") != "" || query.GetFilterValue(c, "source_id") != "" ||
+		query.GetFilterValue(c, "_stage_id") != "" || query.GetFilterValue(c, "source_id") != "" ||
 		c.Query("filter[branch_id]") != "" || c.Query("filter[type_service_id]") != "" ||
-		c.Query("filter[status]") != "" || c.Query("filter[source_id]") != "" {
+		c.Query("filter[_stage_id]") != "" || c.Query("filter[source_id]") != "" {
 		q = q.Joins("LEFT JOIN customer ON customer.id = note.customer_id")
 		q = query.ApplyFilter(c, q, "branch_id", "customer.branch_id")
 		q = query.ApplyFilter(c, q, "type_service_id", "customer.type_service_id")
-		q = query.ApplyFilter(c, q, "status", "customer.status")
+		// Bước khách hàng (customer.stage_id) — thay lọc tiến trình cũ của khách (story-05; cột cũ bỏ ở story-12).
+		q = query.ApplyFilter(c, q, "_stage_id", "customer.stage_id")
 		q = query.ApplyFilter(c, q, "source_id", "customer.source_id")
 	}
 
@@ -144,7 +145,7 @@ func (h *Handler) GetAllNote(c *gin.Context) {
 		if len(customerIds) > 0 {
 			// Khách của ghi chú CỐ Ý không lọc chi nhánh (story-36: CrossBranchLookup thay CompanyOnly).
 			handlerutil.AttachRelationScoped(tenant.CrossBranchLookupScope, c, h.DB, items, "customer_id", "customer",
-				"customer", "id", "id, code, fullname, nickname, phone, gender, avatar, status, branch_id, province_id, source_id", customerIds)
+				"customer", "id", "id, code, fullname, nickname, phone, gender, avatar, stage_id, branch_id, province_id, source_id", customerIds)
 			phoneutil.MaskNestedCustomerPhone(c, h.DB, items, "customer")
 		}
 	}

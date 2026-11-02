@@ -36,7 +36,7 @@ func seedCustomer(t *testing.T, name string) uint {
 	t.Helper()
 	row := map[string]any{
 		"fullname":   name,
-		"status":     1,
+		"stage_id":   testhelpers.MustDefaultCustomerStageID(t, testDB),
 		"created_at": 1,
 		"updated_at": 1,
 	}

@@ -82,8 +82,8 @@ func seedRevenue(t *testing.T) {
 	}
 	mustExec(t, `INSERT INTO branch (id, name) VALUES (?, 'CN1'), (?, 'CN2')`, revB1, revB2)
 	mustExec(t, `INSERT INTO appointment_type (id, name, isTypeRevenue) VALUES (1, 'Doanh thu', 1)`)
-	mustExec(t, `INSERT INTO customer (id, code, branch_id, fullname, phone) VALUES
-		(901, 'KH901', ?, 'Khách Một', '0900000901'), (902, 'KH902', ?, 'Khách Hai', '0900000902')`, revB1, revB2)
+	mustExec(t, `INSERT INTO customer (id, code, branch_id, fullname, phone, stage_id) VALUES
+		(901, 'KH901', ?, 'Khách Một', '0900000901', (SELECT id FROM customer_stage WHERE is_default = 1)), (902, 'KH902', ?, 'Khách Hai', '0900000902', (SELECT id FROM customer_stage WHERE is_default = 1))`, revB1, revB2)
 	mustExec(t, `INSERT INTO appointment (id, code, branch_id, customer_id, appointment_type_id, appointment_date, status, is_accepted)
 		VALUES (701, 'AP701', ?, 901, 1, ?, 2, 1), (702, 'AP702', ?, 902, 1, ?, 3, 1)`, revB1, revT, revB2, revT)
 	mustExec(t, `INSERT INTO order_plan (id, code, branch_id, customer_id, created_time) VALUES

@@ -79,8 +79,8 @@ func seedGroupSourceBranch(t *testing.T) {
 	must("group_source", testDB.Exec(`INSERT INTO group_source (id, name, sourceId)
 		VALUES (?, 'Nhom QA', ?)`, gsGroup,
 		fmt.Sprintf("[%d]", gsSource)).Error)
-	must("customer", testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, created_day, source_id)
-		VALUES (?, ?, 'KH', ?, ?)`, gsCustomer, gsBranchA, gsFrom+100, gsSource).Error)
+	must("customer", testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, created_day, source_id, stage_id)
+		VALUES (?, ?, 'KH', ?, ?, (SELECT id FROM customer_stage WHERE is_default = 1))`, gsCustomer, gsBranchA, gsFrom+100, gsSource).Error)
 	for id, rev := range map[int]int{gsType: 1, gsTypeNo: 0} {
 		must("appointment_type", testDB.Exec(`INSERT INTO appointment_type (id, name, isTypeRevenue) VALUES (?, 'LH', ?)`,
 			id, rev).Error)

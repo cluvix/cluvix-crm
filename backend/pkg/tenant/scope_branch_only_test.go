@@ -140,8 +140,8 @@ func TestApplyNullBranchScope_VeBranchBocNgoacKhiGhepWhere(t *testing.T) {
 		q    *gorm.DB
 		want string
 	}{
-		{"Where", applyNullBranchScope(db, Bounds{BranchActiveID: 10}, "customer", false).Where("customer.status = ?", 1),
-			"(customer.branch_id = 10 OR customer.branch_id IS NULL) AND customer.status = 1"},
+		{"Where", applyNullBranchScope(db, Bounds{BranchActiveID: 10}, "customer", false).Where("customer.stage_id = ?", 1),
+			"(customer.branch_id = 10 OR customer.branch_id IS NULL) AND customer.stage_id = 1"},
 		{"Or", applyNullBranchScope(db, Bounds{BranchIDs: []uint{10, 11}}, "customer", false).Or("customer.id = ?", 5),
 			"(customer.branch_id IN (10,11) OR customer.branch_id IS NULL) OR customer.id = 5"},
 	} {

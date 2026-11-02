@@ -238,19 +238,18 @@ var en = map[string]string{
 	// Loyalty
 
 	// Service / payment (service layer)
-	"cannot_hash_password":               "cannot hash password",
-	"service_id_invalid":                 "Invalid service ID: %d",
-	"payment_amount_too_large":           "Amount cannot exceed remaining amount. Received: %s, Remaining: %s",
-	"total_end_below_payment":            "Cannot reduce service value (%s) below amount already paid (%s)",
-	"service_id_locked_by_payment":       "Cannot change service — this service already has payment recorded",
-	"list_revenues_invalid":              "Invalid consultant list (must be an array of user IDs)",
-	"order_customer_change_blocked":      "Cannot change the customer of an order that already has services or payments",
-	"service_total_mismatch":             "Service amount does not match unit price, quantity and discounts (expected: %s, received: %s)",
-	"vat_rate_8_expired":                 "The 8%% VAT rate only applies to orders dated on or before %s",
-	"service_vat_mismatch":               "Service VAT does not match the order VAT rate (expected: %s, received: %s)",
-	"customer_delete_has_money":          "Cannot delete a customer who has orders or payment records (%d orders, %d payments)",
-	"service_change_permission_denied":   "You do not have permission to change a paid service",
-	"customer_status_invalid_transition": "Cannot transition status from %d to %d",
+	"cannot_hash_password":             "cannot hash password",
+	"service_id_invalid":               "Invalid service ID: %d",
+	"payment_amount_too_large":         "Amount cannot exceed remaining amount. Received: %s, Remaining: %s",
+	"total_end_below_payment":          "Cannot reduce service value (%s) below amount already paid (%s)",
+	"service_id_locked_by_payment":     "Cannot change service — this service already has payment recorded",
+	"list_revenues_invalid":            "Invalid consultant list (must be an array of user IDs)",
+	"order_customer_change_blocked":    "Cannot change the customer of an order that already has services or payments",
+	"service_total_mismatch":           "Service amount does not match unit price, quantity and discounts (expected: %s, received: %s)",
+	"vat_rate_8_expired":               "The 8%% VAT rate only applies to orders dated on or before %s",
+	"service_vat_mismatch":             "Service VAT does not match the order VAT rate (expected: %s, received: %s)",
+	"customer_delete_has_money":        "Cannot delete a customer who has orders or payment records (%d orders, %d payments)",
+	"service_change_permission_denied": "You do not have permission to change a paid service",
 
 	// Customer
 	"id_and_tag_required": "id and tag are required",
@@ -350,4 +349,20 @@ var en = map[string]string{
 	"crm_dashboard_range_too_long": "The period can be at most 1 year (366 days)",
 	"crm_dashboard_branch_invalid": "Invalid branch",
 	"crm_dashboard_layout_invalid": "Invalid dashboard layout",
+
+	// Customer stage catalog (customer_stage)
+	"customer_stage_name_required":           "Stage name is required",
+	"customer_stage_name_duplicate":          "A stage with this name already exists",
+	"customer_stage_type_invalid":            "Invalid stage type",
+	"customer_stage_color_invalid":           "Invalid stage color",
+	"customer_stage_default_cannot_hide":     "Cannot hide the default stage; make another stage the default first",
+	"customer_stage_default_cannot_delete":   "Cannot delete the default stage; make another stage the default first",
+	"customer_stage_default_must_be_open":    "The default stage must be of the open type",
+	"customer_stage_default_must_be_visible": "A hidden stage cannot be the default",
+	"customer_stage_in_use":                  "This stage is in use; hide it instead of deleting",
+	"customer_stage_reorder_invalid":         "The order list must contain every stage exactly once",
+	// Customer stage writes (create, import, change stage) — story-03
+	"customer_stage_default_missing": "No default customer stage is configured",
+	"customer_stage_not_selectable":  "The stage does not exist or is hidden",
+	"customer_stage_changed":         "Customer stage updated",
 }

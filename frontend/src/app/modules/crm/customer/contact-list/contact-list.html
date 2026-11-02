@@ -164,17 +164,8 @@
                 </div>
                 <div class="col-span-12 md:col-span-6">
                   <p-floatlabel variant="on">
-                    <p-select [multiple]="true"
-                      [options]="customerStatusOptions()"
-                      appendTo="body"
-                      class="w-full"
-                      [emptyFilterMessage]="'common.label.no_results' | translate"
-                      formControlName="_status"
-                      id="_status"
-                      resetFilterOnHide="true"
-                    >
-                    </p-select>
-                    <label for="_status">{{ "common.label.progress" | translate }}</label>
+                    <app-customer-stage-multiselect-form-control formControlName="stage_id"/>
+                    <label for="stage_id">{{ "common.label.progress" | translate }}</label>
                   </p-floatlabel>
                 </div>
                 @if (!isDesktop()) {
@@ -510,8 +501,8 @@
         <td>
             <span
               class="font-semibold px-3 py-[5px] rounded-full shadow-sm text-sm mr-1 mb-1 inline-block"
-              [class]="model.statusClass">
-              {{ model.statusKey ? (model.statusKey | translate) : model.statusLabel }}
+              [class]="model.stageColorClass">
+              {{ model.stageName }}
             </span>
         </td>
       }

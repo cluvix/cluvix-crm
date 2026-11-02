@@ -9,8 +9,7 @@ import { NoteService } from '@/core/services/crm/note.service';
 import { BaseListV2 } from '@/share/base/base-list-v2';
 import { FilterFieldDef } from '@/share/base/list-filter.model';
 import { ListShareImports } from '@/share/import/list-share-imports';
-import { CUSTOMER_STATUS_OPTIONS } from '@/define/customer.define';
-import { translateOptions } from '@/share/utils/translate-options.util';
+import { CustomerStageMultiselectFormControl } from '@/indexeddb/config/components/customer-stage';
 import { ListApiResponse } from '@/share/models/list-api-response';
 import { FillHeightDirective } from '@/share/directive/fill-height.directive';
 
@@ -28,7 +27,7 @@ import { FillHeightDirective } from '@/share/directive/fill-height.directive';
     `,
   ],
   standalone: true,
-  imports: [FillHeightDirective, ...ListShareImports],
+  imports: [FillHeightDirective, CustomerStageMultiselectFormControl, ...ListShareImports],
 })
 export class NoteList extends BaseListV2<NoteDisplayModel> implements OnInit, OnDestroy {
   modelService = inject(NoteService);
@@ -51,7 +50,6 @@ export class NoteList extends BaseListV2<NoteDisplayModel> implements OnInit, On
   ]);
   protected override LS_SELECTED_COLUMNS_KEY = '/note/app-note-note-list';
   protected override URL_STATE_PREFIX = 'nt';
-  protected readonly customerStatusOptions = translateOptions(CUSTOMER_STATUS_OPTIONS);
 
   constructor() {
     super();
@@ -80,8 +78,9 @@ export class NoteList extends BaseListV2<NoteDisplayModel> implements OnInit, On
       },
       {name: 'created_by', kind: 'in'},
       {name: 'type_service_id', kind: 'in'},
-      // template `status` là p-select [multiple]="true" thật (chọn-nhiều) → giữ kind 'in' (FR-5)
-      {name: 'status', kind: 'in'},
+      // Tiến trình khách = bước cấu hình (customer_stage), chọn nhiều: gửi `_stage_id[i]=…`
+      // (BE story-05, lọc `customer.stage_id`). URL `nt_stage_id=…` theo quy ước urlKeyOf.
+      {name: '_stage_id', kind: 'in'},
     ];
   }
 

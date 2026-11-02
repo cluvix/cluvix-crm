@@ -260,7 +260,9 @@ h3 {
   color: red;
 }
 
-.statusCustomer-1, .customerData-null {
+// Badge trung tính của chi tiết khách (chi nhánh / SĐT) — màu cố định, không phụ thuộc bước tiến trình
+// (tiến trình dùng class Tailwind theo khoá màu bước, xem `CUSTOMER_STAGE_COLOR_CLASS`).
+.badge-neutral {
   background-color: #e2e8f0;
   color: #1e293b;
   border: 1px solid #cbd5e1;
@@ -269,79 +271,7 @@ h3 {
   line-height: 1.25rem;
 }
 
-.statusCustomer-2, .complaintStatus-1 {
-  background-color: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fcd34d;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-3, .paymentFor-5 {
-  background-color: #fef9c3;
-  color: #b45309;
-  border: 1px solid #fde68a;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-4 {
-  background-color: #fef3c7;
-  color: #92400e;
-  border: 1px solid #facc15;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-5 {
-  background-color: #fef9c3;
-  color: #92400e;
-  border: 1px solid #fcd34d;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-6, .paymentFor-1, .customerData-2, .complaintStatus-2, .treatmentCustomer-2 {
-  background-color: #e0f2fe;
-  color: #0369a1;
-  border: 1px solid #7dd3fc;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-7 {
-  background-color: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-8, .paymentFor-3, .status-inactive, .treatmentCustomer-1 {
-  background-color: #fde68a;
-  color: #92400e;
-  border: 1px solid #fbbf24;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-9, .paymentFor-2, .status-suspended, .customerConnect-2 {
-  background-color: #f87171;
-  color: #7f1d1d;
-  border: 1px solid #fca5a5;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-10, .paymentFor-4, .status-active, .customerConnect-1, .customerData-1, .complaintStatus-3, .treatmentCustomer-3 {
+.badge-positive {
   background-color: #bbf7d0;
   color: #15803d;
   border: 1px solid #4ade80;
@@ -350,16 +280,70 @@ h3 {
   line-height: 1.25rem;
 }
 
-.statusCustomer-11 {
-  background-color: #a7f3d0;
-  color: #065f46;
-  border: 1px solid #34d399;
+.customerData-null {
+  background-color: #e2e8f0;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
   min-width: 72px;
   text-align: center;
   line-height: 1.25rem;
 }
 
-.statusCustomer-12, .userStatus-10, .couponType-1, .status-2 {
+.complaintStatus-1 {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  min-width: 72px;
+  text-align: center;
+  line-height: 1.25rem;
+}
+
+.paymentFor-5 {
+  background-color: #fef9c3;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  min-width: 72px;
+  text-align: center;
+  line-height: 1.25rem;
+}
+
+.paymentFor-1, .customerData-2, .complaintStatus-2, .treatmentCustomer-2 {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+  min-width: 72px;
+  text-align: center;
+  line-height: 1.25rem;
+}
+
+.paymentFor-3, .status-inactive, .treatmentCustomer-1 {
+  background-color: #fde68a;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+  min-width: 72px;
+  text-align: center;
+  line-height: 1.25rem;
+}
+
+.paymentFor-2, .status-suspended, .customerConnect-2 {
+  background-color: #f87171;
+  color: #7f1d1d;
+  border: 1px solid #fca5a5;
+  min-width: 72px;
+  text-align: center;
+  line-height: 1.25rem;
+}
+
+.paymentFor-4, .status-active, .customerConnect-1, .customerData-1, .complaintStatus-3, .treatmentCustomer-3 {
+  background-color: #bbf7d0;
+  color: #15803d;
+  border: 1px solid #4ade80;
+  min-width: 72px;
+  text-align: center;
+  line-height: 1.25rem;
+}
+
+.userStatus-10, .couponType-1, .status-2 {
   background-color: #86efac;
   color: #166534;
   border: 1px solid #22c55e;
@@ -368,7 +352,7 @@ h3 {
   line-height: 1.25rem;
 }
 
-.statusCustomer-13, .userStatus-1, .status-1 {
+.userStatus-1, .status-1 {
   background-color: #fca5a5;
   color: #7f1d1d;
   border: 1px solid #fecaca;
@@ -377,7 +361,7 @@ h3 {
   line-height: 1.25rem;
 }
 
-.statusCustomer-14, .userStatus-9, .couponType-2, .status-3 {
+.userStatus-9, .couponType-2, .status-3 {
   background-color: #fde68a;
   color: #78350f;
   border: 1px solid #fcd34d;
@@ -386,19 +370,10 @@ h3 {
   line-height: 1.25rem;
 }
 
-.statusCustomer-15, .paymentFor-6, .complaintStatus-4 {
+.paymentFor-6, .complaintStatus-4 {
   background-color: #c7d2fe;
   color: #3730a3;
   border: 1px solid #a5b4fc;
-  min-width: 72px;
-  text-align: center;
-  line-height: 1.25rem;
-}
-
-.statusCustomer-16 {
-  background-color: #ede9fe;
-  color: #6d28d9;
-  border: 1px solid #c4b5fd;
   min-width: 72px;
   text-align: center;
   line-height: 1.25rem;

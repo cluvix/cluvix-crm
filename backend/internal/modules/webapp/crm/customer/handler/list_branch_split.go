@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"strings"
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
@@ -15,23 +13,25 @@ import (
 // Bệnh: scope `ScopedDBNullBranch` cho 1 chi nhánh sinh `(customer.branch_id = ? OR
 // customer.branch_id IS NULL)`. Vế `OR IS NULL` biến điều kiện thành `ref_or_null` trên
 // `fk-customer_branch_id` ⇒ hai dải khoá, không còn luồng đã-sắp-theo-`id` nào ⇒ câu trang
-// đọc CẢ chi nhánh rồi filesort cho `ORDER BY id DESC LIMIT 15`, và câu COUNT tra dòng theo
-// chỉ mục hẹp đó thay vì quét phủ `idx_customer_scope_status (status, branch_id)`.
+// đọc CẢ chi nhánh rồi filesort cho `ORDER BY id DESC LIMIT 15`, và (trước story-04) câu COUNT tra
+// dòng theo chỉ mục hẹp đó thay vì quét phủ `idx_customer_scope_status (status, branch_id)`.
 // Admin 5 chi nhánh (`IN (1..5) OR IS NULL`) KHÔNG dính: optimizer quét ngược PRIMARY rồi dừng sớm.
 //
-// Chữa (2 phần, CHỈ bật khi phạm vi rút về đúng 1 chi nhánh — `customerListSingleBranch`):
+// Chữa (CHỈ bật khi phạm vi rút về đúng 1 chi nhánh — `customerListSingleBranch`). Phần 2 (hint
+// COUNT) ĐÃ GỠ ở story-04 customer-stage-pipeline — lý do + số đo: khối "story-04" ngay dưới.
 //
 //  1. Câu TRANG: tách vế OR thành 2 nhánh `UNION ALL` — `branch_id = B` và `branch_id IS NULL`.
 //     Mỗi nhánh là equality ⇒ `(branch_id)` + PK ngầm ở đuôi chỉ mục = `(branch_id, id)` ⇒
 //     `Index lookup … (reverse)` dừng sớm ở dòng thứ `offset+perPage`. Lấy id của trang từ hợp
 //     2 nhánh rồi mới nạp đủ cột theo PK. KHÔNG dùng index hint nào ⇒ mỗi nhánh optimizer vẫn tự
-//     chọn chỉ mục hợp bộ lọc (FULLTEXT cho từ khoá, `idx_customer_scope_status` cho lọc 1
-//     trạng thái, `fk-customer_source_id` …), và không có tên chỉ mục nào bị cứng hoá trong code.
+//     chọn chỉ mục hợp bộ lọc (FULLTEXT cho từ khoá, `idx_customer_stage_branch` cho lọc 1
+//     bước — trước story-12 là `idx_customer_scope_status` cho lọc 1 trạng thái,
+//     `fk-customer_source_id` …), và không có tên chỉ mục nào bị cứng hoá trong code.
 //     Có cổng `customerListSplitWorthIt`: trang sâu (offset+perPage > total/2) đi đường cũ.
-//  2. Câu COUNT: optimizer hint `NO_INDEX` cho hai chỉ mục dẫn đầu bằng `branch_id`
+//  2. [ĐÃ GỠ — story-04, xem dưới] Câu COUNT: optimizer hint `NO_INDEX` cho hai chỉ mục dẫn đầu bằng `branch_id`
 //     (`fk-customer_branch_id`, `idx_customer_branch_revenue`) ⇒ optimizer rơi về quét PHỦ
 //     `idx_customer_scope_status` (28 dải `(status, branch_id)` chính xác — `status IN (14 giá
-//     trị)` LUÔN có mặt nên chỉ mục này luôn phủ được vế scope). Có cổng: KHÔNG gắn khi có
+//     trị)` LUÔN có mặt nên chỉ mục này luôn phủ được vế scope; chỉ mục + cột `status` đã xoá ở story-12). Có cổng: KHÔNG gắn khi có
 //     từ khoá (đường LIKE + hint ⇒ table scan, đo chậm hơn ~10%; đường ngram thì hint vô nghĩa).
 //     Hint KHÔNG phải `FORCE/IGNORE INDEX`: chỉ mục bị đổi tên/xoá ⇒ MySQL chỉ cảnh báo 3128
 //     rồi bỏ qua hint (đã thử trên 9.7), về đúng plan cũ — không bao giờ lỗi 1176.
@@ -59,7 +59,7 @@ import (
 //	chi nhánh rỗng (id 999)¹      | ref_or_null · 0,03                            | UNION · 0,09
 //	¹ đo trên câu chỉ lấy id (cùng plan), không phải SQL đầy đủ cột.
 //
-//	câu COUNT, scope 1 CN (CN1)   | cũ                                            | mới
+//	câu COUNT (2026-10-19, hint nay ĐÃ GỠ) | cũ                                   | mới
 //	không lọc                     | ref_or_null fk-branch, tra dòng · 307         | hint: covering range scope_status · 41
 //	filter[branch_id] = 1         | lookup fk-branch, tra dòng · 267              | hint: covering range · 43
 //	lọc trạng thái = 12           | covering scope_status · 10,9                  | như cũ · 10,6
@@ -93,6 +93,37 @@ import (
 //	                                                                 | và tắt luôn FULLTEXT ⇒ dùng NO_INDEX.
 //	UNION cho COUNT (đếm 2 nhánh rồi cộng)                          | nhánh `branch_id = 1` optimizer VẪN
 //	                                                                 | chọn lookup fk-branch tra dòng — vô ích.
+//
+// ── story-04 customer-stage-pipeline (02/11/2026): GỠ hint COUNT ─────────────────────────────
+// Danh sách bỏ vế lọc ngầm theo tiến trình cũ `status IN (14 giá trị)` (nay hiện MỌI khách, lọc tiến trình qua
+// `filter[stage_id]`). Giả định của hint mất: vế scope `branch_id = B OR IS NULL` đứng một mình thì
+// chính `fk-customer_branch_id (branch_id)` là chỉ mục PHỦ cho COUNT (không còn cột `status` phải tra
+// dòng) — hint cấm đúng chỉ mục đó ⇒ optimizer quét phủ TOÀN BỘ `idx_customer_scope_status` (600k).
+// Bench `cluvix_s04_bench_tmp` (schema từ migration, 600.000 khách / 5 CN, CN1 = 228.000 + 12.000
+// NULL-branch, 960.000 dòng lịch sử, buffer pool 128MB). ms = TIMER_WAIT performance_schema, ấm,
+// median 3 lượt; "trước" = SQL handler HEAD (có `status IN`), "sau" = SQL handler story-04.
+//
+//	câu COUNT                    | trước (hint, status IN)             | sau, GIỮ hint            | sau, BỎ hint (chọn)
+//	admin, không lọc             | 62 covering scan scope_status       | —                        | 46 Count rows (không hint ở admin)
+//	admin, filter[branch_id]=1   | 283 lookup fk-branch tra dòng       | —                        | 23 covering lookup fk-branch
+//	admin, 1 bước / 1 trạng thái | 15 (status=12)                      | —                        | 11,5 covering stage_branch
+//	2 CN (không hint cả 2 bản)   | 63                                  | —                        | 46 covering range fk-branch
+//	CN1, không lọc               | 43 covering range scope_status      | 66 full scan scope_status| 26,5 covering ref_or_null fk-branch
+//	CN1, filter[branch_id]=1     | 44                                  | 38 skip scan             | 22 covering lookup fk-branch
+//	CN1, 1 bước (stage_id=2)     | 11,4 (status=12)                    | 7,4                      | 7,4 covering stage_branch
+//	CN1, 2 bước (IN 2,5)         | —                                   | 12,4                     | 12,3 covering range stage_branch
+//	CN1, gender=1                | 331 table scan                      | 319 table scan           | 371 lookup fk-branch tra dòng (1,12×)
+//	CN1, _ageFrom                | 330 table scan                      | 319                      | 370 (1,12×)
+//	CN1, created_day 1 tháng     | 12,5 MRR                            | 3,5                      | 3,9 covering created_day_branch
+//	CN1, payment_user_id=1       | 260                                 | 254                      | 253 (như nhau)
+//	bước không có khách (id 9)   | —                                   | —                        | 0,01–0,04 (count + trang admin)
+//
+// Bỏ hint thắng mọi ca có lọc theo phạm vi/bước; chỉ lùi 12% ở lọc cột KHÔNG có chỉ mục (gender, tuổi)
+// — trong ngưỡng 1,2× của AC7, không đáng giữ một cổng hint phụ thuộc cost model + tên chỉ mục
+// (`idx_customer_scope_status` đã xoá cùng cột `status` ở story-12 — migration `20261102174223_customer_stage_contract`). Câu TRANG (UNION 2 nhánh) không đổi: ≤ 1ms mọi ca.
+// Biến thể đo và LOẠI: giữ hint (CN1 không lọc 43 → 66ms = 1,52×); thêm `idx_customer_scope_status`
+// vào NO_INDEX (full scan `idx_customer_stage_branch` 67ms — cùng bệnh); `FORCE INDEX(fk-branch)` =
+// plan optimizer tự chọn (26,6ms) nên không cần, và FORCE gãy 1176 khi đổi tên chỉ mục.
 // ───────────────────────────────────────────────────────────────────────────────
 
 // ── §search-global (`GET /crm/customer/search-global`, vòng 2 — 2026-10-19) ───────────────────
@@ -119,20 +150,6 @@ import (
 // `MATCH(search_ngram) AGAINST('"kw"') AND (<6 LIKE>)` ở CN1: "959500000" 0,04ms · "KH05" 0,03ms ·
 // "KH0001000" 0,05ms (so với 342–384ms). Chưa làm ở vòng này — cần cổng ngram (`customerKeywordUseNgram`)
 // + đường lui lỗi 1191/188 như customerListTotal; từ khoá toàn chữ vẫn phải đi LIKE (bảng list_search.go).
-
-// customerCountNoBranchIndexHint — optimizer hint cho câu COUNT ở phạm vi 1 chi nhánh.
-//
-// ⚠ PHẢI là MỘT khối NO_INDEX liệt kê cả hai chỉ mục. Viết hai khối
-// `NO_INDEX(customer a) NO_INDEX(customer b)` thì MySQL bỏ khối thứ hai (cảnh báo 3126
-// "conflicting/duplicated") ⇒ optimizer chuyển sang `idx_customer_branch_revenue` và COUNT CHẬM
-// HƠN cả trước bản vá (đo: 317 → 626ms) — đã dính trong lúc làm bản vá này, test DryRun neo lại.
-// Tên chỉ mục khớp migration hiện tại; đổi tên/xoá chỉ mục ⇒ hint thành cảnh báo 3128, plan về
-// như trước bản vá (chậm lại, KHÔNG sai kết quả, KHÔNG lỗi) — production im lặng, nên
-// `TestCustomerCountQuery_HintMatchesPlainCount` (integration, SHOW WARNINGS) là chỗ báo đỏ:
-// migration nào đổi/xoá 2 chỉ mục này thì sửa hằng số này cùng lượt.
-// KHÔNG phụ thuộc `index_status_customer (status)` (bench mục A-2 đề xuất bỏ) — chỉ cần
-// `idx_customer_scope_status (status, branch_id)` còn sống.
-const customerCountNoBranchIndexHint = "/*+ NO_INDEX(customer `fk-customer_branch_id`, idx_customer_branch_revenue) */"
 
 // customerListSingleBranch — phạm vi của request có rút về đúng 1 chi nhánh (+ NULL) không.
 //
@@ -205,13 +222,11 @@ func customerSplitByBranch(db, base *gorm.DB, branchID uint, offset, limit int, 
 		Order("customer.id DESC")
 }
 
-// customerCountQuery — câu COUNT của danh sách (ghi vào `total`). Gắn hint NO_INDEX khi phạm vi
-// là 1 chi nhánh và KHÔNG có từ khoá (cổng + số đo: khối ghi chú đầu file). Mọi đường khác giữ
-// nguyên `Count` như trước bản vá. Test DryRun gọi CHÍNH hàm này.
-func customerCountQuery(c *gin.Context, base *gorm.DB, total *int64) *gorm.DB {
-	// TrimSpace khớp applyCustomerKeyword: từ khoá toàn khoảng trắng = không có từ khoá.
-	if _, single := customerListSingleBranch(c); single && strings.TrimSpace(c.Query("_keyword")) == "" {
-		return base.Session(&gorm.Session{}).Select(customerCountNoBranchIndexHint + " COUNT(*)").Scan(total)
-	}
+// customerCountQuery — câu COUNT của danh sách (ghi vào `total`): `Count` trần trên CHÍNH bộ lọc
+// câu trang dùng, KHÔNG optimizer hint ở mọi phạm vi. Hint `NO_INDEX(fk-customer_branch_id, …)` cũ
+// đã gỡ ở story-04 (bỏ `status IN` ⇒ fk-branch thành chỉ mục phủ; giữ hint chậm 1,52× — bảng số đo
+// khối "story-04" đầu file). Đừng gắn lại hint khi chưa đo lại ở quy mô (`/check-scale`).
+// Test DryRun + integration gọi CHÍNH hàm này.
+func customerCountQuery(base *gorm.DB, total *int64) *gorm.DB {
 	return base.Session(&gorm.Session{}).Count(total)
 }

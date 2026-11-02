@@ -101,7 +101,7 @@ func TestCallback_BumpsEveryUpdateForm(t *testing.T) {
 			return db.Model(&appt{}).Where("id = ?", 5).UpdateColumns(map[string]any{"status": 2})
 		},
 		"Table(no schema).Updates(map)": func() *gorm.DB {
-			return db.Table("customer").Where("id = ?", 5).Updates(map[string]any{"status": 2, "updated_at": 9})
+			return db.Table("customer").Where("id = ?", 5).Updates(map[string]any{"nickname": "x", "updated_at": 9})
 		},
 		"Table(alias).Updates(map)": func() *gorm.DB {
 			return db.Table("reminder AS r").Where("r.id = ?", 5).Updates(map[string]any{"status": 2})

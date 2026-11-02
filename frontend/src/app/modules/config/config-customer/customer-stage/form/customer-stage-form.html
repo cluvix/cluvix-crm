@@ -1,0 +1,86 @@
+<form novalidate>
+  <p-fluid class="grid grid-cols-12 gap-6 flex-wrap p-fluid pt-2">
+    <div class="col-span-12">
+      <p-floatlabel variant="on">
+        <input
+          [autofocus]="true"
+          [class.ng-invalid]="isFieldInvalid(rootField.name!)"
+          [formField]="rootField.name!"
+          autocomplete="off"
+          class="ng-dirty"
+          id="name"
+          pInputText
+          type="text"
+        />
+        <label for="name">{{ 'config.customer_stage.name' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    <div class="col-span-12 lg:col-span-6">
+      <p-floatlabel variant="on">
+        <p-select
+          [class.ng-invalid]="isFieldInvalid(rootField.type!)"
+          [formField]="$any(rootField.type!)"
+          [options]="typeOptions"
+          class="ng-dirty"
+          [ariaLabel]="'common.label.type' | translate"
+          inputId="type"
+          optionValue="value"
+          appendTo="body"
+        >
+          <ng-template #selectedItem let-opt>{{ opt.labelKey | translate }}</ng-template>
+          <ng-template #item let-opt>{{ opt.labelKey | translate }}</ng-template>
+        </p-select>
+        <label for="type">{{ 'common.label.type' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    <div class="col-span-12 lg:col-span-6">
+      <p-floatlabel variant="on">
+        <p-select
+          [class.ng-invalid]="isFieldInvalid(rootField.color!)"
+          [formField]="$any(rootField.color!)"
+          [options]="colorOptions"
+          class="ng-dirty"
+          [ariaLabel]="'common.label.color' | translate"
+          inputId="color"
+          optionValue="value"
+          appendTo="body"
+        >
+          <ng-template #selectedItem let-opt>
+            <span class="inline-flex items-center gap-2">
+              <span class="inline-block w-3 h-3 rounded-full" [class]="colorDotClass(opt.value)"></span>
+              <span>{{ opt.labelKey | translate }}</span>
+            </span>
+          </ng-template>
+          <ng-template #item let-opt>
+            <span class="inline-flex items-center gap-2">
+              <span class="inline-block w-3 h-3 rounded-full" [class]="colorDotClass(opt.value)"></span>
+              <span>{{ opt.labelKey | translate }}</span>
+            </span>
+          </ng-template>
+        </p-select>
+        <label for="color">{{ 'common.label.color' | translate }}</label>
+      </p-floatlabel>
+    </div>
+    @if (isDefaultStage) {
+      <div class="col-span-12 text-sm text-muted-color">
+        <i class="pi pi-info-circle mr-1"></i>{{ 'config.customer_stage.default_locked_hint' | translate }}
+      </div>
+    }
+    <div class="col-span-12 inline-flex items-center gap-2">
+      <p-toggleswitch
+        [trueValue]="1"
+        [falseValue]="0"
+        [formField]="rootField.status!"
+        id="status"
+      ></p-toggleswitch>
+      <label for="status" class="min-w-32">{{
+        (rootField.status!().value() === 1 ? 'common.label.visible' : 'common.label.hidden') | translate
+      }}</label>
+    </div>
+  </p-fluid>
+  <app-dialog-footer
+    [isSubmitting]="isSubmitting()"
+    (cancelForm)="closeForm($event)"
+    (saveForm)="onSubmit()"
+  />
+</form>

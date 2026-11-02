@@ -62,8 +62,8 @@ func TestPrintOrderPlan_AttachChiNhanhKhac(t *testing.T) {
 	testDB.Exec(`DELETE FROM service`)
 	testDB.Exec(`DELETE FROM customer`)
 
-	if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, phone, address)
-		VALUES (801, ?, 'Khach Chi Nhanh Khac', '0900000088', 'Dia chi test')`, s38BranchOther).Error; err != nil {
+	if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, phone, address, stage_id)
+		VALUES (801, ?, 'Khach Chi Nhanh Khac', '0900000088', 'Dia chi test', (SELECT id FROM customer_stage WHERE is_default = 1))`, s38BranchOther).Error; err != nil {
 		t.Fatalf("seed customer: %v", err)
 	}
 	if err := testDB.Exec(`INSERT INTO order_plan (id, branch_id, customer_id, code)

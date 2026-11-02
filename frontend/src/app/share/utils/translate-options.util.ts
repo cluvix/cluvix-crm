@@ -8,12 +8,12 @@ import { TranslateService } from '@ngx-translate/core';
  * Usage in component:
  * ```typescript
  * import { translateOptions } from '@/share/utils/translate-options.util';
- * import { CUSTOMER_STATUS_OPTIONS } from '@/define';
+ * import { GENDER_OPTIONS } from '@/define';
  *
  * @Component({...})
  * export class CustomerList {
- *   protected readonly customerStatusOptions = translateOptions(CUSTOMER_STATUS_OPTIONS);
- *   // Template: <p-select [options]="customerStatusOptions()" optionLabel="label" .../>
+ *   protected readonly genderOptions = translateOptions(GENDER_OPTIONS);
+ *   // Template: <p-select [options]="genderOptions()" optionLabel="label" .../>
  * }
  * ```
  *

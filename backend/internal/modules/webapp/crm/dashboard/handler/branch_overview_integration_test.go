@@ -64,8 +64,8 @@ func seedBranchOverview(t *testing.T) {
 		bovExec(t, "DELETE FROM `"+tbl+"`")
 	}
 	bovExec(t, `INSERT INTO branch (id, name) VALUES (?, 'CN1'), (?, 'CN2')`, bovB1, bovB2)
-	bovExec(t, `INSERT INTO customer (id, code, branch_id, fullname, phone) VALUES
-		(951, 'KH951', ?, 'Khách Một', '0900000951'), (952, 'KH952', ?, 'Khách Hai', '0900000952')`, bovB1, bovB2)
+	bovExec(t, `INSERT INTO customer (id, code, branch_id, fullname, phone, stage_id) VALUES
+		(951, 'KH951', ?, 'Khách Một', '0900000951', (SELECT id FROM customer_stage WHERE is_default = 1)), (952, 'KH952', ?, 'Khách Hai', '0900000952', (SELECT id FROM customer_stage WHERE is_default = 1))`, bovB1, bovB2)
 	ins := func(id, customer, branch, depositType int, amount, depositAfter string) {
 		bovExec(t, `INSERT INTO payment
 			(id, code, customer_id, branch_id, method, amount, deposit_after, deposit_type, payment_for,

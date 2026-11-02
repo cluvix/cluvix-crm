@@ -28,6 +28,7 @@ func RegisterRoutes(crm gin.IRouter, d handler.Deps) {
 		customer.GET("/:id", h.GetCustomer)
 		customer.POST("", h.CreateCustomer)
 		customer.PUT("/:id", h.UpdateCustomer)
+		customer.PUT("/:id/stage", h.ChangeStage)
 		customer.DELETE("/:id", h.DeleteCustomer)
 		customer.POST("/:id/add-tag", h.AddTag)
 		customer.POST("/:id/remove-tag", h.RemoveTag)

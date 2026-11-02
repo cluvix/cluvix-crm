@@ -375,6 +375,7 @@ func (h *Handler) TimelineCustomer(c *gin.Context) {
 		TreatmentPlanDB: tenant.CrossBranchLookup(h.DB, "order_plan"),
 		PaymentDB:       tenant.CrossBranchLookup(h.DB, "payment"),
 		ReminderDB:      tenant.CrossBranchLookup(h.DB, "reminder"),
+		StageHistoryDB:  tenant.CrossBranchLookup(h.DB, "customer_stage_history"),
 		CustomerID:      id,
 		Customer:        customer,
 	})

@@ -86,11 +86,20 @@ func oldListCustomerBody(h *Handler, c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// splitStages — 4 bước seed (khoá `name`, migration 20261102095255) đủ 3 loại: 2 đang mở, 1 thành
+// công, 1 thất bại. Dùng cho seed + filter[stage_id] của các test parity bên dưới.
+func splitStages(t *testing.T) []int {
+	t.Helper()
+	return []int{stageIDByName(t, "Liên hệ"), stageIDByName(t, "Đang tư vấn"),
+		stageIDByName(t, "Khách hàng đã thuê"), stageIDByName(t, "Từ chối")}
+}
+
 // seedSplitCustomers — khách xen kẽ A / NULL / B theo id (để hợp 2 nhánh phải trộn thật),
-// đủ loại trạng thái (kể cả 1 và 4 — nằm NGOÀI customerStatuses), giới tính, ngày tạo, tên, SĐT.
+// đủ 4 bước (3 loại), giới tính, ngày tạo, tên, SĐT. Không seed `customer.status` (cột bỏ ở
+// story-12): danh sách không còn lọc theo status nên không cần phân phối status để chứng minh.
 func seedSplitCustomers(t *testing.T) (createdFrom, createdTo int64) {
 	t.Helper()
-	statuses := []int{3, 5, 12, 1, 4, 12, 16}
+	stages := splitStages(t)
 	names := []string{"Nguyen Van", "Tran Thi", "Le Minh"}
 	const baseDay = int64(1788220800)
 	for i := 0; i < 84; i++ {
@@ -107,7 +116,7 @@ func seedSplitCustomers(t *testing.T) (createdFrom, createdTo int64) {
 			"fullname":    fmt.Sprintf("%s C4 %02d", names[i%len(names)], i),
 			"phone":       fmt.Sprintf("0977%06d", 400000+i),
 			"branch_id":   branch,
-			"status":      statuses[i%len(statuses)],
+			"stage_id":    stages[(i/3)%len(stages)], // (i/3)%4 lệch pha với i%4 ⇒ chi nhánh A có đủ 4 bước
 			"gender":      i % 2,
 			"created_day": baseDay + int64(i)*86400,
 			"created_at":  1,
@@ -132,10 +141,11 @@ func TestListCustomer_BranchSplit_ParityWithOldQuery(t *testing.T) {
 		Scan(&ftCount).Error)
 	require.EqualValues(t, 1, ftCount, "DB test thiếu ft_customer_ngram ⇒ ca ngram vô nghĩa")
 
+	stages := splitStages(t)
 	filters := []string{
 		"",
-		"filter[_status][0]=12",
-		"filter[_status][0]=12&filter[_status][1]=3",
+		fmt.Sprintf("filter[stage_id][0]=%d", stages[1]),
+		fmt.Sprintf("filter[stage_id][0]=%d&filter[stage_id][1]=%d", stages[2], stages[3]),
 		fmt.Sprintf("filter[branch_id][0]=%d", splitBranchA),
 		fmt.Sprintf("filter[branch_id][0]=%d", splitBranchB),
 		"filter[gender][0]=1",
@@ -174,7 +184,7 @@ func TestListCustomer_BranchSplit_ParityWithOldQuery(t *testing.T) {
 				require.Equal(t, s.single, single, "[%s] nhận diện phạm vi 1 chi nhánh sai", s.name)
 				if single {
 					var total int64
-					require.NoError(t, customerCountQuery(cNew, h.buildCustomerFilters(cNew, false), &total).Error)
+					require.NoError(t, customerCountQuery(h.buildCustomerFilters(cNew, false), &total).Error)
 					_, perPage, offset := pagination.PageParams(cNew)
 					if customerListSplitWorthIt(total, offset, perPage) {
 						splitTaken++
@@ -195,9 +205,10 @@ func TestCustomerListSplitPage_AllOffsetsMatchOldQuery(t *testing.T) {
 	}
 	seedSplitCustomers(t)
 	h := &Handler{DB: testDB}
+	stageFilter := fmt.Sprintf("filter[stage_id][0]=%d", splitStages(t)[3])
 
 	for _, s := range splitScopes[:2] {
-		for _, f := range []string{"", "filter[_status][0]=12", "filter[gender][0]=0", "_keyword=Tran"} {
+		for _, f := range []string{"", stageFilter, "filter[gender][0]=0", "_keyword=Tran"} {
 			c, _ := splitCtx(f, s)
 			branchID, single := customerListSingleBranch(c)
 			require.True(t, single)
@@ -234,8 +245,9 @@ func TestCustomerListSplitPage_AllOffsetsMatchOldQuery(t *testing.T) {
 	}
 }
 
-// Câu COUNT có hint phải chạy được trên MySQL thật (hint sai cú pháp chỉ là cảnh báo, nhưng
-// Select thô sai thì lỗi) và cho đúng con số của Count trần.
+// Câu COUNT (story-04: KHÔNG còn hint) chạy trên MySQL thật: không cảnh báo nào (trước đây 3128/3126
+// khi chỉ mục trong hint bị đổi tên/xoá), đúng con số của Count trần, và đếm MỌI khách trong phạm vi
+// bất kể `status` cũ (FR17). Giữ tên test cũ vì AC6 story-04 dẫn chiếu tên này.
 func TestCustomerCountQuery_HintMatchesPlainCount(t *testing.T) {
 	if testDB == nil {
 		t.Fatal("TEST_MYSQL_DSN chưa set — integration test này KHÔNG được skip")
@@ -245,30 +257,38 @@ func TestCustomerCountQuery_HintMatchesPlainCount(t *testing.T) {
 	c, _ := splitCtx("", splitScopes[0])
 	base := h.buildCustomerFilters(c, false)
 
-	var hinted, plain int64
-	require.NoError(t, customerCountQuery(c, base, &hinted).Error)
-	// Hint trỏ tới chỉ mục không còn trong schema migration ⇒ cảnh báo 3128, hint bị bỏ, COUNT
-	// lại chậm như trước bản vá mà KHÔNG lỗi gì — chỉ SHOW WARNINGS thấy được. Câu thật đi
-	// prepared statement (EXECUTE xoá vùng chẩn đoán) nên phải chạy lại đúng câu đó dạng TEXT
-	// (đã nội suy tham số, COM_QUERY); suite chạy 1 kết nối (MaxOpenConns=1) ⇒ SHOW WARNINGS
+	var counted, plain int64
+	require.NoError(t, customerCountQuery(base, &counted).Error)
+	// Câu thật đi prepared statement (EXECUTE xoá vùng chẩn đoán) nên chạy lại đúng câu đó dạng
+	// TEXT (đã nội suy tham số, COM_QUERY); suite chạy 1 kết nối (MaxOpenConns=1) ⇒ SHOW WARNINGS
 	// đọc đúng câu vừa chạy.
 	orig := applyTelesaleScope
 	applyTelesaleScope = func(_ *gin.Context, _ *gorm.DB, q *gorm.DB) (*gorm.DB, error) { return q, nil }
 	dry := testDB.Session(&gorm.Session{DryRun: true})
 	var dummy int64
-	stmt := customerCountQuery(c, (&Handler{DB: dry}).buildCustomerFilters(c, false), &dummy).Statement
+	stmt := customerCountQuery((&Handler{DB: dry}).buildCustomerFilters(c, false), &dummy).Statement
 	applyTelesaleScope = orig
 	countText := testDB.Dialector.Explain(stmt.SQL.String(), stmt.Vars...)
-	require.Contains(t, countText, "NO_INDEX(", "ca này phải đi đường có hint")
+	require.NotContains(t, countText, "/*+", "COUNT không được mang optimizer hint (gỡ ở story-04)")
+	require.NotContains(t, countText, "status", "COUNT không được lọc ngầm theo status (FR17)")
 	var textCount int64
 	require.NoError(t, testDB.Raw(countText).Scan(&textCount).Error)
 	var warns []map[string]any
 	require.NoError(t, testDB.Raw("SHOW WARNINGS").Scan(&warns).Error)
-	require.Empty(t, warns, "⛔ hint COUNT sinh cảnh báo (chỉ mục đổi tên/xoá?) ⇒ MySQL đang bỏ qua hint")
-	require.Equal(t, hinted, textCount)
+	require.Empty(t, warns, "⛔ câu COUNT sinh cảnh báo")
+	require.Equal(t, counted, textCount)
 	require.NoError(t, base.Session(&gorm.Session{}).Count(&plain).Error)
-	require.Equal(t, plain, hinted)
-	require.Positive(t, hinted)
+	require.Equal(t, plain, counted)
+
+	// Đối chiếu độc lập (SQL tay, không qua hàm sản phẩm): mọi khách seed thuộc phạm vi A (A + NULL).
+	// Seed khác trong package có thể cùng phạm vi ⇒ so trên tập SĐT seed. (Vế "kể cả status 1/2/4"
+	// bỏ ở story-12 cùng cột `customer.status`.)
+	var seedInScope, seedCounted int64
+	require.NoError(t, testDB.Raw(`SELECT COUNT(*) FROM customer WHERE phone LIKE '0977%'
+		AND (branch_id = ? OR branch_id IS NULL)`, splitBranchA).Scan(&seedInScope).Error)
+	require.Positive(t, seedInScope, "tiền đề: seed phải có khách trong phạm vi A")
+	require.NoError(t, base.Session(&gorm.Session{}).Where("customer.phone LIKE '0977%'").Count(&seedCounted).Error)
+	require.Equal(t, seedInScope, seedCounted, "⛔ COUNT danh sách bỏ sót khách trong phạm vi")
 }
 
 // ── search-global (bench C-4 vòng 2) ──────────────────────────────────────────────────────

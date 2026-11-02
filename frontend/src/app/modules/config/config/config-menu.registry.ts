@@ -250,6 +250,14 @@ export const CONFIG_MENU: ConfigMenuGroup[] = [
         icon: 'pi pi-users',
         iconClass: 'text-cyan-600',
       },
+      {
+        label: 'Tiến trình khách hàng',
+        labelKey: 'config.customer_stage.title',
+        link: '/config/customer-stage',
+        icon: 'pi pi-flag',
+        iconClass: 'text-purple-600',
+        keywords: ['pipeline', 'buoc khach hang', 'giai doan', 'stage'],
+      },
     ],
   },
   {

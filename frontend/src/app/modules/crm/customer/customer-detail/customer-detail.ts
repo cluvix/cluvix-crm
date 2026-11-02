@@ -13,17 +13,19 @@ import {CustomerFormV2} from '@/modules/crm/customer/form/form-customer/customer
 import {OrderPlanInCustomer} from '@/modules/crm/order-plan/list/order-plan-in-customer';
 import {PaymentOfCustomer} from '@/modules/crm/payment/list/detail-customer/payment-of-customer';
 import {ReminderOfCustomer} from '@/modules/crm/reminder/customer/reminder-of-customer';
-import {CustomerModel} from '@/core/models/crm/customer.model';
+import {CustomerModel, CustomerStageChangeResult} from '@/core/models/crm/customer.model';
 import {CustomerService} from '@/core/services/crm/customer.service';
 import {BaseDetail} from '@/share/base/base-detail';
 import {BreadcrumbLabelService} from '@/share/services/breadcrumb-label.service';
 import {AvatarLazy} from '@/share/components/app-avatar-lazy';
 import {LayoutService} from '@/layout/service/layout.service';
-import {CONFIG_FILE_SELECT, CUSTOMER_STATUS, getGenderLabel, PERMISSION_SELECT,} from '@/define';
+import {CONFIG_FILE_SELECT, getGenderLabel, PERMISSION_SELECT,} from '@/define';
 import {DetailShareImports} from '@/share/import/detail-share-imports';
 import {isAllowExtensions} from '@/share/services/utils.service';
 import {CustomerTimeline} from '@/modules/crm/customer/contact-list/customer-timeline/customer-timeline';
 import {CustomerNoteAiTabs} from '@/modules/crm/customer/customer-detail/tabs-info/customer-note-ai-tabs';
+import {CustomerStageChanger} from '@/modules/crm/customer/customer-detail/customer-stage-changer';
+import {applyStageChange} from '@/modules/crm/customer/customer-detail/customer-stage-change.util';
 import {shade, tint} from '@/share/utils/dashboard-tint.util';
 import {hasPermission} from '@/core/services/auth/auth.selectors';
 
@@ -75,6 +77,7 @@ interface StatTile {
     CustomerInfoRow,
     AvatarLazy,
     CustomerNoteAiTabs,
+    CustomerStageChanger,
     TranslatePipe],
 })
 export class CustomerDetail extends BaseDetail<CustomerModel> implements OnInit, OnDestroy {
@@ -431,8 +434,7 @@ export class CustomerDetail extends BaseDetail<CustomerModel> implements OnInit,
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((res: any) => {
         if (res) {
-          // preparePermissions phải chạy trước addLabel để giữ canShowUpdateBtn + allowedPerms.
-          // Nếu skip, button "Cập nhật" sẽ biến mất sau khi user update.
+          // preparePermissions chạy trước addLabel để giữ allowedPerms.
           const prepared = this.preparePermissions(res);
           const dataWithLabels = this.modelService.addLabel(prepared);
           this.model.set({...dataWithLabels} as any);
@@ -624,46 +626,27 @@ export class CustomerDetail extends BaseDetail<CustomerModel> implements OnInit,
     this.cleanupCamera();
   }
 
-  // Status còn ở giai đoạn lead (chưa thành khách thật) — dùng để ẩn/hiện nút sửa
-  // (canShowUpdateBtn), quyền vẫn chỉ permissionUpdateCustomer (story-22).
-  // KHÔNG so sánh ordinal (s <= LEAD): giá trị số không giữ đúng thứ tự nghiệp vụ
-  // (CONTACT=16, ZALO=17 đều là giai đoạn sớm như LEAD nhưng số lớn hơn AGREED=10 —
-  // bug thật đã gặp với CONTACT trước khi thêm ZALO).
-  private static readonly LEAD_LIKE_STATUSES: number[] = [
-    CUSTOMER_STATUS.STOP_CARE,
-    CUSTOMER_STATUS.TICKET,
-    CUSTOMER_STATUS.OLD_SYSTEM,
-    CUSTOMER_STATUS.LEAD,
-    CUSTOMER_STATUS.CONTACT,
-    CUSTOMER_STATUS.ZALO,
-  ];
-
-  // Status đã thành khách thật (đồng ý điều trị trở lên) — chỉ permissionUpdateCustomer.
-  private static readonly CONVERTED_CUSTOMER_STATUSES: number[] = [
-    CUSTOMER_STATUS.AGREED,
-    CUSTOMER_STATUS.IN_TREATMENT,
-    CUSTOMER_STATUS.COMPLETED,
-    CUSTOMER_STATUS.COMPLAINT,
-    CUSTOMER_STATUS.COMPLAINT_RESOLVED,
-    CUSTOMER_STATUS.COLLABORATOR,
-  ];
-
   preparePermissions(model: CustomerModel) {
-    const s = model.status as number;
-    const isLeadLike = CustomerDetail.LEAD_LIKE_STATUSES.includes(s);
-    const isConvertedCustomer = CustomerDetail.CONVERTED_CUSTOMER_STATUSES.includes(s);
-
-    // Lead/Ticket đã gộp vào Customer (story-33 + story-22): chỉ còn 1 quyền updateCustomer
-    // cho mọi status (BE catalog không còn updateLead).
+    // Lead/Ticket đã gộp vào Customer (story-33 + story-22): chỉ còn 1 quyền updateCustomer.
+    // Nút sửa + badge đổi bước gate thẳng bằng quyền ở template — không phụ thuộc tiến trình khách.
     const allowedPerms: string[] = [this.permission.permissionUpdateCustomer];
-
-    const canShowUpdateBtn = !isLeadLike || !isConvertedCustomer;
 
     return {
       ...model,
       allowedPerms,
-      canShowUpdateBtn,
     };
+  }
+
+  /**
+   * BE đã xác nhận đổi bước: thay reference model (OnPush) với `stage_id` + `updated_at` mới —
+   * `updated_at` PHẢI nhận về, không thì lần sửa form kế tiếp bị 409 (optlock). Timeline là dialog tải
+   * lại mỗi lần mở nên tự thấy sự kiện mới.
+   */
+  protected onStageChanged(result: CustomerStageChangeResult): void {
+    const current = this.model();
+    const merged = applyStageChange(current, result);
+    if (!merged || merged === current) return;
+    this.model.set(this.modelService.addLabel(merged) as any);
   }
 
   getRelativeTime(timestamp: number | Date | undefined): string {

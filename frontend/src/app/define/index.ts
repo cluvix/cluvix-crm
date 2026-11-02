@@ -2,6 +2,7 @@
 export * from './appointment.define';
 export * from './config-general.define';
 export * from './customer.define';
+export * from './customer-stage.define';
 export * from './dialog.define';
 export * from './indexeddb.define';
 export * from './note.define';

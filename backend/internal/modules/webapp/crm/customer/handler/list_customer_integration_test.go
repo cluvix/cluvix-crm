@@ -63,14 +63,15 @@ const (
 	listBranchKhac = uint(7002)
 )
 
-// seedListCustomer chèn 1 khách với status hợp lệ (nằm trong customerStatuses) để lọt bộ lọc list.
+// seedListCustomer chèn 1 khách ở bước mặc định. `status` để DEFAULT của cột (=1, trước story-04 bị
+// ẩn khỏi list) — danh sách nay hiện mọi khách (FR17), tổng phải đếm cả khách này.
 func seedListCustomer(t *testing.T, branchID uint, name, phone string) {
 	t.Helper()
 	row := map[string]any{
 		"fullname":   name,
 		"phone":      phone,
 		"branch_id":  branchID,
-		"status":     customerStatuses[0],
+		"stage_id":   defaultStageID(t),
 		"created_at": 1,
 		"updated_at": 1,
 	}
@@ -90,18 +91,26 @@ func TestListCustomer_TotalMatchesFilterScope(t *testing.T) {
 		seedListCustomer(t, listBranchKhac, fmt.Sprintf("Khach CN Khac %02d", i), fmt.Sprintf("091111%04d", i))
 	}
 
+	// Story-04: list không còn lọc ngầm `status` ⇒ khách CHƯA gán chi nhánh (luôn thuộc phạm vi) mà
+	// test khác trong package để lại (trước story-04 bị ẩn theo `status` cũ — cột đã bỏ ở story-12)
+	// nay được đếm. Kỳ vọng = 25 khách seed + số khách NULL-branch hiện có, đếm bằng SQL ĐỘC LẬP.
+	var nullBranch int64
+	require.NoError(t, testDB.Raw("SELECT COUNT(*) FROM customer WHERE branch_id IS NULL").Scan(&nullBranch).Error)
+	want := 25 + nullBranch
+	t.Logf("khách NULL-branch có sẵn trong DB test: %d", nullBranch)
+
 	t.Run("tổng = số dòng khớp bộ lọc, KHÔNG phải số dòng của trang", func(t *testing.T) {
 		b := decodeList(t, callListCustomer(t, "page=1&per-page=15"))
 		require.Len(t, b.Items, 15, "trang 1 phải đủ 15 dòng")
-		require.EqualValues(t, 25, b.Meta.TotalCount,
-			"⛔ tổng phải là 25 (chỉ chi nhánh active) — lệch nghĩa là câu đếm và câu danh sách khác phạm vi")
-		require.Equal(t, 2, b.Meta.PageCount)
+		require.EqualValues(t, want, b.Meta.TotalCount,
+			"⛔ tổng phải là 25 + khách NULL-branch (chỉ chi nhánh active) — lệch nghĩa là câu đếm và câu danh sách khác phạm vi")
+		require.Equal(t, int((want+14)/15), b.Meta.PageCount)
 	})
 
 	t.Run("trang 2 giữ nguyên tổng và trả phần dư", func(t *testing.T) {
 		b := decodeList(t, callListCustomer(t, "page=2&per-page=15"))
-		require.Len(t, b.Items, 10)
-		require.EqualValues(t, 25, b.Meta.TotalCount)
+		require.Len(t, b.Items, int(min(15, want-15)))
+		require.EqualValues(t, want, b.Meta.TotalCount)
 	})
 
 	// Bộ lọc phải áp cho CẢ hai câu. Nếu chỉ áp cho câu danh sách, tổng sẽ vẫn là 25.

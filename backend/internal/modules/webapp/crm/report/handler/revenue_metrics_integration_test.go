@@ -62,7 +62,7 @@ func seedRevenue(t *testing.T) {
 		}
 	}
 	for cid := 7721; cid <= 7724; cid++ {
-		if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname) VALUES (?, ?, 'KH')`,
+		if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, stage_id) VALUES (?, ?, 'KH', (SELECT id FROM customer_stage WHERE is_default = 1))`,
 			cid, revBranch).Error; err != nil {
 			t.Fatalf("seed customer %d: %v", cid, err)
 		}

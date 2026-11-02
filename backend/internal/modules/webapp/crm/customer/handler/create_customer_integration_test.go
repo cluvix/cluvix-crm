@@ -2,12 +2,15 @@
 
 package handler
 
-// D14 (crm-standalone, story-33): khách mới LUÔN Contact(16) — mọi phòng ban. Trước đây phòng
-// Sale/Telesale/Convert/CSKH/Marketing tạo khách ra Lead(4), status không nằm trong
-// define.CustomerStatuses ⇒ sau khi xoá module Sale, khách đó biến mất khỏi MỌI danh sách.
+// Story-03 (customer-stage-pipeline): mỗi ca kiểm khách nhận bước mặc định + 1 dòng lịch sử
+// khởi tạo (assertInitialStage). Story-12 gỡ cột `status` ⇒ bỏ vế assert status cũ
+// (Contact/Appointment/Visited, khác Lead/Ticket); ngày hẹn không còn đổi tiến trình khách.
 //
-// Bảng ca: phòng ban × {không hẹn, hẹn tương lai, hẹn quá khứ}. Có ngày hẹn thì luồng cũ đã
-// override status (Appointment/Visited, không phải Lead) — giữ nguyên, test khoá luôn.
+// D14 (crm-standalone, story-33): khách mới hiện ngay trong CRM — mọi phòng ban. Trước đây phòng
+// Sale/Telesale/Convert/CSKH/Marketing tạo khách ra Lead(4) ⇒ sau khi xoá module Sale, khách đó
+// biến mất khỏi MỌI danh sách.
+//
+// Bảng ca: phòng ban × {không hẹn, hẹn tương lai, hẹn quá khứ}.
 // Mỗi ca còn kiểm AC2: khách vừa tạo hiện trong ListCustomer của chính người tạo.
 
 import (
@@ -78,12 +81,10 @@ func TestCreateCustomer_NewCustomerAlwaysContact(t *testing.T) {
 	appts := []struct {
 		name string
 		date any // nil = không gửi appointment_date
-		want int
 	}{
-		{"KhongHen", nil, define.CustomerStatusContact},
-		// Luồng cũ (giữ nguyên): hẹn tương lai ⇒ Appointment(6), hẹn đã qua ⇒ Visited(8).
-		{"HenTuongLai", now + 86400, define.CustomerStatusAppointment},
-		{"HenQuaKhu", now - 3600, define.CustomerStatusVisited},
+		{"KhongHen", nil},
+		{"HenTuongLai", now + 86400},
+		{"HenQuaKhu", now - 3600},
 	}
 
 	for _, d := range depts {
@@ -92,7 +93,7 @@ func TestCreateCustomer_NewCustomerAlwaysContact(t *testing.T) {
 			require.NoError(t, testDB.Exec("UPDATE user_profile SET departmentList = ? WHERE user_id = ?",
 				fmt.Sprintf("[%d]", d.dept), uid).Error)
 		}
-		for i, a := range appts {
+		for _, a := range appts {
 			t.Run(d.name+"_"+a.name, func(t *testing.T) {
 				name := fmt.Sprintf("S33 %s %s %d", d.name, a.name, time.Now().UnixNano())
 				body := map[string]any{
@@ -110,19 +111,19 @@ func TestCreateCustomer_NewCustomerAlwaysContact(t *testing.T) {
 				require.Equal(t, 201, w.Code, "body: %s", w.Body.String())
 
 				var row struct {
-					ID     uint
-					Status int
+					ID uint
 				}
-				require.NoError(t, testDB.Table("customer").Select("id, status").
+				require.NoError(t, testDB.Table("customer").Select("id").
 					Where("fullname = ?", name).Take(&row).Error)
-				require.Equal(t, a.want, row.Status, "phòng %s, ca %s (#%d)", d.name, a.name, i)
-				require.NotEqual(t, define.CustomerStatusLead, row.Status)
-				require.NotEqual(t, define.CustomerStatusTicket, row.Status)
+
+				// Story-03 AC1: cả 3 ca (không hẹn / hẹn quá khứ / hẹn tương lai) đều nhận bước đang
+				// mặc định + đúng 1 dòng lịch sử khởi tạo (source Create, changed_by = người tạo).
+				assertInitialStage(t, row.ID, defaultStageID(t), uid, define.CustomerStageHistorySourceCreate)
 
 				// AC2: khách vừa tạo hiện trong danh sách khách CRM của chính người tạo.
 				found := listContainsID(t, listCustomerAs(t, "per-page=50", uid), row.ID)
-				require.True(t, found, "khách %d (status %d) KHÔNG có trong ListCustomer — phòng %s ca %s",
-					row.ID, row.Status, d.name, a.name)
+				require.True(t, found, "khách %d KHÔNG có trong ListCustomer — phòng %s ca %s",
+					row.ID, d.name, a.name)
 			})
 		}
 	}
@@ -168,6 +169,7 @@ func TestCreateCustomer_BoQuaKhoaThuongHieuCuTuFE(t *testing.T) {
 	tn := testhelpers.FreshTenant(t, testDB)
 	t.Cleanup(func() {
 		testDB.Exec("DELETE FROM note WHERE customer_id IN (SELECT id FROM (SELECT id FROM customer WHERE fullname LIKE 'S36 CC %') x)")
+		testDB.Exec("DELETE FROM customer_stage_history WHERE customer_id IN (SELECT id FROM (SELECT id FROM customer WHERE fullname LIKE 'S36 CC %') x)")
 		testDB.Exec("DELETE FROM customer WHERE fullname LIKE 'S36 CC %'")
 	})
 	uid := testhelpers.CreateScopedUser(t, testDB, "s36cc", tn, tn.BranchID)
@@ -202,5 +204,7 @@ func cleanupS33Customers(tn *testhelpers.TestTenant) {
 	sub := "SELECT id FROM (SELECT id FROM customer WHERE fullname LIKE 'S33 %' AND id <> ?) x"
 	testDB.Exec("DELETE FROM appointment WHERE customer_id IN ("+sub+")", tn.CustomerID)
 	testDB.Exec("DELETE FROM note WHERE customer_id IN ("+sub+")", tn.CustomerID)
+	// FK tắt ở session test ⇒ CASCADE không chạy: tự dọn lịch sử bước (story-03).
+	testDB.Exec("DELETE FROM customer_stage_history WHERE customer_id IN ("+sub+")", tn.CustomerID)
 	testDB.Exec("DELETE FROM customer WHERE fullname LIKE 'S33 %' AND id <> ?", tn.CustomerID)
 }

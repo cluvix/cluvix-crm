@@ -50,10 +50,10 @@ func seedServiceDebt(t *testing.T) sdFix {
 	exec(`INSERT INTO service (id, name, code, serviceCategory_id) VALUES
 		(9501, 'DV nợ 1', 'SD1', ?), (9502, 'Liệu trình nợ', 'SD2', ?), (9503, 'Sản phẩm', 'SD3', 2)`,
 		define.ServiceCategoryService, define.ServiceCategoryTreatment)
-	exec(`INSERT INTO customer (id, branch_id, fullname, code, phone, totalDeposit, payment_user_id) VALUES
-		(9601, ?, 'Nguyễn Văn Nợ', 'KN9601', '0911000001', 100, ?),
-		(9602, ?, 'Trần Thị Nợ',   'KN9602', '0911000002', 20, ?),
-		(9603, ?, 'Lê Văn Khác',   'KN9603', '0911000003', 3, NULL)`, f.b1, sdTele, f.b2, sdTele, f.b1)
+	exec(`INSERT INTO customer (id, branch_id, fullname, code, phone, totalDeposit, payment_user_id, stage_id) VALUES
+		(9601, ?, 'Nguyễn Văn Nợ', 'KN9601', '0911000001', 100, ?, (SELECT id FROM customer_stage WHERE is_default = 1)),
+		(9602, ?, 'Trần Thị Nợ',   'KN9602', '0911000002', 20, ?, (SELECT id FROM customer_stage WHERE is_default = 1)),
+		(9603, ?, 'Lê Văn Khác',   'KN9603', '0911000003', 3, NULL, (SELECT id FROM customer_stage WHERE is_default = 1))`, f.b1, sdTele, f.b2, sdTele, f.b1)
 
 	var b1, b2, b3 any = f.b1, f.b2, f.b3
 	rows := []struct {

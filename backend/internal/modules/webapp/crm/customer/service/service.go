@@ -2,9 +2,12 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	stagesvc "erpCluvix/internal/modules/webapp/config/customer_stage/service"
 	history "erpCluvix/internal/modules/webapp/history/log/service"
 	"erpCluvix/pkg/codegen"
 	"erpCluvix/pkg/define"
@@ -14,6 +17,7 @@ import (
 	"erpCluvix/pkg/pagination"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Id phòng ban lấy từ `pkg/define` (nguồn sự thật DUY NHẤT) — 2026-07-30 đã sửa
@@ -48,7 +52,7 @@ func NewCustomerService(db *gorm.DB) *CustomerService {
 var customerAllowedFields = map[string]bool{
 	"fullname": true, "nickname": true, "avatar": true, "phone": true, "other_phone": true,
 	"gender": true, "birthday": true, "year_born": true, "address": true, "email": true,
-	"status": true, "category": true, "customerType": true,
+	"category": true, "customerType": true,
 	"source_id": true, "branch_id": true, "province_id": true, "country_id": true, "ward_id": true,
 	"payment_user_id": true, "connect_id": true,
 	"type_service_id": true,
@@ -180,15 +184,6 @@ func (s *CustomerService) Update(id int, body map[string]interface{}, expectedUp
 		return nil, err
 	}
 
-	// Validate status transition before applying update
-	if newStatus, ok := filtered["status"]; ok {
-		var currentStatus int
-		s.DB.Table("customer").Select("COALESCE(status, 0)").Where("id = ?", id).Scan(&currentStatus)
-		if !define.IsValidStatusTransition(currentStatus, int(helpers.ToInt64(newStatus))) {
-			return nil, errs.NewLocalizedError("customer_status_invalid_transition", currentStatus, int(helpers.ToInt64(newStatus)))
-		}
-	}
-
 	// Serialize JSON columns trước khi update
 	helpers.SerializeJSONFieldsForTable(filtered, "customer")
 
@@ -217,5 +212,93 @@ func (s *CustomerService) Update(id int, body map[string]interface{}, expectedUp
 	}
 	// Cột DECIMAL scan vào map[string]interface{} là []uint8 → parse để JSON ra number.
 	helpers.ParseDecimalFieldsForTables([]map[string]interface{}{item}, "customer")
+	return item, nil
+}
+
+// ChangeStage đổi bước tiến trình của khách `id` sang `stageID` (PUT /crm/customer/:id/stage) — cửa ghi
+// bước DUY NHẤT ngoài tạo/import (stage_id cố ý không nằm trong customerAllowedFields).
+//
+// scoped: query bảng `customer` ĐÃ scope ở handler — cùng phạm vi GetCustomer/UpdateCustomer (customerByIDScope
+// theo option cross-branch + phạm vi telesale); chỉ dùng làm subquery
+// kiểm khách có trong phạm vi — mọi đọc/ghi chạy trên tx. Trong 1 giao dịch:
+//  1. Khoá dòng khách `FOR UPDATE` (2 request đồng thời xếp hàng ⇒ `from` của dòng lịch sử sau = `to` của
+//     dòng trước), rồi kiểm phạm vi trên chính dòng đã khoá — ngoài phạm vi/không có ⇒ errs.ErrNotFound.
+//  2. Bước đích phải tồn tại + đang hiện (khoá `FOR SHARE`: không bị ẩn giữa chừng) ⇒ không thì
+//     LocalizedError(customer_stage_not_selectable).
+//  3. Bằng bước hiện tại ⇒ không ghi gì (không lịch sử, updated_at giữ nguyên — FR14).
+//  4. UPDATE stage_id (+ updated_by); callback pkg/optlock tự bump updated_at — KHÔNG tự set.
+//  5. INSERT lịch sử cùng tx: lỗi ⇒ rollback, stage_id không đổi.
+//
+// Trả {id, stage_id, updated_at} đọc lại sau cùng.
+func (s *CustomerService) ChangeStage(scoped *gorm.DB, id int, stageID int, userID int) (map[string]interface{}, error) {
+	if scoped == nil {
+		return nil, errs.ErrNotFound
+	}
+	if scoped.Error != nil {
+		// Query phạm vi mang sẵn lỗi ⇒ fail-closed.
+		return nil, scoped.Error
+	}
+	if id <= 0 {
+		return nil, errs.ErrNotFound
+	}
+	if stageID <= 0 {
+		return nil, errs.NewLocalizedError(stagesvc.KeyNotSelectable)
+	}
+	var item map[string]interface{}
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		var cur struct {
+			ID      int  `gorm:"column:id"`
+			StageID *int `gorm:"column:stage_id"`
+		}
+		if err := tx.Table("customer").Select("id, stage_id").Where("id = ?", id).
+			Clauses(clause.Locking{Strength: "UPDATE"}).Take(&cur).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errs.ErrNotFound
+			}
+			return err
+		}
+		var visible int64
+		if err := tx.Table("customer").Where("customer.id = ?", id).
+			Where("customer.id IN (?)", scoped.Select("customer.id")).Count(&visible).Error; err != nil {
+			return err
+		}
+		if visible == 0 {
+			return errs.ErrNotFound
+		}
+
+		var stage struct {
+			ID     int  `gorm:"column:id"`
+			Status *int `gorm:"column:status"`
+		}
+		if err := tx.Table("customer_stage").Select("id, status").Where("id = ?", stageID).
+			Clauses(clause.Locking{Strength: "SHARE"}).Take(&stage).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errs.NewLocalizedError(stagesvc.KeyNotSelectable)
+			}
+			return err
+		}
+		if stage.Status == nil || *stage.Status != define.StatusActive {
+			return errs.NewLocalizedError(stagesvc.KeyNotSelectable)
+		}
+
+		if cur.StageID == nil || *cur.StageID != stageID {
+			upd := map[string]interface{}{"stage_id": stageID}
+			if userID != 0 {
+				upd["updated_by"] = userID
+			}
+			if err := tx.Table("customer").Where("id = ?", id).Updates(upd).Error; err != nil {
+				return err
+			}
+			if err := stagesvc.RecordStageChange(tx, id, cur.StageID, stageID,
+				define.CustomerStageHistorySourceManual, userID, time.Now().Unix()); err != nil {
+				return err
+			}
+		}
+
+		return tx.Table("customer").Select("id, stage_id, updated_at").Where("id = ?", id).Take(&item).Error
+	})
+	if err != nil {
+		return nil, err
+	}
 	return item, nil
 }

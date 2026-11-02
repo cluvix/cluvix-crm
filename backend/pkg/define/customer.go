@@ -22,35 +22,34 @@ const (
 // GenderLabels maps gender id → display label.
 var GenderLabels = map[int64]string{1: "Nam", 2: "Nữ", 3: "Khác"}
 
-// Customer statuses
+// customer_stage.type — loại bước trong pipeline tiến trình khách hàng (epic customer-stage-pipeline).
+// Phễu, widget khu vực, ràng buộc bước mặc định dựa vào LOẠI, không dựa vào id/tên (id AUTO_INCREMENT
+// khác nhau giữa các DB khách).
 const (
-	CustomerStatusTrash             = 1
-	CustomerStatusTicket            = 2
-	CustomerStatusOldSystem         = 3
-	CustomerStatusLead              = 4
-	CustomerStatusDeposit           = 5
-	CustomerStatusAppointment       = 6
-	CustomerStatusAppointmentCancel = 7
-	CustomerStatusVisited           = 8
-	CustomerStatusLost              = 9
-	CustomerStatusPreCustomer       = 10
-	CustomerStatusTreatment         = 11
-	CustomerStatusCustomer          = 12
-	CustomerStatusComplaint         = 13
-	CustomerStatusDoneComplaint     = 14
-	CustomerStatusBroker            = 15
-	// CustomerStatusContact — status mặc định của MỌI khách mới tạo (D14, crm-standalone:
-	// không còn nhánh Lead(4) theo phòng ban), hiển thị ngay trong CRM list. Xem CreateCustomer
-	// (crm/customer/handler).
-	CustomerStatusContact = 16
-	// CustomerStatusZalo — khách tự đăng ký qua Zalo Mini App (findOrCreateCustomer),
-	// ưu tiên xử lý sớm. Hiển thị CẢ CRM list lẫn Sale/lead — mirror Contact(16), khác
-	// Lead(4) thường (ẩn khỏi CRM). Xem CustomerStatuses + LeadStatuses.
-	CustomerStatusZalo = 17
+	CustomerStageTypeOpen = 1 // đang mở
+	CustomerStageTypeWon  = 2 // thành công
+	CustomerStageTypeLost = 3 // thất bại
 )
 
-// Customer accepted
-const CustomerAcceptedOk = 2
+// customer_stage_history.source — nguồn của một lần đổi bước.
+const (
+	CustomerStageHistorySourceCreate    = 1 // tạo khách
+	CustomerStageHistorySourceImport    = 2 // import khách
+	CustomerStageHistorySourceManual    = 3 // người dùng đổi tay
+	CustomerStageHistorySourceMigration = 4 // lịch sử khởi tạo do migration ghi
+)
+
+// CustomerTimelineEventStageChange — `type` của sự kiện chuyển bước trên timeline khách
+// (GET /crm/customer/:id/timeline-customer); FE render theo khoá này, tra tên/màu bước qua Dexie.
+const CustomerTimelineEventStageChange = "stage_change"
+
+// CustomerTimelineStageChangeLimit — số lần chuyển bước gần nhất đưa lên timeline (khuôn Limit của
+// các builder timeline khác: lịch hẹn 30, nhắc hẹn/đơn 15, thanh toán 20).
+const CustomerTimelineStageChangeLimit = 50
+
+// CustomerStageColors — khoá màu hợp lệ của customer_stage.color (bảng màu cố định, không nhận mã hex;
+// FE map khoá sang token màu có sẵn).
+var CustomerStageColors = []string{"gray", "blue", "teal", "green", "amber", "orange", "red", "purple"}
 
 // Customer customerType
 const (
@@ -63,112 +62,6 @@ const (
 	OrderPlanTypeNew = 1
 	OrderPlanTypeOld = 2
 )
-
-// Customer statuses for list (exclude lead, ticket, trash)
-// LeadStatuses — statuses dùng cho module sale/lead (3–9), + Contact(16)/Zalo(17): khách
-// tạo từ phòng ban "contact" hoặc tự đăng ký qua Zalo vẫn cần Sale chăm sóc để lên
-// Agreed/Customer, nên vẫn phải thấy ở đây (đồng thời hiện cả CRM list — xem CustomerStatuses).
-var LeadStatuses = []int{
-	CustomerStatusOldSystem, CustomerStatusLead, CustomerStatusZalo, CustomerStatusDeposit,
-	CustomerStatusAppointment, CustomerStatusAppointmentCancel,
-	CustomerStatusVisited, CustomerStatusLost, CustomerStatusContact,
-}
-
-var CustomerStatuses = []int{
-	CustomerStatusOldSystem, CustomerStatusDeposit, CustomerStatusAppointment,
-	CustomerStatusAppointmentCancel, CustomerStatusVisited, CustomerStatusLost,
-	CustomerStatusPreCustomer, CustomerStatusTreatment, CustomerStatusCustomer,
-	CustomerStatusComplaint, CustomerStatusDoneComplaint, CustomerStatusBroker,
-	CustomerStatusContact, CustomerStatusZalo,
-}
-
-// Dashboard funnel buckets (crm/dashboard CrmStatusCustomerOverview) — status IN (...) tường
-// minh, KHÔNG dùng status >= N: giá trị số của status không đảm bảo giữ đúng thứ tự tiến
-// trình nghiệp vụ (CustomerStatusContact=16 là giai đoạn sớm nhưng có giá trị số lớn nhất).
-var (
-	CustomerFunnelTicketUp = []int{
-		CustomerStatusTicket, CustomerStatusOldSystem, CustomerStatusLead, CustomerStatusZalo, CustomerStatusDeposit,
-		CustomerStatusAppointment, CustomerStatusAppointmentCancel, CustomerStatusVisited, CustomerStatusLost,
-		CustomerStatusPreCustomer, CustomerStatusTreatment, CustomerStatusCustomer, CustomerStatusComplaint,
-		CustomerStatusDoneComplaint, CustomerStatusBroker,
-	}
-	CustomerFunnelLeadUp = []int{
-		CustomerStatusLead, CustomerStatusZalo, CustomerStatusDeposit, CustomerStatusAppointment, CustomerStatusAppointmentCancel,
-		CustomerStatusVisited, CustomerStatusLost, CustomerStatusPreCustomer, CustomerStatusTreatment,
-		CustomerStatusCustomer, CustomerStatusComplaint, CustomerStatusDoneComplaint, CustomerStatusBroker,
-	}
-	CustomerFunnelAppointmentUp = []int{
-		CustomerStatusAppointment, CustomerStatusAppointmentCancel, CustomerStatusVisited, CustomerStatusLost,
-		CustomerStatusPreCustomer, CustomerStatusTreatment, CustomerStatusCustomer, CustomerStatusComplaint,
-		CustomerStatusDoneComplaint, CustomerStatusBroker,
-	}
-	CustomerFunnelVisitedUp = []int{
-		CustomerStatusVisited, CustomerStatusLost, CustomerStatusPreCustomer, CustomerStatusTreatment,
-		CustomerStatusCustomer, CustomerStatusComplaint, CustomerStatusDoneComplaint, CustomerStatusBroker,
-	}
-	CustomerFunnelPreCustomerUp = []int{
-		CustomerStatusPreCustomer, CustomerStatusTreatment, CustomerStatusCustomer, CustomerStatusComplaint,
-		CustomerStatusDoneComplaint, CustomerStatusBroker,
-	}
-)
-
-// Allowed customer statuses for appointment-driven transitions
-var AllowedAppointmentCustomerStatuses = map[int]bool{
-	CustomerStatusTrash:             true,
-	CustomerStatusTicket:            true,
-	CustomerStatusOldSystem:         true,
-	CustomerStatusLead:              true,
-	CustomerStatusZalo:              true,
-	CustomerStatusDeposit:           true,
-	CustomerStatusAppointment:       true,
-	CustomerStatusAppointmentCancel: true,
-	CustomerStatusVisited:           true,
-	CustomerStatusLost:              true,
-	CustomerStatusContact:           true,
-}
-
-// CustomerStatusTransitions defines valid next statuses from each status.
-// nil means no restriction (legacy / open statuses).
-// D14 (2026-09-23, QA story-33): không còn đường nào đưa khách vào Lead(4)/Ticket(2) — mọi
-// đích trước đây trỏ tới 2 status này đổi thành Contact(16) (status mặc định khách mới, xem
-// CustomerStatusContact). Lead(4)/Ticket(2) vẫn còn KEY (FROM) vì record cũ/migrate có thể
-// đang đứng ở đó, chỉ không còn ai TIẾN vào nữa.
-var CustomerStatusTransitions = map[int][]int{
-	CustomerStatusTrash:             {CustomerStatusContact},
-	CustomerStatusTicket:            {CustomerStatusContact, CustomerStatusTrash},
-	CustomerStatusOldSystem:         nil,
-	CustomerStatusLead:              {CustomerStatusDeposit, CustomerStatusAppointment, CustomerStatusLost, CustomerStatusTrash},
-	CustomerStatusZalo:              {CustomerStatusDeposit, CustomerStatusAppointment, CustomerStatusLost, CustomerStatusTrash},
-	CustomerStatusDeposit:           {CustomerStatusAppointment, CustomerStatusCustomer, CustomerStatusLost, CustomerStatusTrash},
-	CustomerStatusAppointment:       {CustomerStatusVisited, CustomerStatusAppointmentCancel, CustomerStatusLost, CustomerStatusTrash},
-	CustomerStatusAppointmentCancel: {CustomerStatusAppointment, CustomerStatusContact, CustomerStatusLost, CustomerStatusTrash},
-	CustomerStatusVisited:           {CustomerStatusCustomer, CustomerStatusPreCustomer, CustomerStatusLost, CustomerStatusTrash},
-	CustomerStatusLost:              {CustomerStatusContact, CustomerStatusTrash},
-	CustomerStatusPreCustomer:       {CustomerStatusCustomer, CustomerStatusLost, CustomerStatusTrash},
-	CustomerStatusTreatment:         {CustomerStatusCustomer, CustomerStatusComplaint, CustomerStatusDoneComplaint},
-	CustomerStatusCustomer:          {CustomerStatusTreatment, CustomerStatusComplaint, CustomerStatusBroker},
-	CustomerStatusComplaint:         {CustomerStatusDoneComplaint, CustomerStatusCustomer},
-	CustomerStatusDoneComplaint:     {CustomerStatusCustomer, CustomerStatusComplaint},
-	CustomerStatusBroker:            {CustomerStatusCustomer},
-	CustomerStatusContact:           {CustomerStatusDeposit, CustomerStatusAppointment, CustomerStatusLost, CustomerStatusTrash},
-}
-
-// IsValidStatusTransition returns true if transitioning from → to is allowed.
-func IsValidStatusTransition(from, to int) bool {
-	if from == to {
-		return true
-	}
-	allowed, ok := CustomerStatusTransitions[from]
-	if !ok || allowed == nil {
-		return true
-	}
-	for _, s := range allowed {
-		if s == to {
-			return true
-		}
-	}
-	return false
-}
 
 // Kiểu mã khách hàng — chọn bằng biến môi trường CUSTOMER_CODE_OPTION trong `.env` (mỗi khách SaaS
 // 1 DB + 1 `.env` riêng). Không đặt / giá trị lạ ⇒ CustomerCodeOptionDefault. Ví dụ theo mã

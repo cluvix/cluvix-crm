@@ -21,6 +21,9 @@ type TimelineDeps struct {
 	TreatmentPlanDB *gorm.DB
 	PaymentDB       *gorm.DB
 	ReminderDB      *gorm.DB
+	// StageHistoryDB — customer_stage_history: không có branch_id, đọc SAU khi khách cha đã qua
+	// scope ở handler (architecture §Tenant scope).
+	StageHistoryDB *gorm.DB
 
 	CustomerID uint
 	Customer   map[string]interface{}
@@ -58,7 +61,14 @@ func BuildCustomerTimeline(deps TimelineDeps) ([]dto.TimelineEvent, error) {
 	}
 	events = append(events, reminderEvents...)
 
-	sort.Slice(events, func(i, j int) bool {
+	stageEvents, err := buildStageChangeEvents(deps.StageHistoryDB, deps.CustomerID)
+	if err != nil {
+		return nil, err
+	}
+	events = append(events, stageEvents...)
+
+	// SliceStable: sự kiện cùng giây giữ thứ tự builder (vd "Khởi tạo khách hàng" trước bước khởi tạo).
+	sort.SliceStable(events, func(i, j int) bool {
 		return events[i].Day < events[j].Day
 	})
 	return events, nil

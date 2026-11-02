@@ -354,7 +354,7 @@ func (h *Handler) ListServiceUsedWithAppointment(c *gin.Context) {
 
 		if len(customerIds) > 0 {
 			handlerutil.AttachRelationScoped(tenant.CrossBranchLookupScope, c, h.DB, items, "customer_id", "customer",
-				"customer", "id", "id, code, fullname, nickname, phone, address, gender, avatar, status", customerIds)
+				"customer", "id", "id, code, fullname, nickname, phone, address, gender, avatar, stage_id", customerIds)
 		}
 		if len(appointmentIds) > 0 {
 			handlerutil.AttachRelationScoped(tenant.CrossBranchLookupScope, c, h.DB, items, "appointment_id", "appointment",

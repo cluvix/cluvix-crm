@@ -77,6 +77,7 @@ var numericIDColumns = map[string]bool{
 	"service_used_id":                   true,
 	"source_id":                         true,
 	"staff_id":                          true,
+	"stage_id":                          true, // customer.stage_id (int, bảng duy nhất — kiểm 02/11/2026)
 	"staff_support_id":                  true,
 	"stock_entry_id":                    true,
 	"supplier_id":                       true,

@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"erpCluvix/internal/middleware"
+	stagesvc "erpCluvix/internal/modules/webapp/config/customer_stage/service"
 	"erpCluvix/internal/modules/webapp/crm/customer/scope"
 	crmServices "erpCluvix/internal/modules/webapp/crm/service"
 	exportHandlers "erpCluvix/internal/modules/webapp/export"
@@ -37,8 +38,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var customerStatuses = define.CustomerStatuses
-
 var customerKeySearch = []string{
 	"customer.phone", "customer.code", "customer.fullname", "customer.nickname",
 	"customer.old_code", "customer.other_phone", "customer.link_message", "customer.loai_message",
@@ -50,8 +49,9 @@ var customerKeySearch = []string{
 // kéo theo danh sách cột này. Lý do đo được trên bench 615.992 khách
 // (2026-09-07): `pagination.Paginate` bọc NGUYÊN query vào derived table rồi đếm, nên MySQL
 // mất tính covering và phải quét bảng — 1,368s. Cùng bộ lọc mà đếm trần (không cột, không
-// join, không ORDER BY) chạy trên chỉ mục phủ `idx_customer_scope_status`: **0,170s**.
-const customerListSelect = `customer.id, customer.code, customer.old_code, customer.fullname, customer.nickname, customer.phone, customer.other_phone, customer.email, customer.gender, customer.status, customer.category,
+// join, không ORDER BY) chạy trên chỉ mục phủ `idx_customer_scope_status`: **0,170s** (số đo lúc đó;
+// chỉ mục này đã xoá ở story-12 customer-stage-pipeline — COUNT nay phủ bằng `fk-customer_branch_id`).
+const customerListSelect = `customer.id, customer.code, customer.old_code, customer.fullname, customer.nickname, customer.phone, customer.other_phone, customer.email, customer.gender, customer.stage_id, customer.category,
 			customer.avatar, customer.address, DATE_FORMAT(customer.birthday, '%Y-%m-%d') as birthday, customer.year_born, customer.created_day, customer.created_at, customer.updated_at,
 			customer.source_id, customer.branch_id, customer.province_id, customer.country_id,
 			customer.payment_user_id, customer.connect_id, customer.created_by, customer.updated_by,
@@ -89,13 +89,15 @@ func (h *Handler) BuildCustomerQuery(c *gin.Context) *gorm.DB {
 //
 // forceLike ⇒ ép tìm kiếm đi đường LIKE cũ (xem applyCustomerKeyword).
 func (h *Handler) buildCustomerFilters(c *gin.Context, forceLike bool) *gorm.DB {
+	// Story-04 (customer-stage-pipeline, FR17): danh sách hiện MỌI khách — bỏ lọc ngầm theo tiến
+	// trình cũ (trước đây ẩn khách status 1/2/4). Lọc tiến trình qua
+	// `filter[stage_id]` (đa giá trị: `filter[stage_id][0]=a&filter[stage_id][1]=b` ⇒ IN).
+	// Cột `status` cũ đã bỏ (story-12); KHÔNG còn filter `_status`/`status`.
 	q := tenant.ScopedDBNullBranch(c, h.DB, "customer").
-		Table("customer").
-		Where("customer.status IN ?", customerStatuses)
+		Table("customer")
 
 	q = h.applyCustomerKeyword(c, q, forceLike)
-	q = query.ApplyFilter(c, q, "_status", "customer.status")
-	q = query.ApplyFilter(c, q, "status", "customer.status")
+	q = query.ApplyFilter(c, q, "stage_id", "customer.stage_id")
 	q = query.ApplyFilter(c, q, "gender", "customer.gender")
 	q = query.ApplyFilter(c, q, "category", "customer.category")
 	q = query.ApplyFilter(c, q, "customerType", "customer.customerType")
@@ -192,12 +194,12 @@ func (h *Handler) customerListTotal(c *gin.Context) (*gorm.DB, int64, bool) {
 	base := h.buildCustomerFilters(c, false)
 
 	var total int64
-	err := customerCountQuery(c, base, &total).Error
+	err := customerCountQuery(base, &total).Error
 	if degraded, reason := customerFulltextUnusable(err); degraded {
 		logger.Default().Warn("customer list: ngram không dùng được, thoái hoá xuống LIKE",
 			zap.String("reason", reason), zap.Error(err))
 		base = h.buildCustomerFilters(c, true)
-		err = customerCountQuery(c, base, &total).Error
+		err = customerCountQuery(base, &total).Error
 	}
 	if pagination.IsQueryError(err) {
 		pagination.FailQuery(c, err)
@@ -240,7 +242,7 @@ func (h *Handler) GetCustomerByCode(c *gin.Context) {
 		return
 	}
 	q, err := applyTelesaleScope(c, h.DB, tenant.ScopedDBNullBranch(c, h.DB, "customer").Table("customer").
-		Select(`id, code, fullname, nickname, avatar, phone, status, branch_id`).
+		Select(`id, code, fullname, nickname, avatar, phone, stage_id, branch_id`).
 		Where("code = ?", code))
 	if err != nil {
 		response.ServerError(c, err)
@@ -330,20 +332,9 @@ func (h *Handler) CreateCustomer(c *gin.Context) {
 		return
 	}
 
-	// Auto status (D14, crm-standalone): khách mới LUÔN Contact(16), mọi phòng ban — để hiện
-	// ngay trong danh sách khách CRM (status IN define.CustomerStatuses). Trước đây phòng
-	// sale/telesale/convert/CSKH/marketing ra Lead(4), chỉ hiện ở module Sale đã xoá ⇒ mất khỏi
-	// mọi danh sách. appointment_date vẫn override như cũ (Visited/Appointment).
+	// Tiến trình khách: bước mặc định gán ở dưới (stage_id, sau FilterAllowed); cột `status` cũ đã bỏ
+	// (customer-stage-pipeline story-12).
 	uid := int(middleware.GetUserID(c))
-	status := define.CustomerStatusContact
-	if apptDate, ok := body["appointment_date"]; ok && apptDate != nil {
-		if helpers.ToInt64(apptDate) <= time.Now().Unix() {
-			status = define.CustomerStatusVisited
-		} else {
-			status = define.CustomerStatusAppointment
-		}
-	}
-	body["status"] = status
 
 	// Duplicate check: cùng SĐT trong TOÀN DB, không phân biệt branch.
 	//
@@ -419,6 +410,20 @@ func (h *Handler) CreateCustomer(c *gin.Context) {
 		filtered["code"] = code
 	}
 
+	// Bước tiến trình: khách mới LUÔN nhận bước đang mặc định, đọc lại mỗi lần trong cùng tx (không
+	// cache). Gán SAU FilterAllowed — stage_id CỐ Ý không nằm trong whitelist (client không tự chọn bước).
+	stageID, err := stagesvc.DefaultStageID(tx)
+	if err != nil {
+		tx.Rollback()
+		if errors.Is(err, stagesvc.ErrDefaultStageMissing) {
+			response.Validate(c, i18n.T(c, stagesvc.KeyDefaultMissing))
+			return
+		}
+		response.ServerError(c, err)
+		return
+	}
+	filtered["stage_id"] = stageID
+
 	if err := tx.Table("customer").Create(filtered).Error; err != nil {
 		tx.Rollback()
 		respondCustomerWriteError(c, err)
@@ -431,6 +436,14 @@ func (h *Handler) CreateCustomer(c *gin.Context) {
 	if customerID == 0 {
 		tx.Rollback()
 		response.ServerError(c, fmt.Errorf("không lấy được ID khách hàng"))
+		return
+	}
+
+	// Lịch sử bước khởi tạo — cùng tx: lỗi ⇒ rollback cả khách.
+	if err := stagesvc.RecordStageChange(tx, int(customerID), nil, stageID,
+		define.CustomerStageHistorySourceCreate, uid, now); err != nil {
+		tx.Rollback()
+		response.ServerError(c, err)
 		return
 	}
 
@@ -640,7 +653,7 @@ func (h *Handler) UpdateCustomer(c *gin.Context) {
 // version-conflict và lỗi nghiệp vụ/validate sẽ ra 500 generic, FE không phân biệt được.
 //
 //	errs.ErrVersionConflict     → 409 (giống nhánh version-check tiền kiểm ở UpdateCustomer)
-//	*errs.LocalizedError        → 422 + message i18n (vd customer_status_invalid_transition)
+//	*errs.LocalizedError        → 422 + message i18n (lỗi nghiệp vụ có key i18n)
 //	validator.ValidationErrors  → 422 + message translate theo tag
 //	*validation.Errors          → 422 + message đã user-facing (validateCustomerFromMap)
 //	còn lại (DB/unknown)        → ServerError: MySQL code đã biết → 422, còn lại 500 generic + log
@@ -1305,7 +1318,7 @@ func (h *Handler) DeleteCustomer(c *gin.Context) {
 		zap.Uint("customer_id", id),
 		zap.String("code", snap.Code),
 		zap.String("fullname", snap.Fullname),
-		zap.Int("status", snap.Status),
+		zap.Int("stage_id", snap.StageID),
 		zap.String("total_revenue", snap.TotalRevenue),
 		zap.String("total_payment", snap.TotalPayment),
 		zap.Int64("orders_deleted", snap.Orders),
@@ -1324,7 +1337,7 @@ const evCustomerDeleted = "customer_deleted"
 type customerDeleteSnapshot struct {
 	Code         string
 	Fullname     string
-	Status       int
+	StageID      int // bước tiến trình lúc xoá
 	TotalRevenue string
 	TotalPayment string
 	Orders       int64
@@ -1345,7 +1358,7 @@ func (h *Handler) deleteAuditSnapshot(c *gin.Context, id uint) (customerDeleteSn
 	var snap customerDeleteSnapshot
 	var row map[string]interface{}
 	tx := tenant.ScopedDBNullBranch(c, h.DB, "customer").Table("customer").
-		Select("customer.code, customer.fullname, customer.status, customer.totalRevenue, customer.totalPayment").
+		Select("customer.code, customer.fullname, customer.stage_id, customer.totalRevenue, customer.totalPayment").
 		Where("customer.id = ?", id).
 		Scan(&row)
 	if tx.Error != nil {
@@ -1370,7 +1383,7 @@ func (h *Handler) deleteAuditSnapshot(c *gin.Context, id uint) (customerDeleteSn
 	snap.TotalRevenue, snap.TotalPayment = str("totalRevenue"), str("totalPayment")
 	// helpers.ToInt64 chứ KHÔNG type-assert `.(int64)`: map-scan trả kiểu tuỳ
 	// driver/ScanType (int32, uint64, []byte…), assert cứng sẽ im lặng ra 0.
-	snap.Status = int(helpers.ToInt64(row["status"]))
+	snap.StageID = int(helpers.ToInt64(row["stage_id"]))
 
 	// Đếm 4 nhóm con có giá trị nghiệp vụ cao nhất. KHÔNG đếm cả 32 bảng — mục tiêu là
 	// biết "mất bao nhiêu", không phải kiểm kê từng bảng. Lỗi đếm KHÔNG chặn xoá: audit

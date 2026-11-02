@@ -8,18 +8,17 @@ import (
 )
 
 type Customer struct {
-	models.BaseModelWithCode
+	// NoStatus: bảng `customer` KHÔNG có cột `status` (bỏ ở story-12 customer-stage-pipeline) —
+	// embed BaseModelWithCode sẽ kéo `BaseModel.Status` (`default:1`) vào INSERT ⇒ Unknown column.
+	models.BaseModelWithCodeNoStatus
 	IdOld *int ` gorm:"column:id_old;uniqueIndex;comment:ID khách hàng cũ" json:"id_old"`
-	// Tiến trình khách hàng: 1=Dừng CS, 2=Ticket, 3=Phần mềm cũ, 4=Lead, 5=Đặt cọc,
-	// 6=Đặt hẹn, 7=Huỷ hẹn, 8=Đã đến, 9=Không đồng ý, 10=Đồng ý, 11=Đang sử dụng dịch vụ,
-	// 12=Hoàn thành, 13=Khiếu nại, 14=Hoàn thành KN, 15=Cộng tác viên
-	Status    *int   ` gorm:"default:2;comment:Tiến trình" json:"status"`
-	IsPatient int    ` gorm:"column:is_patient;index;not null;default:0;comment:0=Chưa kích hoạt, 1=Đã kích hoạt (auto-set khi status>=6)" json:"is_patient"`
-	Category  *int   ` gorm:"index;comment:FK → customer_category (nhóm khách hàng)" json:"category"`
-	OldCode   string ` gorm:"column:old_code;size:50;comment:Mã khách hàng từ hệ thống cũ" json:"old_code"`
-	Fullname  string ` gorm:"size:100" json:"fullname"`
-	Nickname  string ` gorm:"size:100;comment:Tên khác của khách hàng" json:"nickname"`
-	Gender    *int   ` gorm:"comment:Giới tính: 1=Nam, 2=Nữ, 3=Khác" json:"gender"`
+	// Bước tiến trình (customer_stage) — epic customer-stage-pipeline; NOT NULL từ pha 2 (story-12).
+	StageId  int    `gorm:"column:stage_id;not null;index;comment:FK → customer_stage" json:"stage_id"`
+	Category *int   ` gorm:"index;comment:FK → customer_category (nhóm khách hàng)" json:"category"`
+	OldCode  string ` gorm:"column:old_code;size:50;comment:Mã khách hàng từ hệ thống cũ" json:"old_code"`
+	Fullname string ` gorm:"size:100" json:"fullname"`
+	Nickname string ` gorm:"size:100;comment:Tên khác của khách hàng" json:"nickname"`
+	Gender   *int   ` gorm:"comment:Giới tính: 1=Nam, 2=Nữ, 3=Khác" json:"gender"`
 	// JSON array ID nhãn khách hàng, VD: [1, 3, 5]
 	Tags                          datatypes.JSON `gorm:"type:json" json:"tags"`
 	JobId                         *int           ` gorm:"column:job_id;index;comment:FK → job (nghề nghiệp)" json:"job_id"`

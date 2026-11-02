@@ -53,9 +53,13 @@ func CreateTestTenant(db *gorm.DB) (*TestTenant, error) {
 	}
 	branchID := LastInsertID(db)
 
+	stageID, err := DefaultCustomerStageID(db)
+	if err != nil {
+		return nil, err
+	}
 	customer := map[string]any{
 		"fullname":    "Test Customer",
-		"status":      2, // CustomerStatusTicket
+		"stage_id":    stageID,
 		"created_day": now,
 		"created_at":  now,
 		"updated_at":  now,
@@ -63,11 +67,55 @@ func CreateTestTenant(db *gorm.DB) (*TestTenant, error) {
 	if err := db.Table("customer").Create(&customer).Error; err != nil {
 		return nil, fmt.Errorf("create customer: %w", err)
 	}
+	customerID := LastInsertID(db)
+	if err := recordInitialStage(db, customerID, stageID, now); err != nil {
+		return nil, err
+	}
 
 	return &TestTenant{
 		BranchID:   branchID,
-		CustomerID: LastInsertID(db),
+		CustomerID: customerID,
 	}, nil
+}
+
+// DefaultCustomerStageID đọc id bước tiến trình mặc định (`customer_stage.is_default = 1`) từ DB test —
+// KHÔNG hardcode id: seed của migration chia id theo AUTO_INCREMENT. Fixture mọi khách PHẢI gán
+// `stage_id` (cột sẽ NOT NULL không DEFAULT ở pha contract, story-12).
+//
+// Cố ý KHÔNG gọi `customer_stage/service.DefaultStageID`: service đó kéo theo pkg/codegen, pkg/tenant,
+// pkg/helpers… mà test white-box của chính các package ấy (vd `pkg/codegen`) lại import `testhelpers`
+// ⇒ vòng phụ thuộc. Raw SQL ở đây là bản đọc tối thiểu cùng ngữ nghĩa.
+func DefaultCustomerStageID(db *gorm.DB) (uint, error) {
+	var ids []uint
+	if err := db.Raw("SELECT id FROM customer_stage WHERE is_default = 1 LIMIT 1").Scan(&ids).Error; err != nil {
+		return 0, fmt.Errorf("đọc bước mặc định customer_stage: %w", err)
+	}
+	if len(ids) == 0 || ids[0] == 0 {
+		return 0, fmt.Errorf("customer_stage không có bước is_default = 1 (schema test thiếu seed migration?)")
+	}
+	return ids[0], nil
+}
+
+// MustDefaultCustomerStageID — bản `t.Fatalf` của DefaultCustomerStageID cho test tự dựng dòng khách.
+func MustDefaultCustomerStageID(t testing.TB, db *gorm.DB) uint {
+	t.Helper()
+	id, err := DefaultCustomerStageID(db)
+	if err != nil {
+		t.Fatalf("MustDefaultCustomerStageID: %v", err)
+	}
+	return id
+}
+
+// recordInitialStage ghi 1 dòng `customer_stage_history` cho khách fixture (khởi tạo: from = NULL,
+// source = tạo khách, changed_by = NULL) — khớp trạng thái khách do đường tạo thật sinh ra.
+func recordInitialStage(db *gorm.DB, customerID, stageID uint, at int64) error {
+	err := db.Exec(
+		"INSERT INTO customer_stage_history (customer_id, from_stage_id, to_stage_id, source, changed_by, changed_at) VALUES (?, NULL, ?, ?, NULL, ?)",
+		customerID, stageID, define.CustomerStageHistorySourceCreate, at).Error
+	if err != nil {
+		return fmt.Errorf("ghi lịch sử bước khách fixture: %w", err)
+	}
+	return nil
 }
 
 // FreshTenant creates an isolated tenant for a single test and registers
@@ -91,6 +139,8 @@ func FreshTenant(t testing.TB, db *gorm.DB) *TestTenant {
 		// Best-effort cleanup — order matters for FKs even with checks disabled,
 		// because cascading semantics are clearer when we delete leaves first.
 		db.Exec("DELETE FROM payment WHERE customer_id = ?", tenant.CustomerID)
+		// FK checks tắt ⇒ ON DELETE CASCADE của lịch sử bước KHÔNG chạy: xoá tay.
+		db.Exec("DELETE FROM customer_stage_history WHERE customer_id = ?", tenant.CustomerID)
 		db.Exec("DELETE FROM customer WHERE id = ?", tenant.CustomerID)
 		db.Exec("DELETE FROM branch WHERE id = ?", tenant.BranchID)
 	})
@@ -130,11 +180,11 @@ func CreatePayment(db *gorm.DB, tenant *TestTenant, amount decimal.Decimal, paym
 	return LastInsertID(db), nil
 }
 
-// SetCustomerStatus directly updates a customer's status in the DB,
-// bypassing service validation. Used to seed specific "from" states for transition tests.
-func SetCustomerStatus(db *gorm.DB, customerID uint, status int) error {
+// SetCustomerStage ghi thẳng `customer.stage_id` trong DB, bỏ qua service (không kiểm bước chọn được,
+// không ghi lịch sử). Dùng để dựng trạng thái "bước hiện tại" cho test — thay `SetCustomerStatus` cũ.
+func SetCustomerStage(db *gorm.DB, customerID, stageID uint) error {
 	return db.Table("customer").Where("id = ?", customerID).
-		Updates(map[string]any{"status": status}).Error
+		Updates(map[string]any{"stage_id": stageID}).Error
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -233,9 +283,10 @@ func CreateBranch(t testing.TB, db *gorm.DB) uint {
 func CreateScopedCustomer(t testing.TB, db *gorm.DB, tenant *TestTenant, branchID *uint) uint64 {
 	t.Helper()
 	now := time.Now().Unix()
+	stageID := MustDefaultCustomerStageID(t, db)
 	row := map[string]any{
 		"fullname":    fmt.Sprintf("KH %d", time.Now().UnixNano()),
-		"status":      2, // CustomerStatusTicket
+		"stage_id":    stageID,
 		"created_day": now,
 		"created_at":  now,
 		"updated_at":  now,
@@ -247,6 +298,12 @@ func CreateScopedCustomer(t testing.TB, db *gorm.DB, tenant *TestTenant, branchI
 		t.Fatalf("CreateScopedCustomer: %v", err)
 	}
 	id := LastInsertID(db)
-	t.Cleanup(func() { db.Exec("DELETE FROM customer WHERE id = ?", id) })
+	if err := recordInitialStage(db, id, stageID, now); err != nil {
+		t.Fatalf("CreateScopedCustomer: %v", err)
+	}
+	t.Cleanup(func() {
+		db.Exec("DELETE FROM customer_stage_history WHERE customer_id = ?", id)
+		db.Exec("DELETE FROM customer WHERE id = ?", id)
+	})
 	return uint64(id)
 }

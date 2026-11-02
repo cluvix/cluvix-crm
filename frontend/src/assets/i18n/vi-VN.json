@@ -41,15 +41,6 @@
     "unit_category": {
       "service": "Đơn vị dịch vụ"
     },
-    "customer_status": {
-      "stop_care": "Dừng chăm sóc",
-      "old_system": "Phần mềm cũ",
-      "appointment": "Đặt hẹn",
-      "cancel_appointment": "Huỷ hẹn",
-      "complaint_resolved": "Hoàn thành khiếu nại",
-      "collaborator": "Cộng tác viên",
-      "zalo": "Khách Zalo"
-    },
     "customer_type": {
       "old": "Khách hàng cũ"
     },
@@ -405,6 +396,35 @@
     },
     "customer_category": {
       "reminder_tooltip": "Là thời gian gợi ý nhắc lại chăm khách hàng, căn thời gian càng chính xác thì tỷ lệ chốt đơn khách hàng cang cao"
+    },
+    "customer_stage": {
+      "title": "Tiến trình khách hàng",
+      "name": "Tên bước",
+      "order": "Thứ tự",
+      "hidden_label": "đã ẩn",
+      "funnel_note": "Lưu ý: đổi thứ tự các bước sẽ làm thay đổi số liệu phễu của cả các kỳ trước đó.",
+      "move_up": "Chuyển lên",
+      "move_down": "Chuyển xuống",
+      "set_default": "Đặt mặc định",
+      "set_default_hint": "Bước mặc định cho khách mới (chỉ bước loại \"Đang mở\" và đang hiện)",
+      "default_cannot_hide": "Bước mặc định không thể ẩn",
+      "default_cannot_delete": "Bước mặc định không thể xoá",
+      "default_locked_hint": "Bước mặc định luôn là loại \"Đang mở\" và đang hiện. Đặt bước khác làm mặc định để đổi.",
+      "type": {
+        "open": "Đang mở",
+        "won": "Thành công",
+        "lost": "Thất bại"
+      },
+      "color": {
+        "gray": "Xám",
+        "blue": "Xanh dương",
+        "teal": "Xanh ngọc",
+        "green": "Xanh lá",
+        "amber": "Vàng",
+        "orange": "Cam",
+        "red": "Đỏ",
+        "purple": "Tím"
+      }
     },
     "ethnicity": {
       "name": "Tên dân tộc",
@@ -1277,6 +1297,10 @@
       "payment_tooltip": "Tổng số tiền đã thu",
       "progress_tooltip": "Tiến trình khách hàng",
       "revenue_tooltip": "Tổng doanh thu",
+      "stage_change_aria": "Đổi tiến trình khách hàng",
+      "stage_change_by": "Người đổi",
+      "stage_change_initial": "Khởi tạo",
+      "stage_change_title": "Chuyển tiến trình",
       "update_customer_tooltip": "Cập nhật thông tin khách hàng",
       "upload_avatar": "Tải ảnh đại diện",
       "debt_tooltip": "Là số tiền chưa được thanh toán dựa trên dịch vụ",
@@ -1633,7 +1657,6 @@
       "clinic_income": "Thu tiền chi nhánh",
       "clinic_expense": "Chi tiền chi nhánh",
       "temporary_deposit": "Cọc tạm",
-      "ticket": "Ticket",
       "connected": "Đã kết nối",
       "planned": "Dự kiến",
       "general_clinic": "Chuỗi nhiều cơ sở",
@@ -1850,7 +1873,6 @@
       "add_new_order": "Thêm mới đơn hàng",
       "expected_time": "Thời gian dự kiến",
       "notification": "Thông báo",
-      "complaint": "Khiếu nại",
       "new_customer": "Khách hàng mới",
       "price_info_min_max": "Thông tin giá (Min/ Max)",
       "service_product": "Dịch vụ/ Sản phẩm",
@@ -1965,7 +1987,6 @@
       "paid": "Đã thanh toán",
       "arrived": "Khách đến",
       "unpaid": "Chưa thanh toán",
-      "completed": "Hoàn thành",
       "success": "Thành công",
       "locked": "Đã khoá"
     },

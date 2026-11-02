@@ -37,6 +37,7 @@ export const TABLE_CONFIGS: TableConfig[] = [
   { name: 'noteTemplates', keyPath: 'id' },
   { name: 'appointmentReasons', keyPath: 'id' },
   { name: 'customerCategories', keyPath: 'id' },
+  { name: 'customerStages', keyPath: 'id' },
   { name: 'hrDepartments', keyPath: 'id' },
   { name: 'groupSources', keyPath: 'id' },
   { name: 'groupLocals', keyPath: 'id' },

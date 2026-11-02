@@ -107,7 +107,7 @@ func multipartBody(t *testing.T, filename string, content []byte) (*bytes.Buffer
 func seedCustomer(t *testing.T, owner uint) uint {
 	t.Helper()
 	now := time.Now().Unix()
-	row := map[string]any{"fullname": fmt.Sprintf("KH att %d", time.Now().UnixNano()), "status": 2,
+	row := map[string]any{"fullname": fmt.Sprintf("KH att %d", time.Now().UnixNano()), "stage_id": testhelpers.MustDefaultCustomerStageID(t, testDB),
 		"payment_user_id": owner, "created_day": now, "created_at": now, "updated_at": now}
 	require.NoError(t, testDB.Table("customer").Create(&row).Error)
 	id := testhelpers.LastInsertID(testDB)

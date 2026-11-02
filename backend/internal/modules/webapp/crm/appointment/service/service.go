@@ -66,8 +66,8 @@ func addTimelineEvent(appt *appointmentDao.Appointment, action, note string, use
 //
 // afterSave (insert):
 //   - customer.last_contact_date = appointment.created_at
-//   - customer.status → STATUS_APPOINTMENT (chỉ khi status hiện tại nằm trong allowed list)
 //   - customer.branch_id = appointment.branch_id (nếu customer chưa có branch)
+//   - KHÔNG đổi tiến trình khách (status/stage_id) — chỉ đổi tay (customer-stage-pipeline story-06)
 
 func (s *AppointmentService) Create(appt *appointmentDao.Appointment, userID int) error {
 	if err := validateAppointmentCreate(appt); err != nil {
@@ -88,10 +88,9 @@ func (s *AppointmentService) Create(appt *appointmentDao.Appointment, userID int
 		if appt.CustomerId != nil {
 			var cust struct {
 				BranchId *int   `gorm:"column:branch_id"`
-				Status   int    `gorm:"column:status"`
 				Code     string `gorm:"column:code"`
 			}
-			tx.Table("customer").Select("branch_id, status, COALESCE(code,'') as code").Where("id = ?", *appt.CustomerId).Take(&cust)
+			tx.Table("customer").Select("branch_id, COALESCE(code,'') as code").Where("id = ?", *appt.CustomerId).Take(&cust)
 
 			uid := uint(userID)
 			if err := tx.Set("userID", uid).Create(appt).Error; err != nil {
@@ -101,9 +100,6 @@ func (s *AppointmentService) Create(appt *appointmentDao.Appointment, userID int
 			// afterSave: update customer — dùng created_at từ GORM đã set
 			custUpdates := map[string]interface{}{
 				"last_contact_date": appt.CreatedAt,
-			}
-			if define.AllowedAppointmentCustomerStatuses[cust.Status] {
-				custUpdates["status"] = define.CustomerStatusAppointment
 			}
 			if cust.BranchId == nil && appt.BranchId != nil {
 				custUpdates["branch_id"] = *appt.BranchId
@@ -147,7 +143,7 @@ func (s *AppointmentService) Create(appt *appointmentDao.Appointment, userID int
 //
 // afterSave (update):
 //   - Log changes: so sánh oldSnap vs newSnap cho AppointmentIncludeFields → insert log_appointment
-//   - Update customer status theo appointment status (xem updateCustomerStatus)
+//   - Cập nhật ngày liên hệ/ghé thăm của khách theo appointment status (xem updateCustomerContactDates)
 //   - Nếu appointment_type_id thay đổi → sort lại appointment_number cho cả type cũ và type mới
 //
 // Merge pattern: FE gửi partial JSON → giữ current DB làm base, chỉ ghi đè fields non-zero từ FE
@@ -210,19 +206,18 @@ func (s *AppointmentService) Update(appt *appointmentDao.Appointment, userID int
 			return err
 		}
 
-		// Load customer một lần — dùng cho cả updateCustomerStatus và branch/code sync.
+		// Load customer một lần — dùng cho branch/code sync.
 		var custInfo struct {
 			BranchId *int   `gorm:"column:branch_id"`
 			Code     string `gorm:"column:code"`
-			Status   int    `gorm:"column:status"`
 		}
 		if merged.CustomerId != nil {
 			tx.Table("customer").
-				Select("branch_id, COALESCE(code,'') as code, status").
+				Select("branch_id, COALESCE(code,'') as code").
 				Where("id = ?", *merged.CustomerId).Scan(&custInfo)
 		}
 
-		s.updateCustomerStatus(tx, &merged, &current, custInfo.Status)
+		s.updateCustomerContactDates(tx, &merged)
 
 		// Sync branch + code: chỉ thực hiện khi lịch hẹn có chi nhánh.
 		// custInfo đã load sẵn → 0 extra SELECT dù customer đã có code hay chưa.
@@ -345,7 +340,7 @@ func (s *AppointmentService) Checkin(appt *appointmentDao.Appointment, explicitC
 			return err
 		}
 
-		s.updateCustomerStatus(tx, &merged, &current)
+		s.updateCustomerContactDates(tx, &merged)
 
 		*appt = merged
 		return nil
@@ -357,9 +352,10 @@ func (s *AppointmentService) Checkin(appt *appointmentDao.Appointment, explicitC
 }
 
 // --- Cancel ---
-// Flow: merge → force status=CANCEL → addTimeline → transaction { Save → log → customer status → APPOINTMENT_CANCEL }
+// Flow: merge → force status=CANCEL → addTimeline → transaction { Save → log }
 // Luôn force status = STATUS_CANCEL bất kể FE gửi gì
-// Customer status chỉ chuyển APPOINTMENT_CANCEL nếu status hiện tại nằm trong allowed list
+// KHÔNG đụng khách: không đổi tiến trình (customer-stage-pipeline story-06), và (như trước story-06)
+// không cập nhật last_contact_date — đường huỷ chưa từng gọi updateCustomerContactDates.
 
 func (s *AppointmentService) Cancel(appt *appointmentDao.Appointment, userID int, scopedDB *gorm.DB) error {
 	var current appointmentDao.Appointment
@@ -388,13 +384,6 @@ func (s *AppointmentService) Cancel(appt *appointmentDao.Appointment, userID int
 		newSnap := history.SnapshotRow(tx, "appointment", merged.ID, history.AppointmentIncludeFields)
 		if err := history.LogChanges(tx, "log_appointment", "appointment_id", int(merged.ID), oldSnap, newSnap, history.AppointmentIncludeFields, history.AppointmentSkipNullFields, userID); err != nil {
 			return err
-		}
-
-		if merged.CustomerId != nil {
-			custStatus, _ := s.repo.CustomerStatus(tx, *merged.CustomerId)
-			if define.AllowedAppointmentCustomerStatuses[custStatus] {
-				tx.Table("customer").Where("id = ?", *merged.CustomerId).Update("status", define.CustomerStatusAppointmentCancel)
-			}
 		}
 
 		*appt = merged
@@ -526,92 +515,45 @@ func (s *AppointmentService) Delete(id uint, userID int, scopedDB *gorm.DB) erro
 	return nil
 }
 
-// --- updateCustomerStatus ---
-// Mapping appointment status → customer status (chỉ khi customer.status nằm trong AllowedAppointmentCustomerStatuses):
-//   - CANCEL(4)      → APPOINTMENT_CANCEL(7)
-//   - NOT_CHECKIN(1)  → APPOINTMENT(6)
-//   - CHECKED_IN(2)   → VISITED(8) + cập nhật last_visit_date, last_contact_date = checkin_date
-//   - CHECKED_OUT(3)  → VISITED(8) + cập nhật last_visit_date = checkout_date
+// --- updateCustomerContactDates ---
+// Ghi ngày liên hệ/ghé thăm của khách theo trạng thái lịch hẹn (Update/Checkin gọi):
+//   - CHECKED_IN(2)  → last_visit_date = last_contact_date = checkin_date (thiếu ngày ⇒ last_contact_date = now)
+//   - CHECKED_OUT(3) → last_visit_date = last_contact_date = checkout_date (thiếu ngày ⇒ last_contact_date = now)
+//   - NOT_CHECKIN(1)/CANCEL(4) → last_contact_date = now
 //
-// is_accepted override status (ưu tiên cao hơn):
-//   - NOT_ACCEPTED(2)            → LOST(9)
-//   - any id with isAccepted=1   → PRE_CUSTOMER(10) + customer.accepted = ACCEPTED_OK(1)
-
-// updateCustomerStatus cập nhật status/last_contact_date/last_visit_date của customer.
-// preloadedStatus: nếu caller đã load customer status rồi thì truyền vào tránh query thêm.
-func (s *AppointmentService) updateCustomerStatus(tx *gorm.DB, appt, old *appointmentDao.Appointment, preloadedStatus ...int) {
-	if appt.CustomerId == nil {
+// KHÔNG đổi tiến trình khách (status/stage_id/accepted) và KHÔNG ghi customer_stage_history —
+// tiến trình chỉ đổi tay (customer-stage-pipeline story-06 gỡ phần map trạng thái lịch hẹn +
+// is_accepted sang tiến trình cũ/accepted của khách).
+func (s *AppointmentService) updateCustomerContactDates(tx *gorm.DB, appt *appointmentDao.Appointment) {
+	if appt.CustomerId == nil || appt.Status == nil {
 		return
 	}
 
-	var custStatus int
-	if len(preloadedStatus) > 0 {
-		custStatus = preloadedStatus[0]
-	} else {
-		custStatus, _ = s.repo.CustomerStatus(tx, *appt.CustomerId)
-	}
-	allowStatusTransition := define.AllowedAppointmentCustomerStatuses[custStatus]
-
 	updates := map[string]interface{}{}
 
-	// last_contact_date: mọi tương tác với lịch hẹn (update/cancel/checkin/checkout)
+	// last_contact_date: mọi tương tác với lịch hẹn (update/checkin/checkout)
 	// đều là một lần liên hệ với khách → luôn ghi nhận. Dùng now() cho operation,
 	// dùng checkin_date/checkout_date cho event thật khi khách đến.
 	// last_visit_date: chỉ update khi khách thực sự ghé (checkin/checkout).
-	// 2 field độc lập với status transition (gated bởi allowStatusTransition bên dưới).
 	now := time.Now().Unix()
-	if appt.Status != nil {
-		switch *appt.Status {
-		case define.AppointmentStatusCheckedIn:
-			if appt.CheckinDate != nil {
-				updates["last_visit_date"] = *appt.CheckinDate
-				updates["last_contact_date"] = *appt.CheckinDate
-			} else {
-				updates["last_contact_date"] = now
-			}
-		case define.AppointmentStatusCheckedOut:
-			if appt.CheckoutDate != nil {
-				updates["last_visit_date"] = *appt.CheckoutDate
-				updates["last_contact_date"] = *appt.CheckoutDate
-			} else {
-				updates["last_contact_date"] = now
-			}
-		case define.AppointmentStatusNotCheckin, define.AppointmentStatusCancel:
-			// Update lịch (dời/sửa) hoặc Cancel = nhân sự liên hệ khách.
+	switch *appt.Status {
+	case define.AppointmentStatusCheckedIn:
+		if appt.CheckinDate != nil {
+			updates["last_visit_date"] = *appt.CheckinDate
+			updates["last_contact_date"] = *appt.CheckinDate
+		} else {
 			updates["last_contact_date"] = now
 		}
-	}
-
-	// Status transition: chỉ áp dụng khi customer còn ở trạng thái "tiền-khách"
-	// (allow list). Khách hàng thật + Treatment/Complaint/Broker không transition.
-	if allowStatusTransition {
-		if appt.Status != nil {
-			switch *appt.Status {
-			case define.AppointmentStatusCancel:
-				updates["status"] = define.CustomerStatusAppointmentCancel
-			case define.AppointmentStatusNotCheckin:
-				updates["status"] = define.CustomerStatusAppointment
-			case define.AppointmentStatusCheckedIn, define.AppointmentStatusCheckedOut:
-				updates["status"] = define.CustomerStatusVisited
-			}
+	case define.AppointmentStatusCheckedOut:
+		if appt.CheckoutDate != nil {
+			updates["last_visit_date"] = *appt.CheckoutDate
+			updates["last_contact_date"] = *appt.CheckoutDate
+		} else {
+			updates["last_contact_date"] = now
 		}
-
-		// is_accepted override status nếu có
-		if appt.IsAccepted != nil {
-			if *appt.IsAccepted == define.IsNotAccepted {
-				updates["status"] = define.CustomerStatusLost
-			} else {
-				var agreedIDs []int
-				tx.Raw(`SELECT id FROM appointment_is_accepted WHERE isAccepted = 1 AND status = 1`).Scan(&agreedIDs)
-				for _, id := range agreedIDs {
-					if *appt.IsAccepted == id {
-						updates["status"] = define.CustomerStatusPreCustomer
-						updates["accepted"] = define.CustomerAcceptedOk
-						break
-					}
-				}
-			}
-		}
+	case define.AppointmentStatusNotCheckin, define.AppointmentStatusCancel:
+		// Update lịch (dời/sửa) = nhân sự liên hệ khách.
+		updates["last_contact_date"] = now
 	}
 
 	if len(updates) > 0 {

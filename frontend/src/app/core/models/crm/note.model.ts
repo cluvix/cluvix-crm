@@ -29,9 +29,8 @@ export interface NoteModel extends Identifiable {
 export interface NoteDisplayModel extends NoteModel {
   customerDisplayName?: string;
   created_atFormatted?: string;
-  statusLabel?: string;
-  statusKey?: string;
-  statusClass?: string;
+  stageName?: string;
+  stageColorClass?: string;
   createdByInfo?: UserProfileModel;
   branchLabel?: string;
   provinceLabel?: string;

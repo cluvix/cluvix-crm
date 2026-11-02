@@ -47,19 +47,8 @@
             <div class="grid grid-cols-12 gap-4 !w-[300px]">
               <div class="col-span-12">
                 <p-floatlabel variant="on">
-                  <p-select [multiple]="true"
-                    [filter]="true"
-                    [options]="customerStatusOptions()"
-                    [style]="{ minWidth: '100%' }"
-                    appendTo="body"
-                    class="w-full"
-                    [emptyFilterMessage]="'common.label.no_results' | translate"
-                    formControlName="status"
-                    id="status"
-                    resetFilterOnHide="true"
-                  >
-                  </p-select>
-                  <label for="status">{{ 'common.label.progress' | translate }}</label>
+                  <app-customer-stage-multiselect-form-control formControlName="_stage_id"/>
+                  <label for="_stage_id">{{ 'common.label.progress' | translate }}</label>
                 </p-floatlabel>
               </div>
               <div class="col-span-12">
@@ -262,11 +251,13 @@
       }
       @if (isColVisible('statusName')()) {
         <td>
+          @if (model.stageName) {
             <span
               class="font-semibold px-3 py-[5px] rounded-full shadow-sm text-sm mr-1 mb-1 inline-block"
-              [class]="model.statusClass">
-              {{ model.statusKey ? (model.statusKey | translate) : model.statusLabel }}
+              [class]="model.stageColorClass">
+              {{ model.stageName }}
             </span>
+          }
         </td>
       }
       @if (isColVisible('created_by')()) {

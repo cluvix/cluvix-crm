@@ -15,32 +15,10 @@ import (
 	"erpCluvix/pkg/tz"
 )
 
-// customerStatusExportLabel — khớp CUSTOMER_STATUS_OPTIONS trong frontend/src/app/define/customer.define.ts.
-func customerStatusExportLabel(status int) string {
-	labels := map[int]string{
-		define.CustomerStatusTrash:             "Dừng chăm sóc",
-		define.CustomerStatusTicket:            "Ticket",
-		define.CustomerStatusOldSystem:         "Phần mềm cũ",
-		define.CustomerStatusLead:              "Lead",
-		define.CustomerStatusDeposit:           "Đặt cọc",
-		define.CustomerStatusAppointment:       "Đặt hẹn",
-		define.CustomerStatusAppointmentCancel: "Huỷ hẹn",
-		define.CustomerStatusVisited:           "Đã đến",
-		define.CustomerStatusLost:              "Không đồng ý",
-		define.CustomerStatusPreCustomer:       "Khách đồng ý",
-		define.CustomerStatusTreatment:         "Đang sử dụng dịch vụ",
-		define.CustomerStatusCustomer:          "Hoàn thành",
-		define.CustomerStatusComplaint:         "Khiếu nại",
-		define.CustomerStatusDoneComplaint:     "Hoàn thành khiếu nại",
-		define.CustomerStatusBroker:            "Cộng tác viên",
-		define.CustomerStatusContact:           "Liên hệ",
-		define.CustomerStatusZalo:              "Khách Zalo",
-	}
-	if label, ok := labels[status]; ok {
-		return label
-	}
-	return ""
-}
+// customerStageExportJoin — tên bước tiến trình HIỆN TẠI của khách cho cột "Tiến trình" (epic
+// customer-stage-pipeline story-07; thay nhãn cứng theo tiến trình cũ). LEFT JOIN: khách chưa có
+// bước ⇒ ô trống, không mất dòng; bước ẩn vẫn ra tên (không lọc customer_stage.status).
+const customerStageExportJoin = "LEFT JOIN customer_stage cs ON cs.id = customer.stage_id"
 
 // customerExpCol — 1 cột export; key khớp 1-1 FE displayCols[].value (ExportOptionsDialog).
 type customerExpCol struct {
@@ -103,7 +81,7 @@ func ExportCustomer(c *gin.Context, q *gorm.DB) {
 	eq := q.Session(&gorm.Session{}).
 		Select(`customer.id, customer.code, customer.old_code, COALESCE(customer.fullname, customer.nickname) as fullname,
 			CASE customer.customerType WHEN 2 THEN 'Cũ' ELSE 'Mới' END as customer_type_label,
-			customer.phone, customer.email, customer.status,
+			customer.phone, customer.email, cs.name AS stage_name,
 			customer.gender,
 			DATE_FORMAT(customer.birthday, '%d/%m/%Y') as birthday,
 			TIMESTAMPDIFF(YEAR, customer.birthday, CURDATE()) AS age,
@@ -123,7 +101,8 @@ func ExportCustomer(c *gin.Context, q *gorm.DB) {
 		Joins("LEFT JOIN location_province prov ON prov.id = customer.province_id").
 		Joins("LEFT JOIN location_ward ward ON ward.id = customer.ward_id").
 		Joins("LEFT JOIN branch br ON br.id = customer.branch_id").
-		Joins("LEFT JOIN user_profile uc ON uc.user_id = customer.created_by")
+		Joins("LEFT JOIN user_profile uc ON uc.user_id = customer.created_by").
+		Joins(customerStageExportJoin)
 
 	// colDef — key khớp displayColsContactList (crm/customer/contact-list).
 	// Các cột BE-only (customerType/ward/created_at)
@@ -141,9 +120,7 @@ func ExportCustomer(c *gin.Context, q *gorm.DB) {
 		{"genderCustomer", "Giới tính", func(r map[string]interface{}, _ *time.Location) interface{} { return genderExportLabel(r["gender"]) }},
 		{"birthday", "Ngày sinh", func(r map[string]interface{}, _ *time.Location) interface{} { return r["birthday"] }},
 		{"age", "Độ tuổi", func(r map[string]interface{}, _ *time.Location) interface{} { return r["age"] }},
-		{"statusName", "Tiến trình", func(r map[string]interface{}, _ *time.Location) interface{} {
-			return customerStatusExportLabel(toInt(r["status"]))
-		}},
+		{"statusName", "Tiến trình", func(r map[string]interface{}, _ *time.Location) interface{} { return r["stage_name"] }},
 		{"source", "Nguồn khách hàng", func(r map[string]interface{}, _ *time.Location) interface{} { return r["source_name"] }},
 		{"serviceType", "Nhóm dịch vụ quan tâm", func(r map[string]interface{}, _ *time.Location) interface{} { return r["service_type_name"] }},
 		{"payment_user_id", "Tư vấn viên", func(r map[string]interface{}, _ *time.Location) interface{} { return r["revenue_fullname"] }},
@@ -182,10 +159,11 @@ func ExportCustomerBirthday(c *gin.Context, q *gorm.DB) {
 
 	eq := q.Session(&gorm.Session{}).
 		Select(`customer.id, customer.code, COALESCE(customer.fullname, customer.nickname) as fullname,
-			customer.phone, customer.gender, DATE_FORMAT(customer.birthday, '%d/%m/%Y') as birthday, customer.status,
+			customer.phone, customer.gender, DATE_FORMAT(customer.birthday, '%d/%m/%Y') as birthday, cs.name AS stage_name,
 			customer.totalRevenue, customer.totalPayment, customer.totalDebt, customer.totalDeposit,
 			br.name as branch_name`).
-		Joins("LEFT JOIN branch br ON br.id = customer.branch_id")
+		Joins("LEFT JOIN branch br ON br.id = customer.branch_id").
+		Joins(customerStageExportJoin)
 
 	// colDef — key khớp displayCols CustomerCareBirthday (care/birthday).
 	// birthday format dd/mm/yyyy theo convention export module (installment.go, fmtUnixDateSlash) —
@@ -199,9 +177,7 @@ func ExportCustomerBirthday(c *gin.Context, q *gorm.DB) {
 		}},
 		{"genderCustomer", "Giới tính", func(r map[string]interface{}, _ *time.Location) interface{} { return genderExportLabel(r["gender"]) }},
 		{"birthday", "Ngày sinh", func(r map[string]interface{}, _ *time.Location) interface{} { return r["birthday"] }},
-		{"statusName", "Tiến trình", func(r map[string]interface{}, _ *time.Location) interface{} {
-			return customerStatusExportLabel(toInt(r["status"]))
-		}},
+		{"statusName", "Tiến trình", func(r map[string]interface{}, _ *time.Location) interface{} { return r["stage_name"] }},
 		{"branch", "Chi nhánh", func(r map[string]interface{}, _ *time.Location) interface{} { return r["branch_name"] }},
 		{"totalRevenue", "Doanh số", func(r map[string]interface{}, _ *time.Location) interface{} { return toFloat(r["totalRevenue"]) }},
 		{"totalPayment", "Doanh thu", func(r map[string]interface{}, _ *time.Location) interface{} { return toFloat(r["totalPayment"]) }},
@@ -220,7 +196,7 @@ func ExportCustomerConvert(c *gin.Context, q *gorm.DB) {
 		Select(`customer.id, COALESCE(customer.fullname, customer.nickname) as fullname, customer.code, customer.old_code,
 			customer.nickname, customer.data_id, customer.connect_id,
 			customer.phone, customer.gender, DATE_FORMAT(customer.birthday, '%d/%m/%Y') as birthday,
-			rev.fullname as revenue_fullname, customer.status,
+			rev.fullname as revenue_fullname, cs.name AS stage_name,
 			cc.name as category_name,
 			src.name as source_name, st.name as service_type_name,
 			prov.name as province_name, cntry.CommonName as country_name,
@@ -236,7 +212,8 @@ func ExportCustomerConvert(c *gin.Context, q *gorm.DB) {
 		Joins("LEFT JOIN location_country cntry ON cntry.id = customer.country_id").
 		Joins("LEFT JOIN branch br ON br.id = customer.branch_id").
 		Joins("LEFT JOIN user_profile uc ON uc.user_id = customer.created_by").
-		Joins("LEFT JOIN user_profile uu ON uu.user_id = customer.updated_by")
+		Joins("LEFT JOIN user_profile uu ON uu.user_id = customer.updated_by").
+		Joins(customerStageExportJoin)
 
 	// colDef — key khớp displayCols marketing/convert/list.
 	cols := []customerExpCol{
@@ -250,9 +227,7 @@ func ExportCustomerConvert(c *gin.Context, q *gorm.DB) {
 		}},
 		{"gender", "Giới tính", func(r map[string]interface{}, _ *time.Location) interface{} { return genderExportLabel(r["gender"]) }},
 		{"birthday", "Ngày sinh", func(r map[string]interface{}, _ *time.Location) interface{} { return r["birthday"] }},
-		{"status", "Trạng thái", func(r map[string]interface{}, _ *time.Location) interface{} {
-			return customerStatusExportLabel(toInt(r["status"]))
-		}},
+		{"status", "Tiến trình", func(r map[string]interface{}, _ *time.Location) interface{} { return r["stage_name"] }},
 		{"data_id", "Dữ liệu", func(r map[string]interface{}, _ *time.Location) interface{} {
 			return customerDataExportLabel(r["data_id"])
 		}},

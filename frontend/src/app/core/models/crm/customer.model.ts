@@ -38,7 +38,8 @@ export interface CustomerModel extends Identifiable {
   country_id?: any;
   ward_id?: number;
   branch_id?: number;
-  status?: any;
+  /** Bước tiến trình (FK `customer_stage`) — tra tên/màu qua `CustomerStageHelperService`. */
+  stage_id?: number;
   source_id?: number;
   loai_message?: string;
   chat_message?: string;
@@ -65,7 +66,6 @@ export interface CustomerModel extends Identifiable {
   last_visit_date?: number | Date;
 
   // EMR Fields
-  is_patient?: number; // 0=Chưa là bệnh nhân, 1=Đã là bệnh nhân
   emr_patient_code?: string; // Mã bệnh nhân (BN2025000001)
   emr_house_number?: string; // Số nhà
   emr_street?: string; // Thôn, phố
@@ -91,8 +91,8 @@ export interface CustomerModel extends Identifiable {
   serviceTypeLabel?: string;
   customerDisplayName?: string;
   branchLabel?: string;
-  statusLabel?: string;
-  statusKey?: string;
+  stageName?: string;
+  stageColorClass?: string;
   provinceLabel?: string;
   created_dayFormatted?: string;
   created_atFormatted?: string;
@@ -116,10 +116,16 @@ export interface CustomerModel extends Identifiable {
   customerCategory?: CustomerCategoryModel;
   relatives?: any;
 
-  canShowUpdateBtn?: unknown;
   allowedPerms?: string[]; // Permission
 
   // Aggregate đếm lượt (giữ lại — BE vẫn serve).
   treatment_count?: number;
   visit_count?: number;
+}
+
+/** Kết quả `PUT /crm/customer/:id/stage` — `updated_at` đã bump (nhận về model để không 409 ở lần sửa kế tiếp). */
+export interface CustomerStageChangeResult {
+  id: number;
+  stage_id: number;
+  updated_at?: number | Date;
 }

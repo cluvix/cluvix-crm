@@ -1,0 +1,260 @@
+<p-table
+  #dt
+  (onLazyLoad)="loadRecords($event)"
+  [columns]="cols()"
+  [lazy]="true"
+  [lazyLoadOnInit]="false"
+  [filters]="initialFilters()"
+  [first]="first()"
+  [loading]="showSkeleton()"
+  [paginator]="false"
+  [rowHover]="true"
+  [scrollHeight]="'flex'"
+  [scrollable]="true"
+  [showLoader]="false"
+  [stripedRows]="true"
+  [style]="{ width: '100%' }"
+  appFillHeight="page"
+  [value]="models()"
+  dataKey="id"
+>
+  <ng-template #caption>
+    <div class="h-[2px] mb-1">
+      @if (refreshing()) {
+        <p-progressbar [showValue]="false" [style]="{ height: '2px' }" mode="indeterminate"></p-progressbar>
+      }
+    </div>
+    <div class="flex items-center gap-2 justify-between">
+      <div class="p-toolbar-group-start">
+        <button
+          pButton
+          (click)="createRecord()"
+          *hasPerm="permission.permissionManageConfig"
+          type="button"
+        >
+          <i class="pi pi-plus"></i>
+          @if (isDesktop()) {
+            <span>{{ 'common.action.create' | translate }}</span>
+          }
+        </button>
+      </div>
+      <div class="p-toolbar-group-end">
+        <button
+          pButton
+          (click)="colsTpl.toggle($event)"
+          [attr.aria-label]="'common.action.view_more' | translate"
+          [pTooltip]="'common.action.view_more' | translate"
+          tooltipPosition="top"
+          type="button"
+          [iconOnly]="true"
+        >
+          <i class="pi pi-th-large"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Đổi thứ tự bước làm đổi cách tính phễu: khách đã ở bước nào thì kỳ cũ vẫn tính theo thứ tự HIỆN TẠI. -->
+    <div
+      class="mt-3 flex items-start gap-2 rounded-border border border-surface bg-emphasis px-3 py-2 text-sm text-muted-color"
+      role="note"
+    >
+      <i class="pi pi-info-circle mt-0.5"></i>
+      <span>{{ 'config.customer_stage.funnel_note' | translate }}</span>
+    </div>
+  </ng-template>
+  <ng-template #header>
+    <tr>
+      <th class="w-[30px] min-w-[30px]">
+        <div class="flex items-center justify-center w-full">#</div>
+      </th>
+      @if (isColVisible('id')()) {
+        <th class="w-[50px] min-w-[50px]">
+          <div class="flex items-center justify-center w-full">ID</div>
+        </th>
+      }
+      @if (isColVisible('name')()) {
+        <th class="min-w-[240px]">{{ 'config.customer_stage.name' | translate }}</th>
+      }
+      @if (isColVisible('type')()) {
+        <th class="min-w-[120px]">{{ 'common.label.type' | translate }}</th>
+      }
+      @if (isColVisible('color')()) {
+        <th class="min-w-[120px]">{{ 'common.label.color' | translate }}</th>
+      }
+      @if (isColVisible('order')()) {
+        <th class="min-w-[120px] w-[120px]">{{ 'config.customer_stage.order' | translate }}</th>
+      }
+      @if (isColVisible('is_default')()) {
+        <th class="min-w-[160px]">{{ 'common.label.default' | translate }}</th>
+      }
+      @if (isColVisible('status')()) {
+        <th class="min-w-[80px]">{{ 'common.label.status' | translate }}</th>
+      }
+      <th [frozen]="isDesktop()" alignFrozen="right" class="min-w-[100px] w-[100px]" pFrozenColumn>
+        <div class="flex items-center justify-center w-full">#</div>
+      </th>
+    </tr>
+  </ng-template>
+  <ng-template #body let-index="rowIndex" let-model>
+    <tr [class.tr-disabled]="!model.status" class="vertical-align-top">
+      <td>
+        <div class="flex items-center justify-center w-full">{{ index + 1 }}</div>
+      </td>
+      @if (isColVisible('id')()) {
+        <td>
+          <div class="flex items-center justify-center w-full">{{ model.id }}</div>
+        </td>
+      }
+      @if (isColVisible('name')()) {
+        <td [appCopyText]="model.name">
+          <span
+            class="inline-flex items-center rounded-full px-3 py-0.5 font-semibold"
+            [class]="badgeClass(model.color)"
+            >{{ model.name }}</span
+          >
+          @if (!model.status) {
+            <span class="ml-2 text-xs text-muted-color">({{ 'config.customer_stage.hidden_label' | translate }})</span>
+          }
+        </td>
+      }
+      @if (isColVisible('type')()) {
+        <td>{{ typeLabelKey(model.type) | translate }}</td>
+      }
+      @if (isColVisible('color')()) {
+        <td>
+          <span class="inline-flex items-center gap-2">
+            <span class="inline-block w-3 h-3 rounded-full" [class]="dotClass(model.color)"></span>
+            <span>{{ colorLabelKey(model.color) | translate }}</span>
+          </span>
+        </td>
+      }
+      @if (isColVisible('order')()) {
+        <td>
+          <div class="flex items-center gap-1">
+            <p-button
+              (click)="moveStage(model, -1)"
+              *hasPerm="permission.permissionManageConfig"
+              [disabled]="busy() || index === 0"
+              [ariaLabel]="'config.customer_stage.move_up' | translate"
+              [pTooltip]="'config.customer_stage.move_up' | translate"
+              icon="pi pi-arrow-up"
+              severity="secondary"
+              size="small"
+              [text]="true"
+              tooltipPosition="top"
+            ></p-button>
+            <span class="min-w-[1.5rem] text-center">{{ index + 1 }}</span>
+            <p-button
+              (click)="moveStage(model, 1)"
+              *hasPerm="permission.permissionManageConfig"
+              [disabled]="busy() || index === models().length - 1"
+              [ariaLabel]="'config.customer_stage.move_down' | translate"
+              [pTooltip]="'config.customer_stage.move_down' | translate"
+              icon="pi pi-arrow-down"
+              severity="secondary"
+              size="small"
+              [text]="true"
+              tooltipPosition="top"
+            ></p-button>
+          </div>
+        </td>
+      }
+      @if (isColVisible('is_default')()) {
+        <td>
+          @if (model.is_default === 1) {
+            <p-tag severity="success" [rounded]="true" [value]="'common.label.default' | translate" />
+          } @else {
+            <button
+              pButton
+              (click)="setDefault(model)"
+              *hasPerm="permission.permissionManageConfig"
+              [disabled]="busy() || model.type !== STAGE_TYPE_OPEN || !model.status"
+              [pTooltip]="'config.customer_stage.set_default_hint' | translate"
+              tooltipPosition="top"
+              type="button"
+              severity="secondary"
+              size="small"
+              [outlined]="true"
+            >
+              <span>{{ 'config.customer_stage.set_default' | translate }}</span>
+            </button>
+          }
+        </td>
+      }
+      @if (isColVisible('status')()) {
+        <td>
+          <p-toggleswitch
+            (onChange)="handleStatusChange(model.id)"
+            [(ngModel)]="model.status"
+            [disabled]="checkUpdatePermission() || model.is_default === 1"
+            [falseValue]="0"
+            [trueValue]="1"
+            [pTooltip]="
+              model.is_default === 1
+                ? ('config.customer_stage.default_cannot_hide' | translate)
+                : model.status
+                  ? ('common.label.visible' | translate)
+                  : ('common.label.hidden' | translate)
+            "
+          ></p-toggleswitch>
+        </td>
+      }
+      <td [frozen]="isDesktop()" alignFrozen="right" pFrozenColumn>
+        <div class="cx-row-actions">
+          <p-buttongroup>
+            <p-button
+              (click)="updateRecord(model)"
+              *hasPerm="permission.permissionManageConfig"
+              icon="pi pi-pencil"
+              [ariaLabel]="'common.action.edit' | translate"
+              [pTooltip]="'common.action.update' | translate"
+              severity="success"
+              size="small"
+              tooltipPosition="top"
+            ></p-button>
+            <p-button
+              (click)="deleteRecord($event, model.id)"
+              *hasPerm="permission.permissionManageConfig"
+              [disabled]="model.is_default === 1"
+              icon="pi pi-trash"
+              [ariaLabel]="'common.action.delete' | translate"
+              [pTooltip]="
+                model.is_default === 1
+                  ? ('config.customer_stage.default_cannot_delete' | translate)
+                  : ('common.action.delete' | translate)
+              "
+              severity="danger"
+              size="small"
+              tooltipPosition="top"
+            ></p-button>
+          </p-buttongroup>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #loadingbody>
+    @for (_ of rowsIt(); track $index) {
+      <tr class="h-[46px]">
+        @for (_ of colsIt(); track $index) {
+          <td>
+            <p-skeleton></p-skeleton>
+          </td>
+        }
+      </tr>
+    }
+  </ng-template>
+  <ng-template #emptymessage>
+    <tr>
+      <td [attr.colspan]="selectedColumns().length + 3">
+        <app-empty-message></app-empty-message>
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+<p-popover #colsTpl>
+  <app-column-toggle
+    (changeToggle)="selectedColumns.set($event); saveSelectedColumns()"
+    [columns]="displayCols"
+    [selectedCols]="selectedColumns"
+  />
+</p-popover>

@@ -52,8 +52,8 @@ func (h *Handler) CreateNote(c *gin.Context) {
 
 	// Customer side effects — last_contact_date.
 	// (Tách khỏi AfterCreate hook để dùng tenant-scoped DB, tránh cross-tenant write.)
-	// D14 (2026-09-23, QA story-33): bỏ nhánh nâng Ticket(2)→Lead(4) — không còn đường nào
-	// đưa khách vào Lead/Ticket (xem pkg/define/customer.go CustomerStatusTransitions).
+	// D14 (2026-09-23, QA story-33): bỏ nhánh nâng Ticket(2)→Lead(4). Tiến trình cũ (`customer.status`)
+	// đã bỏ hẳn ở customer-stage-pipeline story-12 — ghi chú không đổi bước khách.
 	if item.CustomerId != nil {
 		updates := map[string]interface{}{"last_contact_date": item.CreatedAt}
 

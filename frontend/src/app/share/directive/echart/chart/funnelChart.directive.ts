@@ -27,6 +27,12 @@ export class FunnelChartDirective extends EchartsDirective implements OnChanges,
   private localeFormat = inject(LocaleFormatService);
   @Input({ required: true }) data!: any[];
   @Input() sort: 'ascending' | 'descending' | 'none' = 'descending';
+  /**
+   * Bề rộng tối thiểu (% khung vẽ) của tầng. ECharts tính bề rộng theo thang [min=0 … max] nên cạnh DƯỚI của tầng cuối
+   * luôn bằng `minSize`: để 0% thì tầng cuối (và cả tầng gần cuối) hẹp tới mức nhãn trắng tràn khỏi hình.
+   * Mặc định giữ 0% (phễu nhọn); nơi có nhãn trong tầng nên truyền mức đủ rộng.
+   */
+  @Input() minSize: string = '0%';
   @Input() colors: string[] = [
     '#7B3F9E', '#5E35B1', '#1565C0', '#0277BD', '#00838F', '#2E7D32', '#E65100', '#BF360C',
   ];
@@ -77,7 +83,7 @@ export class FunnelChartDirective extends EchartsDirective implements OnChanges,
           top: 40,
           bottom: 40,
           width: '80%',
-          minSize: '0%',
+          minSize: this.minSize,
           maxSize: '100%',
           gap: 2,
           label: {

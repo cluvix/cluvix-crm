@@ -57,8 +57,8 @@ func seedReportServiceUsed(t *testing.T) {
 		}
 	}
 	for _, cid := range []int{rsuCust1, rsuCust2} {
-		if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname)
-			VALUES (?, ?, 'KH')`, cid, rsuBranch).Error; err != nil {
+		if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, stage_id)
+			VALUES (?, ?, 'KH', (SELECT id FROM customer_stage WHERE is_default = 1))`, cid, rsuBranch).Error; err != nil {
 			t.Fatalf("seed customer %d: %v", cid, err)
 		}
 	}

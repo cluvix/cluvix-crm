@@ -11,6 +11,12 @@ export default [
     data: { breadcrumb: 'common.label.customer_category' },
   },
   {
+    path: 'customer-stage',
+    loadComponent: () =>
+      import('./customer-stage/list/customer-stage-list').then((c) => c.CustomerStageList),
+    data: { breadcrumb: 'config.customer_stage.title' },
+  },
+  {
     path: 'customer-source',
     loadComponent: () => import('./source/list/source-list').then((c) => c.SourceList),
     data: { breadcrumb: 'common.label.source' },

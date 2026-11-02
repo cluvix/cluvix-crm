@@ -762,7 +762,42 @@ func (h *Handler) CrmPaymentBranchOverview(c *gin.Context) {
 	c.JSON(http.StatusOK, rows)
 }
 
-// CrmStatusCustomerOverview GET /dashboard/crm/status-customer-overview
+// customerStageFunnelItem — 1 tầng phễu tiến trình khách (story-07 customer-stage-pipeline). FE (story-10)
+// đọc đúng shape này; tên/màu lấy thẳng từ customer_stage để chart không phải tra Dexie.
+type customerStageFunnelItem struct {
+	StageID int    `json:"stage_id"`
+	Name    string `json:"name"`
+	Type    int    `json:"type"`
+	Color   string `json:"color"`
+	Value   int64  `json:"value"`
+}
+
+// customerStageRow — danh mục bước đọc cho phễu (cả bước ẩn: bước ẩn vẫn hiện nếu có khách).
+type customerStageRow struct {
+	ID     int    `gorm:"column:id"`
+	Name   string `gorm:"column:name"`
+	Type   int    `gorm:"column:type"`
+	Color  string `gorm:"column:color"`
+	Status int    `gorm:"column:status"`
+}
+
+// customerStageFunnelCount — 1 nhóm của câu đếm: mo = vị trí (1-based) của bước mở/thành công xa nhất
+// khách từng tới theo thứ tự hiện tại (0/NULL = chưa từng tới bước mở/thành công nào); ls = id bước
+// thất bại khách ĐANG ở (0 = không ở bước thất bại).
+type customerStageFunnelCount struct {
+	Mo *int  `gorm:"column:mo"`
+	Ls int   `gorm:"column:ls"`
+	N  int64 `gorm:"column:n"`
+}
+
+// CrmStatusCustomerOverview GET /dashboard/crm/status-customer-overview — phễu theo bước tiến trình đã
+// cấu hình (architecture D8), cached 300s.
+//
+// Tầng bước *đang mở/thành công* k = số khách (ghi nhận trong kỳ, trong phạm vi chi nhánh) có lịch sử
+// từng tới bước k HOẶC một bước đứng sau k — "thứ tự" là `sort_order` HIỆN TẠI. ⚠ Đổi thứ tự bước sẽ
+// đổi số liệu các kỳ cũ (PRD đã chấp nhận). Bước *thất bại* = số khách ĐANG ở bước đó (customer.stage_id).
+// Thứ tự trả về: bước mở/thành công theo sort_order, rồi bước thất bại theo sort_order; bước ẩn chỉ hiện
+// khi value > 0; không có khách nào được đếm ⇒ `[]`.
 func (h *Handler) CrmStatusCustomerOverview(c *gin.Context) {
 	loc := tz.LocFromContext(c, h.DB)
 	mFrom, mTo := tz.MonthRange(loc, 0)
@@ -773,64 +808,127 @@ func (h *Handler) CrmStatusCustomerOverview(c *gin.Context) {
 	// Câu dùng `BETWEEN ? AND ?` ⇒ mốc cuối BAO GỒM.
 	from, to := f.From, f.ToIncl()
 
-	cacheKey := dashCacheKey(c, "crm_status_customer_overview", f)
+	// Khoá cache đổi tên (shape cũ `[{value,name}]` có thể còn trong Redis dưới khoá cũ tới hết TTL).
+	cacheKey := dashCacheKey(c, "crm_stage_funnel", f)
 	if h.Cache != nil {
-		var cached []gin.H
+		var cached []customerStageFunnelItem
 		if err := h.Cache.Get(cacheKey, &cached); err == nil {
 			c.JSON(http.StatusOK, cached)
 			return
 		}
 	}
 
-	var row struct {
-		TotalAll         int64 `gorm:"column:total_all"`
-		TotalTicket      int64 `gorm:"column:total_ticket"`
-		TotalLead        int64 `gorm:"column:total_lead"`
-		TotalAppointment int64 `gorm:"column:total_appointment"`
-		TotalVisited     int64 `gorm:"column:total_visited"`
-		TotalPreCustomer int64 `gorm:"column:total_pre_customer"`
-		TotalCustomer    int64 `gorm:"column:total_customer"`
-	}
-	sCust, sCustArgs := buildDashboardScopeOpt(c, "customer", f.BranchID)
-	// status IN (...) tường minh — KHÔNG dùng status >= N (CustomerStatusContact=16 là giai
-	// đoạn sớm nhưng giá trị số lớn nhất, >= sẽ tính nhầm vào total_visited/total_pre_customer).
-	rArgs := []any{
-		define.CustomerFunnelTicketUp, define.CustomerFunnelLeadUp, define.CustomerFunnelAppointmentUp,
-		define.CustomerFunnelVisitedUp, define.CustomerFunnelPreCustomerUp, define.CustomerStatusCustomer,
-		from, to,
-	}
-	rArgs = append(rArgs, sCustArgs...)
-	tx := h.DB.Raw(`SELECT
-		COUNT(*) AS total_all,
-		SUM(CASE WHEN status IN ? THEN 1 ELSE 0 END) AS total_ticket,
-		SUM(CASE WHEN status IN ? THEN 1 ELSE 0 END) AS total_lead,
-		SUM(CASE WHEN status IN ? THEN 1 ELSE 0 END) AS total_appointment,
-		SUM(CASE WHEN status IN ? THEN 1 ELSE 0 END) AS total_visited,
-		SUM(CASE WHEN status IN ? THEN 1 ELSE 0 END) AS total_pre_customer,
-		SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS total_customer
-		FROM customer WHERE created_day BETWEEN ? AND ?`+sCust, rArgs...).Scan(&row)
+	var stages []customerStageRow
+	tx := h.DB.Raw(`SELECT id, name, type, color, status FROM customer_stage ORDER BY sort_order, id`).Scan(&stages)
 	if pagination.IsQueryError(tx.Error) {
 		pagination.FailQuery(c, tx.Error)
 		return
 	}
-
-	if row.TotalAll == 0 {
-		c.JSON(http.StatusOK, []gin.H{})
-		return
+	var openIDs []any // trải thành từng tham số của FIELD(...)
+	var lostIDs []int
+	for _, s := range stages {
+		if s.Type == define.CustomerStageTypeLost {
+			lostIDs = append(lostIDs, s.ID)
+		} else {
+			openIDs = append(openIDs, s.ID)
+		}
 	}
 
-	statusResult := []gin.H{
-		{"value": row.TotalTicket, "name": "Ticket"},
-		{"value": row.TotalLead, "name": "Lead"},
-		{"value": row.TotalAppointment, "name": "Đặt hẹn"},
-		{"value": row.TotalVisited, "name": "Đã đến"},
-		{"value": row.TotalPreCustomer, "name": "Đồng ý"},
-		{"value": row.TotalCustomer, "name": "Hoàn thành"},
+	var counts []customerStageFunnelCount
+	if len(openIDs) > 0 || len(lostIDs) > 0 {
+		// MỘT lượt trên khách trong kỳ (/check-scale 2026-11-02, 600k khách + 1,58 triệu dòng lịch sử, số ở
+		// story-07 Checkpoint): subquery tương quan theo khách đi index covering idx_csh_customer_to_stage
+		// (customer_id, to_stage_id); FIELD(...) đổi id bước → vị trí theo thứ tự đã đọc ở trên nên KHÔNG
+		// join customer_stage cho mỗi dòng lịch sử (JOIN stage: 12 tháng 2,8s → FIELD 1,5s). Loại đã đo:
+		// JOIN + GROUP BY customer_id (3,7s — bảng tạm 600k nhóm), derived gom toàn lịch sử (≥1,8s kể cả kỳ
+		// 1 tháng), câu thất bại riêng JOIN stage (+0,2–0,9s).
+		moExpr := "0"
+		args := make([]any, 0, len(openIDs)+3)
+		if len(openIDs) > 0 {
+			moExpr = `(SELECT MAX(FIELD(h.to_stage_id, ` + strings.TrimSuffix(strings.Repeat("?,", len(openIDs)), ",") + `))
+				FROM customer_stage_history h WHERE h.customer_id = c.id)`
+			args = append(args, openIDs...)
+		}
+		lsExpr := "0"
+		if len(lostIDs) > 0 {
+			lsExpr = `IF(c.stage_id IN ?, c.stage_id, 0)`
+			args = append(args, lostIDs)
+		}
+		sC, sCArgs := buildDashboardScopeOpt(c, "c", f.BranchID)
+		args = append(args, from, to)
+		args = append(args, sCArgs...)
+		tx = h.DB.Raw(`SELECT `+moExpr+` AS mo, `+lsExpr+` AS ls, COUNT(*) AS n
+			FROM customer c
+			WHERE c.created_day BETWEEN ? AND ?`+sC+`
+			GROUP BY mo, ls`, args...).Scan(&counts)
+		if pagination.IsQueryError(tx.Error) {
+			pagination.FailQuery(c, tx.Error)
+			return
+		}
 	}
+
+	result := buildCustomerStageFunnel(stages, counts)
 	if h.Cache != nil {
-		h.Cache.Set(cacheKey, statusResult, 300*time.Second)
+		h.Cache.Set(cacheKey, result, 300*time.Second)
 	}
-	c.JSON(http.StatusOK, statusResult)
+	c.JSON(http.StatusOK, result)
+}
+
+// buildCustomerStageFunnel ghép danh mục bước (đã sort theo sort_order, id) với kết quả đếm thành phễu.
+// Tầng mở/thành công thứ p (1-based trong dãy bước mở/thành công) = Σ n của nhóm có mo ≥ p; bước thất bại
+// = Σ n của nhóm có ls = id bước. Tổng khách được đếm = 0 ⇒ `[]` (không phải null).
+func buildCustomerStageFunnel(stages []customerStageRow, counts []customerStageFunnelCount) []customerStageFunnelItem {
+	var counted int64
+	reached := map[int]int64{} // mo → số khách
+	lost := map[int]int64{}    // id bước thất bại → số khách
+	for _, r := range counts {
+		mo := 0
+		if r.Mo != nil {
+			mo = *r.Mo
+		}
+		if mo <= 0 && r.Ls == 0 {
+			continue // khách không có lịch sử bước mở/thành công và không ở bước thất bại
+		}
+		counted += r.N
+		if mo > 0 {
+			reached[mo] += r.N
+		}
+		if r.Ls != 0 {
+			lost[r.Ls] += r.N
+		}
+	}
+	result := make([]customerStageFunnelItem, 0, len(stages))
+	if counted == 0 {
+		return result
+	}
+	pos := 0
+	for _, s := range stages {
+		if s.Type == define.CustomerStageTypeLost {
+			continue
+		}
+		pos++
+		var v int64
+		for mo, n := range reached {
+			if mo >= pos {
+				v += n
+			}
+		}
+		result = appendFunnelItem(result, s, v)
+	}
+	for _, s := range stages {
+		if s.Type == define.CustomerStageTypeLost {
+			result = appendFunnelItem(result, s, lost[s.ID])
+		}
+	}
+	return result
+}
+
+// appendFunnelItem — bước ẩn (status ≠ 1) chỉ hiện khi có khách.
+func appendFunnelItem(out []customerStageFunnelItem, s customerStageRow, v int64) []customerStageFunnelItem {
+	if s.Status != define.StatusActive && v == 0 {
+		return out
+	}
+	return append(out, customerStageFunnelItem{StageID: s.ID, Name: s.Name, Type: s.Type, Color: s.Color, Value: v})
 }
 
 // CrmReportCustomerByRegion GET /dashboard/crm/report-customer-by-region — cached 300s
@@ -854,14 +952,10 @@ func (h *Handler) CrmReportCustomerByRegion(c *gin.Context) {
 	// Câu dùng `BETWEEN ? AND ?` ⇒ mốc cuối BAO GỒM.
 	from, to := f.From, f.ToIncl()
 
-	validStatuses := []int{
-		define.CustomerStatusPreCustomer, define.CustomerStatusCustomer,
-		define.CustomerStatusTreatment, define.CustomerStatusComplaint,
-		define.CustomerStatusDoneComplaint, define.CustomerStatusBroker,
-	}
-
+	// Story-07 customer-stage-pipeline (FR21): khách "đã thành công" = có ≥1 dòng lịch sử tới bước loại
+	// *thành công* — kể cả khi sau đó chuyển sang bước thất bại (vd Ngừng thuê).
 	sC, sCArgs := buildDashboardScopeOpt(c, "c", f.BranchID)
-	rArgs := append([]any{from, to, validStatuses}, sCArgs...)
+	rArgs := append([]any{from, to, define.CustomerStageTypeWon}, sCArgs...)
 
 	var rows []struct {
 		Name  string `gorm:"column:name"`
@@ -872,7 +966,9 @@ func (h *Handler) CrmReportCustomerByRegion(c *gin.Context) {
 		INNER JOIN location_province lp ON lp.id = c.province_id
 		WHERE c.province_id IS NOT NULL AND lp.status = 1
 		AND c.created_day BETWEEN ? AND ?
-		AND c.status IN ?`+sC+`
+		AND EXISTS (SELECT 1 FROM customer_stage_history h
+			JOIN customer_stage s ON s.id = h.to_stage_id
+			WHERE h.customer_id = c.id AND s.type = ?)`+sC+`
 		GROUP BY c.province_id
 		ORDER BY value DESC`, rArgs...).Scan(&rows)
 	if pagination.IsQueryError(tx.Error) {

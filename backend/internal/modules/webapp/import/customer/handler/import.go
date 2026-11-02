@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"erpCluvix/internal/middleware"
+	stagesvc "erpCluvix/internal/modules/webapp/config/customer_stage/service"
 	"erpCluvix/pkg/codegen"
 	"erpCluvix/pkg/define"
 	"erpCluvix/pkg/exceldate"
@@ -123,6 +125,9 @@ func (h *Handler) ImportCustomerFromExcel(c *gin.Context) {
 	// branch_id đến từ FILE (client sửa được) ⇒ kiểm từng dòng: chi nhánh phải thuộc quyền user VÀ
 	// là chi nhánh có thật (story-40: bỏ điều kiện company). Memo theo branch trong request.
 	branchAllowed := map[uint]bool{}
+	// Bước mặc định cho khách MỚI: đọc 1 lần trong cùng tx, lười — chỉ khi gặp dòng tạo mới đầu tiên
+	// (file toàn khách đã có không bị chặn vì thiếu cấu hình bước mặc định).
+	defaultStageID := 0
 
 	for i, row := range rows[2:] {
 		if allEmpty(row) {
@@ -241,7 +246,6 @@ func (h *Handler) ImportCustomerFromExcel(c *gin.Context) {
 			}
 		} else {
 			data["country_id"] = defaultCountryID
-			data["status"] = define.CustomerStatusOldSystem
 			if _, ok := data["customerType"]; !ok {
 				data["customerType"] = 2
 			}
@@ -253,7 +257,33 @@ func (h *Handler) ImportCustomerFromExcel(c *gin.Context) {
 			if code := coder.New(helpers.ToInt64(data["branch_id"])); code != "" {
 				data["code"] = code
 			}
+			if defaultStageID == 0 {
+				sid, err2 := stagesvc.DefaultStageID(tx)
+				if err2 != nil {
+					tx.Rollback()
+					response.Validate(c, i18n.TF(c, "import_row_error", rowNum, importRowErrMsg(c, err2)))
+					return
+				}
+				defaultStageID = sid
+			}
+			data["stage_id"] = defaultStageID
 			if err2 := tx.Table("customer").Create(data).Error; err2 != nil {
+				tx.Rollback()
+				response.Validate(c, i18n.TF(c, "import_row_error", rowNum, importRowErrMsg(c, err2)))
+				return
+			}
+			// GORM Create từ map KHÔNG backfill id ⇒ LAST_INSERT_ID() trên chính tx (cùng kết nối).
+			var newID int
+			if err2 := tx.Raw("SELECT LAST_INSERT_ID()").Scan(&newID).Error; err2 != nil || newID <= 0 {
+				tx.Rollback()
+				if err2 == nil {
+					err2 = fmt.Errorf("không lấy được ID khách hàng")
+				}
+				response.Validate(c, i18n.TF(c, "import_row_error", rowNum, importRowErrMsg(c, err2)))
+				return
+			}
+			if err2 := stagesvc.RecordStageChange(tx, newID, nil, defaultStageID,
+				define.CustomerStageHistorySourceImport, uid, now); err2 != nil {
 				tx.Rollback()
 				response.Validate(c, i18n.TF(c, "import_row_error", rowNum, importRowErrMsg(c, err2)))
 				return
@@ -274,8 +304,6 @@ func (h *Handler) ImportCustomerFromExcel(c *gin.Context) {
 				))
 			}
 			if len(noteLines) > 0 {
-				var newID int
-				tx.Raw("SELECT LAST_INSERT_ID()").Scan(&newID)
 				if newID > 0 {
 					noteRow := map[string]interface{}{
 						"note":        strings.Join(noteLines, ""),
@@ -306,6 +334,9 @@ func (h *Handler) ImportCustomerFromExcel(c *gin.Context) {
 func importRowErrMsg(c *gin.Context, err error) string {
 	if helpers.IsCustomerPhoneDuplicate(err) {
 		return i18n.T(c, "customer_duplicate")
+	}
+	if errors.Is(err, stagesvc.ErrDefaultStageMissing) {
+		return i18n.T(c, stagesvc.KeyDefaultMissing)
 	}
 	return err.Error()
 }

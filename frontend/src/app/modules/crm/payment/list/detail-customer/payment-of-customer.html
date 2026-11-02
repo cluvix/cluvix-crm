@@ -41,15 +41,13 @@
           *hasPerm="permission.permissionExtDeposit"
           severity="info"
         ><i class="pi pi-plus"></i><span>{{ 'crm.payment.label.add_deposit' | translate }}</span></button>
-        @if (customer.status !== CUSTOMER_STATUS.TICKET && customer.status !== CUSTOMER_STATUS.LEAD) {
-          <button
-            pButton
-            type="button"
-            (click)="createOrUpdatePayment(null)"
-            *hasPerm="permission.permissionCreatePayment"
-            [style]="{'background-color': '#7B3F9E', 'border-color': '#7B3F9E'}"
-          ><i class="pi pi-plus"></i><span>{{ 'common.label.payment' | translate }}</span></button>
-        }
+        <button
+          pButton
+          type="button"
+          (click)="createOrUpdatePayment(null)"
+          *hasPerm="permission.permissionCreatePayment"
+          [style]="{'background-color': '#7B3F9E', 'border-color': '#7B3F9E'}"
+        ><i class="pi pi-plus"></i><span>{{ 'common.label.payment' | translate }}</span></button>
       </div>
       <div class="p-toolbar-group-end">
         <div class="flex gap-2">

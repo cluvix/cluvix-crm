@@ -52,8 +52,8 @@ func seedConsultation(t *testing.T, revenueTypes []int) {
 	testDB.Exec(`DELETE FROM appointment_type`)
 	testDB.Exec(`DELETE FROM customer`)
 
-	if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, phone)
-		VALUES (501, ?, 'Khách QA', '0900000001')`, acBranch).Error; err != nil {
+	if err := testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, phone, stage_id)
+		VALUES (501, ?, 'Khách QA', '0900000001', (SELECT id FROM customer_stage WHERE is_default = 1))`, acBranch).Error; err != nil {
 		t.Fatalf("seed customer: %v", err)
 	}
 	for _, id := range []int{1, 2, 3} {

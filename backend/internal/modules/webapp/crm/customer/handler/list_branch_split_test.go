@@ -73,7 +73,9 @@ func TestCustomerSingleBranchMatchesTenantScope(t *testing.T) {
 			t.Fatalf("(%d,%v) phải là phạm vi 1 chi nhánh", tc.active, tc.ids)
 		}
 		sqlText := explainSQL(db, h.buildCustomerFilters(c, false).Session(&gorm.Session{}).Count(&total))
-		if !strings.Contains(sqlText, tc.want) {
+		// Story-04 bỏ vế `status IN` ⇒ không lọc gì thêm thì vế scope là điều kiện DUY NHẤT và GORM bỏ
+		// cặp ngoặc ngoài (`WHERE a OR b` — vẫn đúng ngữ nghĩa; ghép thêm điều kiện thì GORM tự bọc lại).
+		if !strings.Contains(sqlText, tc.want) && "("+whereOf(sqlText)+")" != tc.want {
 			t.Errorf("vế scope tenant đã đổi — xét lại customerListSingleBranch + UNION 2 nhánh:\nmuốn chứa %s\n%s",
 				tc.want, sqlText)
 		}
@@ -107,46 +109,41 @@ func TestCustomerListSplitWorthIt(t *testing.T) {
 	}
 }
 
-// Hint COUNT: đúng MỘT khối NO_INDEX liệt kê cả 2 chỉ mục. Hai khối riêng ⇒ MySQL bỏ khối sau
-// (cảnh báo 3126) và COUNT chậm hơn cả trước bản vá (đã dính khi làm bản vá).
-func TestCustomerCountHintGate(t *testing.T) {
+// Câu COUNT KHÔNG còn optimizer hint ở MỌI phạm vi (story-04 customer-stage-pipeline gỡ hint
+// `NO_INDEX(fk-customer_branch_id, …)`: bỏ `status IN` ⇒ fk-branch là chỉ mục phủ, giữ hint chậm 1,52× —
+// bảng số đo ở list_branch_split.go). Gắn lại hint mà không đo lại ở quy mô ⇒ test này đỏ.
+func TestCustomerCountHasNoHint(t *testing.T) {
 	db := dryRunDB(t)
 	h := New(Deps{DB: db})
-	const wantHint = "SELECT /*+ NO_INDEX(customer `fk-customer_branch_id`, idx_customer_branch_revenue) */ COUNT(*) FROM `customer` WHERE "
 
 	for _, tc := range []struct {
 		name   string
 		qs     string
 		active uint
 		ids    []uint
-		hint   bool
 	}{
-		{"1 CN, không lọc", "", 7, nil, true},
-		{"1 CN qua branchIds", "", 0, []uint{7}, true},
-		{"1 CN + lọc trạng thái", "filter[_status][0]=12", 7, nil, true},
-		{"1 CN + từ khoá LIKE", "_keyword=Nguyen", 7, nil, false},
-		{"1 CN + từ khoá ngram", "_keyword=0913353112", 7, nil, false},
-		{"1 CN + từ khoá toàn khoảng trắng", "_keyword=%20%20", 7, nil, true},
-		{"nhiều CN", "", 0, []uint{1, 2}, false},
-		{"không phạm vi CN", "", 0, nil, false},
+		{"1 CN, không lọc", "", 7, nil},
+		{"1 CN qua branchIds", "", 0, []uint{7}},
+		{"1 CN + lọc 1 bước", "filter[stage_id][0]=2", 7, nil},
+		{"1 CN + lọc 2 bước", "filter[stage_id][0]=2&filter[stage_id][1]=5", 7, nil},
+		{"1 CN + từ khoá LIKE", "_keyword=Nguyen", 7, nil},
+		{"1 CN + từ khoá ngram", "_keyword=0913353112", 7, nil},
+		{"nhiều CN", "", 0, []uint{1, 2}},
+		{"không phạm vi CN + lọc bước", "filter[stage_id][0]=2", 0, nil},
 	} {
 		c := ctxWithScope(t, tc.qs, tc.active, tc.ids)
 		var total int64
-		sqlText := explainSQL(db, customerCountQuery(c, h.buildCustomerFilters(c, false), &total))
-		if tc.hint {
-			if !strings.HasPrefix(sqlText, wantHint) {
-				t.Errorf("%s: thiếu/sai hint:\n%s", tc.name, sqlText)
-			}
-			if strings.Count(sqlText, "NO_INDEX(") != 1 {
-				t.Errorf("%s: phải đúng MỘT khối NO_INDEX:\n%s", tc.name, sqlText)
-			}
-		} else if strings.Contains(sqlText, "/*+") || !strings.HasPrefix(sqlText, "SELECT count(*) FROM `customer` WHERE ") {
-			t.Errorf("%s: không được gắn hint, phải là Count trần:\n%s", tc.name, sqlText)
+		sqlText := explainSQL(db, customerCountQuery(h.buildCustomerFilters(c, false), &total))
+		if strings.Contains(sqlText, "/*+") || !strings.HasPrefix(sqlText, "SELECT count(*) FROM `customer` WHERE ") {
+			t.Errorf("%s: COUNT phải là Count trần, không hint:\n%s", tc.name, sqlText)
 		}
-		// Hint chỉ đổi đường đi, KHÔNG đổi bộ lọc.
+		// Đường COUNT không được đổi bộ lọc so với Count trần trên cùng base.
 		plain := explainSQL(db, h.buildCustomerFilters(c, false).Session(&gorm.Session{}).Count(&total))
 		if whereOf(sqlText) != whereOf(plain) {
 			t.Errorf("%s: WHERE của câu COUNT bị đổi:\n%s\n%s", tc.name, sqlText, plain)
+		}
+		if strings.Contains(whereOf(sqlText), "customer.status") {
+			t.Errorf("%s: COUNT còn lọc ngầm theo status (FR17):\n%s", tc.name, sqlText)
 		}
 	}
 }
@@ -156,13 +153,17 @@ func TestCustomerListSplitPageShape(t *testing.T) {
 	db := dryRunDB(t)
 	h := New(Deps{DB: db})
 
-	for _, qs := range []string{"", "_keyword=0913353112", "filter[gender]=1&filter[_status][0]=12", "_keyword=Nguyen"} {
+	for _, qs := range []string{"", "_keyword=0913353112", "filter[gender]=1&filter[stage_id][0]=2", "_keyword=Nguyen"} {
 		c := ctxWithScope(t, qs, 7, nil)
 		base := h.buildCustomerFilters(c, false)
 		var total int64
 		baseWhere := whereOf(explainSQL(db, base.Session(&gorm.Session{}).Count(&total)))
 		if baseWhere == "" {
 			t.Fatalf("(%q) không tách được WHERE", qs)
+		}
+		// Vế scope đứng một mình (qs rỗng) ⇒ GORM in không ngoặc; ghép thêm vế nhánh thì GORM bọc lại.
+		if !strings.HasPrefix(baseWhere, "(") && strings.Contains(baseWhere, " OR ") {
+			baseWhere = "(" + baseWhere + ")"
 		}
 		var items []map[string]interface{}
 		sqlText := explainSQL(db, customerListSplitPage(db, base, 7, 30, 15).Find(&items))

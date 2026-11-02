@@ -21,6 +21,8 @@ import (
 	// Plan 06 B2:
 	customerCategory "erpCluvix/internal/modules/webapp/config/customer_category"
 	customerCategoryHandler "erpCluvix/internal/modules/webapp/config/customer_category/handler"
+	customerStage "erpCluvix/internal/modules/webapp/config/customer_stage"
+	customerStageHandler "erpCluvix/internal/modules/webapp/config/customer_stage/handler"
 
 	// Plan 06 B3:
 	ethnicity "erpCluvix/internal/modules/webapp/config/ethnicity"
@@ -119,6 +121,9 @@ func Register(authed *gin.RouterGroup, d deps.Deps) {
 
 		// CustomerCategory — Plan 06 B2: layered module.
 		customerCategory.RegisterRoutes(cfg, customerCategoryHandler.Deps{DB: d.DB})
+
+		// CustomerStage — danh mục bước tiến trình khách hàng (epic customer-stage-pipeline).
+		customerStage.RegisterRoutes(cfg, customerStageHandler.Deps{DB: d.DB})
 
 		// GroupCountry — Plan 06 B3: layered module.
 		groupCountry.RegisterRoutes(cfg, groupCountryHandler.Deps{DB: d.DB})

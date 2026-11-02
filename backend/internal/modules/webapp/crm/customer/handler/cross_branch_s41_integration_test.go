@@ -32,7 +32,7 @@ func s41SeedCustomerInBranch(t *testing.T, tenant *testhelpers.TestTenant, branc
 	row := map[string]any{
 		"branch_id":       branchID,
 		"fullname":        "S41 Cross " + strconv.FormatInt(time.Now().UnixNano(), 10),
-		"status":          2,
+		"stage_id":        testhelpers.MustDefaultCustomerStageID(t, testDB),
 		"payment_user_id": paymentUserID,
 		"created_day":     now,
 		"created_at":      now,

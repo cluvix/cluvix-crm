@@ -6,10 +6,10 @@ import { NoteDisplayModel, NoteModel } from '@/core/models/crm/note.model';
 import { ListApiResponse } from '@/share/models/list-api-response';
 import { BaseApiService } from '@/share/services/base-api.service';
 import { BranchHelperService } from '@/indexeddb/config/components/branch';
-import { getCustomerStatusKey, getCustomerStatusLabel } from '@/define';
 import { UserHelperService } from '@/indexeddb/config/components/user';
 import { LocationProvinceHelperService } from '@/indexeddb/config/components/location-province/location-province-helper.service';
 import { SourceHelperService } from '@/indexeddb/config/components/source';
+import { CustomerStageHelperService } from '@/indexeddb/config/components/customer-stage';
 
 @Service()
 export class NoteService extends BaseApiService<NoteModel> {
@@ -22,6 +22,7 @@ export class NoteService extends BaseApiService<NoteModel> {
   private sourceHelper: SourceHelperService = inject(SourceHelperService);
   private userHelper: UserHelperService = inject(UserHelperService);
   private branchHelper: BranchHelperService = inject(BranchHelperService);
+  private customerStageHelper = inject(CustomerStageHelperService);
 
   togglePin(id: number, pinned: boolean) {
     return this.apiService.post(`${this.path}/${id}/pin-note?pinned=${pinned}`);
@@ -94,9 +95,8 @@ export class NoteService extends BaseApiService<NoteModel> {
       ...itemWithDates,
       customerDisplayName: `${item?.customer?.fullname || ''}${item?.customer?.nickname ? ' - ' + item?.customer?.nickname : ''}`,
       branchLabel: this.branchHelper.getBranchName(item.customer?.branch_id),
-      statusLabel: getCustomerStatusLabel?.(item.customer?.status) ?? '',
-      statusKey: getCustomerStatusKey(item.customer?.status!),
-      statusClass: `statusCustomer-${item.customer?.status}`,
+      stageName: this.customerStageHelper.getName(item.customer?.stage_id),
+      stageColorClass: this.customerStageHelper.getBadgeClass(item.customer?.stage_id),
       createdByInfo: this.userHelper.getUserInfo(item.created_by),
       provinceLabel: this.locationProvinceHelper.getLabel(item?.customer?.province_id),
       sourceCustomerLabel: this.sourceHelper.getSourceName(item.customer?.source_id),
@@ -115,6 +115,7 @@ export class NoteService extends BaseApiService<NoteModel> {
       this.userHelper.ensureUsersLoaded(),
       this.locationProvinceHelper.ensureLocationProvincesLoaded(),
       this.sourceHelper.ensureSourcesLoaded(),
+      this.customerStageHelper.ensureLoaded(),
     ]);
   }
 }

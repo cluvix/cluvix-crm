@@ -60,7 +60,7 @@ func seedCustomer(t *testing.T, tenant *testhelpers.TestTenant, paymentUserID *u
 	now := time.Now().Unix()
 	row := testhelpers.WithTenantCols(tenant, map[string]any{
 		"fullname": fmt.Sprintf("S08 KH %d", time.Now().UnixNano()),
-		"status":   2, "payment_user_id": paymentUserID,
+		"stage_id": testhelpers.MustDefaultCustomerStageID(t, testDB), "payment_user_id": paymentUserID,
 		"created_day": now, "created_at": now, "updated_at": now,
 	})
 	delete(row, "branch_id") // giữ NULL như bản gốc (test không gán chi nhánh)

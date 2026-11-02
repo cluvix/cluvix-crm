@@ -32,7 +32,6 @@ import {
   APPOINTMENT_STATUS_OPTIONS,
   APPOINTMENT_STATUS_SELECT,
   CONFIRM_APPOINTMENT_SELECT,
-  CUSTOMER_STATUS_OPTIONS,
   CUSTOMER_TYPE_OPTION,
   GENDER_OPTIONS,
   PERMISSION_SELECT,
@@ -47,6 +46,7 @@ import {CustomerCategoryMultiselectFormControl} from '@/indexeddb/config/compone
 import {GroupSourceMultiselectFormControl} from '@/indexeddb/config/components/group-source';
 import {GroupLocalMultiselectFromControl} from '@/indexeddb/config/components/group-local';
 import {GroupCountryMultiselectFromControl} from '@/indexeddb/config/components/group-country';
+import {CustomerStageMultiselectFormControl} from '@/indexeddb/config/components/customer-stage';
 import {ConfirmCheckin} from '@/modules/crm/appointment/form/confirm-checkin/confirm-checkin';
 import {FillHeightDirective} from "@/share/directive/fill-height.directive";
 
@@ -64,6 +64,7 @@ import {FillHeightDirective} from "@/share/directive/fill-height.directive";
     GroupSourceMultiselectFormControl,
     GroupLocalMultiselectFromControl,
     GroupCountryMultiselectFromControl,
+    CustomerStageMultiselectFormControl,
     FillHeightDirective,
   ],
 })
@@ -137,7 +138,6 @@ export class AppointmentInMenu extends BaseListV2<AppointmentModel> implements O
   }
   protected override URL_STATE_PREFIX = 'ap';
   protected readonly genderOptions = translateOptions(GENDER_OPTIONS);
-  protected readonly customerStatusOptions = translateOptions(CUSTOMER_STATUS_OPTIONS);
   protected readonly customerTypeOptions = translateOptions(CUSTOMER_TYPE_OPTION);
   protected readonly appointmentStatusOptions = translateOptions(APPOINTMENT_STATUS_OPTIONS);
   protected readonly APPOINTMENT_STATUS_SELECT = APPOINTMENT_STATUS_SELECT;
@@ -205,7 +205,9 @@ export class AppointmentInMenu extends BaseListV2<AppointmentModel> implements O
       {name: '_groupLocal', kind: 'in'},
       {name: '_groupCountry', kind: 'in'},
       {name: '_groupSource', kind: 'in'},
-      {name: '_status', kind: 'equals', urlKey: 'customer_status'},
+      // Tiến trình khách = bước cấu hình (customer_stage), nhiều giá trị: gửi `_stage_id[i]=…`
+      // (BE story-05, JOIN customer + lọc `customer.stage_id`). URL `ap_stage_id=…` theo quy ước urlKeyOf.
+      {name: '_stage_id', kind: 'in'},
       {name: '_gender', kind: 'equals'},
       {name: '_department', kind: 'in'},
       {

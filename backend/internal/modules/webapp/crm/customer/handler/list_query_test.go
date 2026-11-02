@@ -55,7 +55,7 @@ func custCountSQL(t *testing.T, h *Handler, c *gin.Context) string {
 	t.Helper()
 	var total int64
 	base := h.buildCustomerFilters(c, false)
-	return customerCountQuery(c, base, &total).Statement.SQL.String()
+	return customerCountQuery(base, &total).Statement.SQL.String()
 }
 
 func custListSQL(t *testing.T, h *Handler, c *gin.Context) string {
@@ -98,7 +98,9 @@ func TestCustomerCountAndListShareSameWhere(t *testing.T) {
 	} {
 		countW := whereOf(custCountSQL(t, h, custCtx(t, qs)))
 		listW := whereOf(custListSQL(t, h, custCtx(t, qs)))
-		if countW == "" || listW == "" {
+		// qs rỗng + không phạm vi chi nhánh ⇒ story-04 bỏ vế `status IN` nên CẢ HAI câu không còn WHERE
+		// (so sánh "" == "" vẫn bắt được câu danh sách lén mang thêm điều kiện).
+		if (countW == "" || listW == "") && qs != "" {
 			t.Fatalf("(%q) không tách được WHERE — helper hỏng, mọi so sánh sau đều vô nghĩa", qs)
 		}
 		if countW != listW {
@@ -134,6 +136,47 @@ func TestCustomerBaseReuseCountThenListKeepsFilters(t *testing.T) {
 		if whereOf(listSQL) != whereOf(custListSQL(t, h, custCtx(t, qs))) {
 			t.Errorf("(%q) câu danh sách dựng sau COUNT khác câu dựng độc lập:\n%s", qs, listSQL)
 		}
+	}
+}
+
+// Story-04 (customer-stage-pipeline): danh sách KHÔNG còn lọc ngầm theo `status` (FR17), filter tiến
+// trình là `filter[stage_id]` (đa giá trị ⇒ IN), filter cũ `_status`/`status` bị bỏ qua, id rác ⇒ rỗng.
+// Gọi CHÍNH custCountSQL/custListSQL (hàm sản phẩm), không dựng lại query.
+func TestCustomerStageFilterShape(t *testing.T) {
+	db := dryRunDB(t)
+	h := New(Deps{DB: db})
+
+	for _, tc := range []struct {
+		qs, want string // want: mệnh đề WHERE đầy đủ (scope rỗng vì context không có chi nhánh)
+	}{
+		{"", ""},
+		{"filter[stage_id][0]=2", "customer.stage_id = '2'"},
+		{"filter[stage_id][0]=2&filter[stage_id][1]=5", "customer.stage_id IN ('2','5')"},
+		{"filter[stage_id][in][0]=2&filter[stage_id][in][1]=5", "customer.stage_id IN ('2','5')"},
+		{"filter[stage_id]=7", "customer.stage_id = '7'"},
+		{"filter[stage_id][0]=2abc", "1 = 0"}, // id rác ⇒ không dòng nào (allowlist numeric id)
+		{"filter[stage_id]=1,2", "1 = 0"},     // dấu phẩy KHÔNG phải cú pháp đa giá trị
+		{"filter[_status][0]=12", ""},         // filter cũ: bỏ qua, KHÔNG còn lọc status
+		{"filter[status]=12&filter[_status][1]=3", ""},
+		{"filter[gender]=1", "customer.gender = '1'"}, // đối chứng: filter khác vẫn chạy
+	} {
+		var total int64
+		var items []map[string]interface{}
+		for name, sqlText := range map[string]string{
+			"COUNT": explainSQL(db, customerCountQuery(h.buildCustomerFilters(custCtx(t, tc.qs), false), &total)),
+			"LIST": explainSQL(db, customerListPresentation(h.buildCustomerFilters(custCtx(t, tc.qs), false),
+				customerListSelect).Limit(15).Find(&items)),
+		} {
+			if got := whereOf(sqlText); got != tc.want {
+				t.Errorf("(%q) %s WHERE = %q, muốn %q\n%s", tc.qs, name, got, tc.want, sqlText)
+			}
+			if strings.Contains(whereOf(sqlText), "status") {
+				t.Errorf("(%q) %s còn lọc theo status:\n%s", tc.qs, name, sqlText)
+			}
+		}
+	}
+	if !strings.Contains(customerListSelect, "customer.stage_id") {
+		t.Errorf("customerListSelect thiếu customer.stage_id (AC3)")
 	}
 }
 

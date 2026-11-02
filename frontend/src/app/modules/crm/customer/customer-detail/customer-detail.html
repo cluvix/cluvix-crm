@@ -76,17 +76,16 @@
                       </span>
                       <!-- Nút thao tác hồ sơ — sát phải hàng tên, cùng kiểu với nút Timeline -->
                       <div class="flex items-center gap-2 shrink-0">
-                        @if (m.canShowUpdateBtn) {
-                          <button
-                            type="button"
-                            class="flex items-center gap-1 px-2 py-1 rounded-md bg-gradient-to-br from-green-500 to-green-700 shadow-md text-white cursor-pointer hover:from-green-600 hover:to-green-800 transition-all min-h-[22px]"
-                            [pTooltip]="'crm.customer.update_customer_tooltip' | translate"
-                            tooltipPosition="top"
-                            [attr.aria-label]="'crm.customer.update_customer_tooltip' | translate"
-                            (click)="updateCustomer(m)">
-                            <i class="pi pi-pencil text-xs"></i>
-                          </button>
-                        }
+                        <button
+                          *hasPerm="permission.permissionUpdateCustomer"
+                          type="button"
+                          class="flex items-center gap-1 px-2 py-1 rounded-md bg-gradient-to-br from-green-500 to-green-700 shadow-md text-white cursor-pointer hover:from-green-600 hover:to-green-800 transition-all min-h-[22px]"
+                          [pTooltip]="'crm.customer.update_customer_tooltip' | translate"
+                          tooltipPosition="top"
+                          [attr.aria-label]="'crm.customer.update_customer_tooltip' | translate"
+                          (click)="updateCustomer(m)">
+                          <i class="pi pi-pencil text-xs"></i>
+                        </button>
                       </div>
                     </div>
 
@@ -109,22 +108,19 @@
 
                     <div class="flex items-center gap-2 text-sm flex-wrap">
                             <span
-                              [class]="`statusCustomer-10`"
-                              class="cx-badge font-semibold mr-1 inline-flex items-center text-sm">
+                              class="badge-positive cx-badge font-semibold mr-1 inline-flex items-center text-sm">
                               <app-customer-phone [phone]="m.phone" />
                             </span>
-                      <span class="cx-badge font-semibold mr-1 inline-block text-sm"
-                            [pTooltip]="'common.label.branch' | translate" tooltipPosition="top"
-                            [class]="`statusCustomer-1`">
+                      <span class="badge-neutral cx-badge font-semibold mr-1 inline-block text-sm"
+                            [pTooltip]="'common.label.branch' | translate" tooltipPosition="top">
                                 <i class="pi pi-map-marker"></i>
                         {{ m.branchLabel || ('crm.customer.no_branch' | translate) }}
                             </span>
 
-                      <span class="cx-badge font-semibold mr-1 inline-block text-sm"
-                            [pTooltip]="'crm.customer.progress_tooltip' | translate" tooltipPosition="top"
-                            [class]="`statusCustomer-${m.status}`">
-                              <i class="pi pi-flag"></i> {{ m.statusKey ? (m.statusKey | translate) : m.statusLabel }}
-                            </span>
+                      <app-customer-stage-changer
+                        [customerId]="m.id"
+                        [stageId]="m.stage_id"
+                        (changed)="onStageChanged($event)" />
                     </div>
                   </div>
                 }

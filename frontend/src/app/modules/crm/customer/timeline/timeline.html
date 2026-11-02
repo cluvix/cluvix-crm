@@ -38,24 +38,58 @@
         <div
           class="inline-flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm">
           <i class="pi pi-clock text-blue-600 text-lg"></i>
-          <span class="text-sm font-semibold text-blue-900">{{ event.day * 1000 | customDate : true }}</span>
+          <span class="text-sm font-semibold text-blue-900">
+            @if (event.stageView) {
+              {{ stageChangeTime(event.day) }}
+            } @else {
+              {{ event.day * 1000 | customDate : true }}
+            }
+          </span>
         </div>
 
-        <!-- TITLE -->
-        @if (event.title) {
-          <h3
-            [innerHTML]="event.title | safeHtml"
-            class="text-lg font-bold text-gray-900 leading-tight mb-3"
-          ></h3>
-        }
+        @if (event.stageView; as sv) {
+          <!-- CHUYỂN TIẾN TRÌNH: tên + màu bước tra Dexie (BE chỉ trả id); người đổi in dạng text, KHÔNG innerHTML.
+               Thẻ nền trắng cố định (kể cả dark mode) ⇒ dùng chấm màu + chữ tối thay vì badge có chữ theo theme. -->
+          <h3 class="text-lg font-bold text-gray-900 leading-tight mb-3">
+            {{ 'crm.customer.stage_change_title' | translate }}
+          </h3>
+          <div class="flex flex-wrap items-center gap-2 text-sm">
+            @if (sv.isInitial) {
+              <span class="text-gray-600">{{ 'crm.customer.stage_change_initial' | translate }}:</span>
+            } @else {
+              <span class="inline-flex items-center gap-1.5 font-semibold text-gray-900">
+                <span class="inline-block w-2.5 h-2.5 rounded-full" [class]="stageHelper.getDotClass(sv.fromId)"></span>
+                {{ stageHelper.getName(sv.fromId) }}
+              </span>
+              <i class="pi pi-arrow-right text-xs text-gray-500"></i>
+            }
+            <span class="inline-flex items-center gap-1.5 font-semibold text-gray-900">
+              <span class="inline-block w-2.5 h-2.5 rounded-full" [class]="stageHelper.getDotClass(sv.toId)"></span>
+              {{ stageHelper.getName(sv.toId) }}
+            </span>
+          </div>
+          @if (sv.changedByName) {
+            <div class="mt-2 text-sm text-gray-600">
+              {{ 'crm.customer.stage_change_by' | translate }}: <b>{{ sv.changedByName }}</b>
+            </div>
+          }
+        } @else {
+          <!-- TITLE -->
+          @if (event.title) {
+            <h3
+              [innerHTML]="event.title | safeHtml"
+              class="text-lg font-bold text-gray-900 leading-tight mb-3"
+            ></h3>
+          }
 
-        <!-- CONTENT DETAIL -->
-        @if (event.content) {
-          <div
-            class="prose prose-sm max-w-full text-gray-600 leading-relaxed break-words"
-            [innerHTML]="event.content | sanitizeQuill | safeHtml"
-            pswpLightbox
-          ></div>
+          <!-- CONTENT DETAIL -->
+          @if (event.content) {
+            <div
+              class="prose prose-sm max-w-full text-gray-600 leading-relaxed break-words"
+              [innerHTML]="event.content | sanitizeQuill | safeHtml"
+              pswpLightbox
+            ></div>
+          }
         }
       </div>
     </ng-template>

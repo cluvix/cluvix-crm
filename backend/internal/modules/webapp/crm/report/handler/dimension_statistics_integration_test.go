@@ -96,8 +96,8 @@ func seedDimension(t *testing.T) {
 	}
 	must("source", testDB.Exec(`INSERT INTO source (id, name) VALUES (?, 'Nguon QA')`, dimSource).Error)
 	must("location_province", testDB.Exec(`INSERT INTO location_province (id, name) VALUES (?, 'Tinh QA')`, dimProv).Error)
-	must("customer", testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, created_day, source_id, province_id)
-		VALUES (3341, ?, 'KH', ?, ?, ?)`, dimBranch, dimFrom+100, dimSource, dimProv).Error)
+	must("customer", testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, created_day, source_id, province_id, stage_id)
+		VALUES (3341, ?, 'KH', ?, ?, ?, (SELECT id FROM customer_stage WHERE is_default = 1))`, dimBranch, dimFrom+100, dimSource, dimProv).Error)
 	for id, rev := range map[int]int{dimType: 1, dimTypeNo: 0} {
 		must("appointment_type", testDB.Exec(`INSERT INTO appointment_type (id, name, isTypeRevenue) VALUES (?, 'LH', ?)`, id, rev).Error)
 	}

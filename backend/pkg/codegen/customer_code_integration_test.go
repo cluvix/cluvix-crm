@@ -56,8 +56,8 @@ func seedCustomerCodeTenant(t *testing.T) *gorm.DB {
 }
 
 func insertCustomer(tx *gorm.DB, code any) error {
-	return tx.Exec(`INSERT INTO customer (fullname, status, created_day, created_at, updated_at, code)
-		VALUES ('KH test', 2, 0, 0, 0, ?)`, code).Error
+	return tx.Exec(`INSERT INTO customer (fullname, stage_id, created_day, created_at, updated_at, code)
+		VALUES ('KH test', (SELECT id FROM customer_stage WHERE is_default = 1), 0, 0, 0, ?)`, code).Error
 }
 
 func TestNewCustomerCodeOptions(t *testing.T) {

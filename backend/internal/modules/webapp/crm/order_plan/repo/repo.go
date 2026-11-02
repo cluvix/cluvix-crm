@@ -15,14 +15,13 @@ import (
 // CustomerInfo aggregate cho Customer table — đủ cho Create flow validate.
 type CustomerInfo struct {
 	BranchID     *int `gorm:"column:branch_id"`
-	Status       int  `gorm:"column:status"`
 	CustomerType *int `gorm:"column:customerType"`
 }
 
 // Reader exposes các read query mà OrderPlanService dùng trong
 // Create/Update/Delete flow. Mở rộng dần khi extract thêm.
 type Reader interface {
-	// CustomerInfo returns 3 field từ customer cho Create validate.
+	// CustomerInfo returns 2 field từ customer cho Create validate.
 	// Trả error khi customer không tồn tại (Take semantic).
 	CustomerInfo(tx *gorm.DB, customerID int) (CustomerInfo, error)
 
@@ -45,7 +44,7 @@ type gormReader struct{}
 func (gormReader) CustomerInfo(tx *gorm.DB, customerID int) (CustomerInfo, error) {
 	var c CustomerInfo
 	err := tx.Table("customer").
-		Select("branch_id, status, customerType").
+		Select("branch_id, customerType").
 		Where("id = ?", customerID).Take(&c).Error
 	return c, err
 }

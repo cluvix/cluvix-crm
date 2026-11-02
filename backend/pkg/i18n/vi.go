@@ -238,19 +238,18 @@ var vi = map[string]string{
 	// Loyalty
 
 	// Service / payment (service layer)
-	"cannot_hash_password":               "không thể hash mật khẩu",
-	"service_id_invalid":                 "ID dịch vụ không hợp lệ: %d",
-	"payment_amount_too_large":           "Số tiền không được lớn hơn số tiền còn thiếu. Nhận: %s, Còn thiếu: %s",
-	"total_end_below_payment":            "Không thể giảm giá trị dịch vụ (%s) xuống dưới số tiền đã thanh toán (%s)",
-	"service_id_locked_by_payment":       "Không thể đổi dịch vụ vì đã có thanh toán trên dịch vụ này",
-	"list_revenues_invalid":              "Danh sách tư vấn viên không hợp lệ (phải là mảng ID người dùng)",
-	"order_customer_change_blocked":      "Không thể đổi khách hàng của đơn đã có dịch vụ hoặc phiếu thanh toán",
-	"service_total_mismatch":             "Thành tiền dịch vụ không khớp đơn giá, số lượng và chiết khấu (tính lại: %s, gửi lên: %s)",
-	"vat_rate_8_expired":                 "Mức VAT 8%% chỉ áp dụng cho đơn có ngày tới hết %s",
-	"service_vat_mismatch":               "Tiền VAT dịch vụ không khớp mức VAT của đơn (tính lại: %s, gửi lên: %s)",
-	"customer_delete_has_money":          "Không thể xoá khách hàng đã có đơn hàng hoặc phiếu thu/chi (%d đơn hàng, %d phiếu)",
-	"service_change_permission_denied":   "Bạn không có quyền đổi dịch vụ đã thanh toán",
-	"customer_status_invalid_transition": "Không thể chuyển trạng thái từ %d sang %d",
+	"cannot_hash_password":             "không thể hash mật khẩu",
+	"service_id_invalid":               "ID dịch vụ không hợp lệ: %d",
+	"payment_amount_too_large":         "Số tiền không được lớn hơn số tiền còn thiếu. Nhận: %s, Còn thiếu: %s",
+	"total_end_below_payment":          "Không thể giảm giá trị dịch vụ (%s) xuống dưới số tiền đã thanh toán (%s)",
+	"service_id_locked_by_payment":     "Không thể đổi dịch vụ vì đã có thanh toán trên dịch vụ này",
+	"list_revenues_invalid":            "Danh sách tư vấn viên không hợp lệ (phải là mảng ID người dùng)",
+	"order_customer_change_blocked":    "Không thể đổi khách hàng của đơn đã có dịch vụ hoặc phiếu thanh toán",
+	"service_total_mismatch":           "Thành tiền dịch vụ không khớp đơn giá, số lượng và chiết khấu (tính lại: %s, gửi lên: %s)",
+	"vat_rate_8_expired":               "Mức VAT 8%% chỉ áp dụng cho đơn có ngày tới hết %s",
+	"service_vat_mismatch":             "Tiền VAT dịch vụ không khớp mức VAT của đơn (tính lại: %s, gửi lên: %s)",
+	"customer_delete_has_money":        "Không thể xoá khách hàng đã có đơn hàng hoặc phiếu thu/chi (%d đơn hàng, %d phiếu)",
+	"service_change_permission_denied": "Bạn không có quyền đổi dịch vụ đã thanh toán",
 
 	// Customer
 	"id_and_tag_required": "id và tag là bắt buộc",
@@ -350,4 +349,20 @@ var vi = map[string]string{
 	"crm_dashboard_range_too_long": "Khoảng thời gian tối đa 1 năm (366 ngày)",
 	"crm_dashboard_branch_invalid": "Chi nhánh không hợp lệ",
 	"crm_dashboard_layout_invalid": "Bố cục dashboard không hợp lệ",
+
+	// Danh mục bước tiến trình khách hàng (customer_stage)
+	"customer_stage_name_required":           "Tên bước không được để trống",
+	"customer_stage_name_duplicate":          "Tên bước đã tồn tại",
+	"customer_stage_type_invalid":            "Loại bước không hợp lệ",
+	"customer_stage_color_invalid":           "Màu bước không hợp lệ",
+	"customer_stage_default_cannot_hide":     "Không thể ẩn bước mặc định, hãy đặt bước khác làm mặc định trước",
+	"customer_stage_default_cannot_delete":   "Không thể xoá bước mặc định, hãy đặt bước khác làm mặc định trước",
+	"customer_stage_default_must_be_open":    "Bước mặc định phải thuộc loại đang mở",
+	"customer_stage_default_must_be_visible": "Không thể đặt bước đang ẩn làm mặc định",
+	"customer_stage_in_use":                  "Bước đang được dùng, hãy ẩn thay vì xoá",
+	"customer_stage_reorder_invalid":         "Danh sách thứ tự phải gồm đủ mọi bước, mỗi bước đúng một lần",
+	// Ghi bước của khách (tạo, import, đổi bước) — story-03
+	"customer_stage_default_missing": "Chưa cấu hình bước tiến trình mặc định",
+	"customer_stage_not_selectable":  "Bước tiến trình không tồn tại hoặc đã ẩn",
+	"customer_stage_changed":         "Đã cập nhật tiến trình khách hàng",
 }

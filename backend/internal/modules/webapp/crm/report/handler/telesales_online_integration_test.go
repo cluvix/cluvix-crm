@@ -86,8 +86,8 @@ func seedTelesales(t *testing.T) {
 		{8843, tsoFrom + 7200},
 	}
 	for _, cu := range cust {
-		must("customer", testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, created_day, payment_user_id, source_id)
-			VALUES (?, ?, 'KH', ?, ?, ?)`, cu.id, tsoBranch, cu.createdAt, tsoUser, tsoSrcOn).Error)
+		must("customer", testDB.Exec(`INSERT INTO customer (id, branch_id, fullname, created_day, payment_user_id, source_id, stage_id)
+			VALUES (?, ?, 'KH', ?, ?, ?, (SELECT id FROM customer_stage WHERE is_default = 1))`, cu.id, tsoBranch, cu.createdAt, tsoUser, tsoSrcOn).Error)
 	}
 
 	appts := []struct {

@@ -36,18 +36,6 @@ import (
 	"erpCluvix/pkg/optlock"
 )
 
-var orderAllowedCustomerStatuses = map[int]bool{
-	define.CustomerStatusTrash:             true,
-	define.CustomerStatusTicket:            true,
-	define.CustomerStatusOldSystem:         true,
-	define.CustomerStatusLead:              true,
-	define.CustomerStatusZalo:              true,
-	define.CustomerStatusDeposit:           true,
-	define.CustomerStatusAppointment:       true,
-	define.CustomerStatusAppointmentCancel: true,
-	define.CustomerStatusContact:           true,
-}
-
 type OrderPlanService struct {
 	DB   *gorm.DB
 	repo otpRepo.Reader
@@ -110,7 +98,7 @@ type OrderPlanRequest struct {
 
 // Create tạo đơn hàng mới.
 // Flow: load customer → beforeSave (version=1, orderPlanType, debtsPlan) → GORM Create
-// → afterSave (update customer status/branch/last_visit, handle services+installments)
+// → afterSave (update customer connect_id/branch/last_visit, handle services+installments)
 func (s *OrderPlanService) Create(req *OrderPlanRequest, userID int) error {
 	order := &req.OrderPlan
 
@@ -153,11 +141,11 @@ func (s *OrderPlanService) Create(req *OrderPlanRequest, userID int) error {
 			return err
 		}
 
-		// afterSave: update customer status
-		custUpdates := map[string]interface{}{}
-		if orderAllowedCustomerStatuses[cust.Status] {
-			custUpdates["status"] = define.CustomerStatusVisited
-			custUpdates["connect_id"] = 1 // CONNECTED
+		// afterSave: update customer. KHÔNG đổi tiến trình khách (status/stage_id) — chỉ đổi tay
+		// (customer-stage-pipeline story-06). connect_id: khách đã có đơn = đã kết nối ⇒ luôn đặt
+		// (trước story-06 chỉ đặt cùng lúc nâng status, khi status thuộc allow-list "tiền-khách").
+		custUpdates := map[string]interface{}{
+			"connect_id": 1, // CONNECTED
 		}
 		if cust.BranchID == nil && order.BranchId != nil {
 			custUpdates["branch_id"] = *order.BranchId
@@ -229,9 +217,9 @@ func (s *OrderPlanService) Update(req *OrderPlanRequest, userID int, scopedDB *g
 		customerID = current.CustomerId
 	}
 	var cust struct {
-		Status int `gorm:"column:status"`
+		ID int `gorm:"column:id"`
 	}
-	if err := s.DB.Table("customer").Select("status").Where("id = ?", customerID).Take(&cust).Error; err != nil {
+	if err := s.DB.Table("customer").Select("id").Where("id = ?", customerID).Take(&cust).Error; err != nil {
 		return errs.ErrCustomerWrongTenant
 	}
 
@@ -280,11 +268,9 @@ func (s *OrderPlanService) Update(req *OrderPlanRequest, userID int, scopedDB *g
 			return err
 		}
 
-		// afterSave: update customer
-		custUpdates := map[string]interface{}{}
-		if orderAllowedCustomerStatuses[cust.Status] {
-			custUpdates["status"] = define.CustomerStatusVisited
-			custUpdates["connect_id"] = 1
+		// afterSave: update customer — không đổi tiến trình khách; connect_id luôn đặt (xem Create).
+		custUpdates := map[string]interface{}{
+			"connect_id": 1, // CONNECTED
 		}
 		// Load branch_id + code trong 1 query khi order có chi nhánh.
 		// Khi merged.BranchId == nil: không có gì để set → skip hoàn toàn.

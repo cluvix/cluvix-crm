@@ -192,8 +192,8 @@ func TestSecurity_ExportRequiresExtPerm(t *testing.T) {
 
 	tn := testhelpers.FreshTenant(t, testDB)
 	// Export rỗng trả 422 "không có dữ liệu" ⇒ seed 1 khách (đang nợ) + 1 lịch hẹn để ca "có quyền" ra 200.
-	mustExec(t, "UPDATE customer SET status = ?, branch_id = ?, totalRevenue = 100, totalDebt = 100 WHERE id = ?",
-		define.CustomerStatusCustomer, tn.BranchID, tn.CustomerID)
+	mustExec(t, "UPDATE customer SET branch_id = ?, totalRevenue = 100, totalDebt = 100 WHERE id = ?",
+		tn.BranchID, tn.CustomerID)
 	now := time.Now().Unix()
 	appt := map[string]any{
 		"code": fmt.Sprintf("LH%d", time.Now().UnixNano()), "customer_id": tn.CustomerID, "branch_id": tn.BranchID,

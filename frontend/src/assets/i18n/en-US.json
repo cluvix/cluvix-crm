@@ -41,15 +41,6 @@
     "unit_category": {
       "service": "Service unit"
     },
-    "customer_status": {
-      "stop_care": "Stopped care",
-      "old_system": "Legacy system",
-      "appointment": "Appointment",
-      "cancel_appointment": "Cancelled appointment",
-      "complaint_resolved": "Complaint resolved",
-      "collaborator": "Collaborator",
-      "zalo": "Zalo customer"
-    },
     "customer_type": {
       "old": "Existing customer"
     },
@@ -405,6 +396,35 @@
     },
     "customer_category": {
       "reminder_tooltip": "This is the suggested time to remind customer care follow-ups; the more accurate the timing, the higher the order closing rate"
+    },
+    "customer_stage": {
+      "title": "Customer pipeline",
+      "name": "Stage name",
+      "order": "Order",
+      "hidden_label": "hidden",
+      "funnel_note": "Note: changing the order of stages also changes the funnel figures of previous periods.",
+      "move_up": "Move up",
+      "move_down": "Move down",
+      "set_default": "Set as default",
+      "set_default_hint": "Default stage for new customers (only \"Open\" stages that are visible)",
+      "default_cannot_hide": "The default stage cannot be hidden",
+      "default_cannot_delete": "The default stage cannot be deleted",
+      "default_locked_hint": "The default stage is always \"Open\" and visible. Set another stage as default to change it.",
+      "type": {
+        "open": "Open",
+        "won": "Won",
+        "lost": "Lost"
+      },
+      "color": {
+        "gray": "Gray",
+        "blue": "Blue",
+        "teal": "Teal",
+        "green": "Green",
+        "amber": "Amber",
+        "orange": "Orange",
+        "red": "Red",
+        "purple": "Purple"
+      }
     },
     "ethnicity": {
       "name": "Ethnicity name",
@@ -1277,6 +1297,10 @@
       "payment_tooltip": "Total amount paid",
       "progress_tooltip": "Customer journey",
       "revenue_tooltip": "Total revenue",
+      "stage_change_aria": "Change customer journey stage",
+      "stage_change_by": "Changed by",
+      "stage_change_initial": "Initialized",
+      "stage_change_title": "Stage change",
       "update_customer_tooltip": "Update customer information",
       "upload_avatar": "Upload avatar",
       "debt_tooltip": "Amount unpaid based on services rendered",
@@ -1633,7 +1657,6 @@
       "clinic_income": "Branch income",
       "clinic_expense": "Branch expense",
       "temporary_deposit": "Temporary deposit",
-      "ticket": "Ticket",
       "connected": "Connected",
       "planned": "Planned",
       "general_clinic": "Multi-location chain",
@@ -1850,7 +1873,6 @@
       "add_new_order": "Add new order",
       "expected_time": "Expected time",
       "notification": "Notification",
-      "complaint": "Complaint",
       "new_customer": "New customer",
       "price_info_min_max": "Price info (Min/ Max)",
       "service_product": "Service / product",
@@ -1965,7 +1987,6 @@
       "paid": "Paid",
       "arrived": "Arrived",
       "unpaid": "Unpaid",
-      "completed": "Completed",
       "success": "Success",
       "locked": "Locked"
     },

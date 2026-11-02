@@ -31,7 +31,6 @@ import { FilterFieldDef } from '@/share/base/list-filter.model';
 import { ListApiResponse } from '@/share/models/list-api-response';
 import {
   CONFIG_OPTION_CRM_SELECT,
-  CUSTOMER_STATUS,
   PAYMENT_FOR,
   PERMISSION_SELECT,
 } from '@/define';
@@ -94,7 +93,6 @@ export class PaymentOfCustomer extends BaseListV2<PaymentModel> implements OnIni
   ]); // dùng để hiển thị column mặc định table
   protected override LS_SELECTED_COLUMNS_KEY = '/payment/app-payment-list-detail-customer';
   protected readonly PAYMENT_FOR = PAYMENT_FOR;
-  protected readonly CUSTOMER_STATUS = CUSTOMER_STATUS;
   private userOptionHelper = inject(UserOptionHelperService);
 
   constructor() {

@@ -59,7 +59,7 @@ func seedCustomerOwnedBy(t *testing.T, db *gorm.DB, tenant *testhelpers.TestTena
 	now := time.Now().Unix()
 	row := testhelpers.WithTenantCols(tenant, map[string]any{
 		"fullname":        "Owned Customer " + strconv.FormatInt(time.Now().UnixNano(), 10),
-		"status":          2,
+		"stage_id":        testhelpers.MustDefaultCustomerStageID(t, db),
 		"payment_user_id": paymentUserID,
 		"created_day":     now,
 		"created_at":      now,

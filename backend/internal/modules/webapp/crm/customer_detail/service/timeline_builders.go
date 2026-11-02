@@ -8,6 +8,7 @@ import (
 
 	"erpCluvix/internal/modules/webapp/crm/customer_detail/dto"
 	paymentdto "erpCluvix/internal/modules/webapp/crm/payment/dto"
+	"erpCluvix/pkg/define"
 	"erpCluvix/pkg/handlerutil"
 	"erpCluvix/pkg/helpers"
 	"erpCluvix/pkg/pagination"
@@ -197,6 +198,55 @@ func buildReminderEvents(scopedDB *gorm.DB, customerID uint) ([]dto.TimelineEven
 		events = append(events, dto.TimelineEvent{
 			Title: "Nhắc hẹn", Day: helpers.ToInt64(v["start_time"]), Content: helpers.ToString(v["note"]),
 			IconDirection: "pi pi-bell", IconColor: "#FF6F00",
+		})
+	}
+	return events, nil
+}
+
+// stageHistoryRow — 1 dòng customer_stage_history + tên người đổi (LEFT JOIN, có thể rỗng).
+type stageHistoryRow struct {
+	FromStageID   *int64 `gorm:"column:from_stage_id"`
+	ToStageID     int64  `gorm:"column:to_stage_id"`
+	Source        int    `gorm:"column:source"`
+	ChangedBy     *int64 `gorm:"column:changed_by"`
+	ChangedByName string `gorm:"column:changed_by_name"`
+	ChangedAt     int64  `gorm:"column:changed_at"`
+}
+
+// buildStageChangeEvents — lịch sử chuyển bước của khách (story-04 customer-stage-pipeline, FR15).
+// Khách cha đã qua scope ở handler TimelineCustomer; bảng không có branch_id. Tên người đổi lấy qua
+// LEFT JOIN user_profile (changed_by NULL = hệ thống / user đã xoá ⇒ tên rỗng, dòng KHÔNG bị loại).
+// Tên bước KHÔNG attach — FE tra Dexie (architecture D9). `id DESC` phá hoà khi cùng changed_at.
+func buildStageChangeEvents(db *gorm.DB, customerID uint) ([]dto.TimelineEvent, error) {
+	var rows []stageHistoryRow
+	tx := db.Table("customer_stage_history AS h").
+		Select("h.from_stage_id, h.to_stage_id, h.source, h.changed_by, h.changed_at, "+
+			"COALESCE(up.fullname, '') AS changed_by_name").
+		Joins("LEFT JOIN user_profile up ON up.user_id = h.changed_by").
+		Where("h.customer_id = ?", customerID).
+		Order("h.changed_at DESC, h.id DESC").Limit(define.CustomerTimelineStageChangeLimit).
+		Find(&rows)
+	if pagination.IsQueryError(tx.Error) {
+		return nil, tx.Error
+	}
+
+	events := make([]dto.TimelineEvent, 0, len(rows))
+	// rows đang mới → cũ; duyệt ngược để sự kiện cùng giây giữ thứ tự ghi (SliceStable ở caller).
+	for i := len(rows) - 1; i >= 0; i-- {
+		r := rows[i]
+		content := ""
+		if r.ChangedByName != "" {
+			content = "- Người đổi: <b>" + r.ChangedByName + "</b>"
+		}
+		events = append(events, dto.TimelineEvent{
+			Title: "Chuyển tiến trình", Day: r.ChangedAt, Content: content,
+			IconDirection: "pi pi-flag", IconColor: "#1E88E5",
+			Type: define.CustomerTimelineEventStageChange,
+			StageChange: &dto.TimelineStageChange{
+				FromStageID: r.FromStageID, ToStageID: r.ToStageID,
+				ChangedBy: r.ChangedBy, ChangedByName: r.ChangedByName,
+				ChangedAt: r.ChangedAt, Source: r.Source,
+			},
 		})
 	}
 	return events, nil

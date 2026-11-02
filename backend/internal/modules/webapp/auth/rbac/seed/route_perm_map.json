@@ -90,6 +90,15 @@
   "note": ""
  },
  {
+  "method": "PUT",
+  "path": "/api/crm/customer/:id/stage",
+  "module": "crm",
+  "perm": "updateCustomer",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": "change customer pipeline stage"
+ },
+ {
   "method": "DELETE",
   "path": "/api/crm/customer/:id",
   "module": "crm",
@@ -1775,6 +1784,69 @@
  {
   "method": "DELETE",
   "path": "/api/config/customer-category/:id",
+  "module": "config",
+  "perm": "manageConfig",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "GET",
+  "path": "/api/config/customer-stage",
+  "module": "config",
+  "perm": "manageConfig",
+  "kind": "perm",
+  "enforce_phase1": false,
+  "note": "enforce=false (S-9 2026-10-18): danh mục chung (dropdown/IndexedDB/form nghiệp vụ của mọi nhân viên đọc), không chứa dữ liệu khách"
+ },
+ {
+  "method": "GET",
+  "path": "/api/config/customer-stage/:id",
+  "module": "config",
+  "perm": "manageConfig",
+  "kind": "perm",
+  "enforce_phase1": false,
+  "note": "enforce=false (S-9 2026-10-18): danh mục chung (dropdown/IndexedDB/form nghiệp vụ của mọi nhân viên đọc), không chứa dữ liệu khách"
+ },
+ {
+  "method": "POST",
+  "path": "/api/config/customer-stage",
+  "module": "config",
+  "perm": "manageConfig",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "PUT",
+  "path": "/api/config/customer-stage/:id",
+  "module": "config",
+  "perm": "manageConfig",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "PUT",
+  "path": "/api/config/customer-stage/reorder",
+  "module": "config",
+  "perm": "manageConfig",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "PUT",
+  "path": "/api/config/customer-stage/:id/set-default",
+  "module": "config",
+  "perm": "manageConfig",
+  "kind": "perm",
+  "enforce_phase1": true,
+  "note": ""
+ },
+ {
+  "method": "DELETE",
+  "path": "/api/config/customer-stage/:id",
   "module": "config",
   "perm": "manageConfig",
   "kind": "perm",

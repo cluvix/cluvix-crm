@@ -66,11 +66,11 @@ func seedOsuParity(t *testing.T) osuParityFix {
 		(9201, 'Dịch vụ 1', 'PS1', 9101, 1), (9202, 'Liệu trình 2', 'PS2', 9101, 3),
 		(9203, 'Dịch vụ 3', 'PS3', 9102, 1), (9204, 'Không loại', 'PS4', NULL, 1),
 		(9205, 'Sản phẩm 5', 'PS5', 9103, 2)`)
-	exec(`INSERT INTO customer (id, branch_id, fullname, code, phone, source_id, totalDeposit) VALUES
-		(9301, ?, 'Nguyễn Văn A', 'KH9301', '0900000001', 7, 100),
-		(9302, ?, 'Trần Thị B',  'KH9302', '0900000002', 7, 20),
-		(9303, ?, 'Lê Văn C',    'KH9303', '0900000003', 8, 3),
-		(9304, ?, 'Phạm D',      'KH9304', '0900000004', NULL, 0)`, f.b1, f.b2, f.b1, f.b1)
+	exec(`INSERT INTO customer (id, branch_id, fullname, code, phone, source_id, totalDeposit, stage_id) VALUES
+		(9301, ?, 'Nguyễn Văn A', 'KH9301', '0900000001', 7, 100, (SELECT id FROM customer_stage WHERE is_default = 1)),
+		(9302, ?, 'Trần Thị B',  'KH9302', '0900000002', 7, 20, (SELECT id FROM customer_stage WHERE is_default = 1)),
+		(9303, ?, 'Lê Văn C',    'KH9303', '0900000003', 8, 3, (SELECT id FROM customer_stage WHERE is_default = 1)),
+		(9304, ?, 'Phạm D',      'KH9304', '0900000004', NULL, 0, (SELECT id FROM customer_stage WHERE is_default = 1))`, f.b1, f.b2, f.b1, f.b1)
 
 	var b1, b2, b3 any = f.b1, f.b2, f.b3
 	rows := []struct {

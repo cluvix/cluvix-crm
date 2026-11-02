@@ -49,7 +49,7 @@ var reminderKeySearch = []string{
 //     MySQL KHÔNG tự loại LEFT JOIN thừa (khác SQL Server/Oracle) nên phải bỏ bằng tay.
 //     Không lọc:        COUNT 4,13–5,83s → 0,10–0,12s
 //     Trang 1000 sâu:   COUNT 10,1–10,4s → 0,10–0,11s
-//     ⚠ SELECT thì LUÔN phải join — FE đọc 7 cột customer để dựng object lồng bên dưới.
+//     ⚠ SELECT thì LUÔN phải join — FE đọc 7 cột customer (gồm customer_stage_id) để dựng object lồng bên dưới.
 //
 //  3. Chỉ mục dẫn đầu `start_time` — đo hồi ERP trên `(company_id, start_time)` (migration
 //     20260907071500); CRM 1 thương hiệu/DB dùng `idx_reminder_start_status (start_time, status)`. `start_time` trước đó KHÔNG có chỉ mục nào, mà đó là bộ
@@ -275,7 +275,7 @@ func (h *Handler) buildReminderCountQuery(c *gin.Context) *gorm.DB {
 
 // reminderRowColumns — danh sách cột của bước nạp dữ liệu. Tách ra hằng số để bước tra id và
 // bước nạp không bao giờ lệch nhau.
-const reminderRowColumns = "reminder.*, customer.code AS `customer_code`, customer.fullname AS `customer_fullname`, customer.nickname AS `customer_nickname`, customer.phone AS `customer_phone`, customer.gender AS `customer_gender`, customer.avatar AS `customer_avatar`, customer.status AS `customer_status`"
+const reminderRowColumns = "reminder.*, customer.code AS `customer_code`, customer.fullname AS `customer_fullname`, customer.nickname AS `customer_nickname`, customer.phone AS `customer_phone`, customer.gender AS `customer_gender`, customer.avatar AS `customer_avatar`, customer.stage_id AS `customer_stage_id`"
 
 // buildReminderPageIDQuery — BƯỚC 1 của deferred join: lấy id của đúng trang đang xem.
 //
@@ -365,7 +365,7 @@ func (h *Handler) ListReminder(c *gin.Context) {
 			"phone":    phone,
 			"gender":   item["customer_gender"],
 			"avatar":   item["customer_avatar"],
-			"status":   item["customer_status"],
+			"stage_id": item["customer_stage_id"],
 		}
 		storage.ResolveFields(cust, "avatar")
 		item["customer"] = cust
@@ -375,7 +375,7 @@ func (h *Handler) ListReminder(c *gin.Context) {
 		delete(item, "customer_phone")
 		delete(item, "customer_gender")
 		delete(item, "customer_avatar")
-		delete(item, "customer_status")
+		delete(item, "customer_stage_id")
 	}
 
 	c.JSON(http.StatusOK, result)
@@ -447,7 +447,7 @@ func (h *Handler) attachCustomerToReminder(c *gin.Context, item map[string]inter
 	}
 	var cust map[string]interface{}
 	tx := tenant.ScopedDBNullBranch(c, h.DB, "customer").Table("customer").
-		Select("id, code, fullname, nickname, phone, gender, avatar, status").
+		Select("id, code, fullname, nickname, phone, gender, avatar, stage_id").
 		Where("id = ?", custID).Scan(&cust)
 	if pagination.IsQueryError(tx.Error) {
 		pagination.FailQuery(c, tx.Error)

@@ -174,8 +174,8 @@ func (h *Handler) BuildAppointmentQueryIn(p query.Params, b tenant.Bounds) *gorm
 	q = query.ApplyFilter(c, q, "created_at", "appointment.created_at")
 	q = query.ApplyFilter(c, q, "updated_at", "appointment.updated_at")
 
-	// _status: filter customer status
-	q = query.ApplyFilter(c, q, "_status", "customer.status")
+	// _stage_id: filter bước (stage) của khách — thay `_status` lọc tiến trình cũ của khách (story-05).
+	q = query.ApplyFilter(c, q, "_stage_id", "customer.stage_id")
 
 	// _gender: filter customer gender
 	q = query.ApplyFilter(c, q, "_gender", "customer.gender")
@@ -291,7 +291,7 @@ func (h *Handler) ListAppointment(c *gin.Context) {
 		if len(customerIds) > 0 {
 			var customers []map[string]interface{}
 			tx := tenant.CrossBranchLookup(h.DB, "customer").Table("customer").
-				Select("id, code, old_code, fullname, nickname, phone, gender, avatar, status, province_id, address, ward_id, country_id").
+				Select("id, code, old_code, fullname, nickname, phone, gender, avatar, stage_id, province_id, address, ward_id, country_id").
 				Where("id IN ?", customerIds).
 				Find(&customers)
 			if pagination.IsQueryError(tx.Error) {
@@ -370,7 +370,7 @@ func (h *Handler) GetAppointment(c *gin.Context) {
 		// birthday: màn chi tiết hiển thị ngày sinh + tuổi khách (list không cần nên select của list
 		// không có cột này).
 		tx := tenant.CrossBranchLookup(h.DB, "customer").Table("customer").
-			Select("id, code, old_code, fullname, nickname, phone, gender, birthday, avatar, status, province_id, address, ward_id, country_id").
+			Select("id, code, old_code, fullname, nickname, phone, gender, birthday, avatar, stage_id, province_id, address, ward_id, country_id").
 			Where("id = ?", customerID).
 			Limit(1).Find(&customers)
 		if pagination.IsQueryError(tx.Error) {

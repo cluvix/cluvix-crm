@@ -227,7 +227,7 @@ func seedScope(t *testing.T) scopeFixture {
 	var orderPlans, payments, appts, notes, reminders, logs []uint
 	mkCustomer := func(suffix string, owner uint) uint {
 		row := map[string]any{
-			"fullname": f.keyword + suffix, "phone": uniquePhone(), "status": define.CustomerStatusCustomer,
+			"fullname": f.keyword + suffix, "phone": uniquePhone(), "stage_id": testhelpers.MustDefaultCustomerStageID(t, testDB),
 			"branch_id": tn.BranchID, "payment_user_id": owner,
 			"totalRevenue": 100, "totalPayment": 0, "totalDebt": 100,
 			"created_day": now, "created_at": now, "updated_at": now,
@@ -479,8 +479,8 @@ func TestCustomerPhoneUnique(t *testing.T) {
 		cleanupPhone(phone)
 		spaced := phone[:3] + " " + phone[3:6] + " " + phone[6:]
 		now := time.Now().Unix()
-		mustExec(t, "INSERT INTO customer (fullname, phone, status, created_day, created_at, updated_at) VALUES ('B1 Gốc', ?, 2, ?, ?, ?)",
-			spaced, now, now, now)
+		mustExec(t, "INSERT INTO customer (fullname, phone, stage_id, created_day, created_at, updated_at) VALUES ('B1 Gốc', ?, ?, ?, ?, ?)",
+			spaced, testhelpers.MustDefaultCustomerStageID(t, testDB), now, now, now)
 		// Đối chứng: bước kiểm trước (PhoneMatchCond) KHÔNG khớp số có khoảng trắng ⇒ lỗi dưới đây chắc chắn đến từ UNIQUE.
 		var pre int64
 		testDB.Table("customer").Where("phone IN ? OR phone LIKE ?", []string{phone}, "%"+phone[1:]).Count(&pre)
@@ -529,10 +529,11 @@ func TestCustomerPhoneUniqueKey_Schema(t *testing.T) {
 	local := phone[1:]
 	now := time.Now().Unix()
 	var ids []uint
+	stageID := testhelpers.MustDefaultCustomerStageID(t, testDB)
 	t.Cleanup(func() { testDB.Exec("DELETE FROM customer WHERE id IN ?", ids) })
 	insert := func(name, p string, legacy int) error {
-		err := testDB.Exec("INSERT INTO customer (fullname, phone, phone_dup_legacy, status, created_day, created_at, updated_at) VALUES (?, ?, ?, 2, ?, ?, ?)",
-			name, p, legacy, now, now, now).Error
+		err := testDB.Exec("INSERT INTO customer (fullname, phone, phone_dup_legacy, stage_id, created_day, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+			name, p, legacy, stageID, now, now, now).Error
 		if err == nil {
 			ids = append(ids, testhelpers.LastInsertID(testDB))
 		}

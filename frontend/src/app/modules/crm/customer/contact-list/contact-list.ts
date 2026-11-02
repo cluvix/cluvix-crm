@@ -18,8 +18,6 @@ import { BaseListV2 } from '@/share/base/base-list-v2';
 import { FilterFieldDef } from '@/share/base/list-filter.model';
 import { ListApiResponse } from '@/share/models/list-api-response';
 import {
-  CUSTOMER_STATUS,
-  CUSTOMER_STATUS_OPTIONS,
   CUSTOMER_TYPE_OPTION,
   GENDER_OPTIONS,
   PERMISSION_SELECT,
@@ -32,6 +30,7 @@ import { ListShareImports } from '@/share/import/list-share-imports';
 import { translateOptions } from '@/share/utils/translate-options.util';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { CustomerCategoryMultiselectFormControl } from '@/indexeddb/config/components/customer-category';
+import { CustomerStageMultiselectFormControl } from '@/indexeddb/config/components/customer-stage';
 import { ExportOptionsDialog, ExportMode } from '@/modules/utilities/export-options-dialog/export-options-dialog';
 import { FillHeightDirective } from '@/share/directive/fill-height.directive';
 
@@ -46,6 +45,7 @@ import { FillHeightDirective } from '@/share/directive/fill-height.directive';
     FillHeightDirective,
     InputNumberModule,
     CustomerCategoryMultiselectFormControl,
+    CustomerStageMultiselectFormControl,
   ],
 })
 export class ContactList extends BaseListV2<CustomerModel> implements OnInit {
@@ -93,7 +93,6 @@ export class ContactList extends BaseListV2<CustomerModel> implements OnInit {
   protected override LS_SELECTED_COLUMNS_KEY = '/app/crm/customer/contact-list';
   protected override URL_STATE_PREFIX = 'cu';
   protected readonly genderOptions = translateOptions(GENDER_OPTIONS);
-  protected readonly customerStatusOptions = translateOptions(CUSTOMER_STATUS_OPTIONS);
   protected readonly customerTypeOptions = translateOptions(CUSTOMER_TYPE_OPTION);
 
   /**
@@ -134,8 +133,9 @@ export class ContactList extends BaseListV2<CustomerModel> implements OnInit {
       {name: 'customerType', kind: 'equals'},
       {name: 'created_by', kind: 'in'},
       {name: 'branch_id', kind: 'in'},
-      // _status vs status: quy ước urlKey trùng nhau → khai tường minh (assertFilterDefs chặn khi mở)
-      {name: '_status', kind: 'in', urlKey: 'customer_status'},
+      // Tiến trình = bước cấu hình (customer_stage). Tên không có `_` đầu ⇒ gửi `filter[stage_id][i]=…`
+      // (BE story-04); URL `cu_stage_id=…` (quy ước urlKeyOf — không trùng field nào nên khỏi khai urlKey).
+      {name: 'stage_id', kind: 'in'},
       {name: 'source_id', kind: 'in'},
       {name: 'gender', kind: 'in'},
       {name: 'category', kind: 'in'},
@@ -241,7 +241,7 @@ export class ContactList extends BaseListV2<CustomerModel> implements OnInit {
     await this.modelService.ensureCacheLoaded();
     this.dialogRef = this.dialogWrapperService.open(CustomerFormV2, {
       width: '960px',
-      data: { customer, status: CUSTOMER_STATUS.LEAD },
+      data: { customer },
       header: this.translate.instant('common.label.update_customer'),
     });
 

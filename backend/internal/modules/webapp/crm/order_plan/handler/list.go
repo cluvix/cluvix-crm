@@ -140,7 +140,7 @@ func (h *Handler) ListOrderPlan(c *gin.Context) {
 		if customerIDs := handlerutil.CollectIDs(items, "customer_id"); len(customerIDs) > 0 {
 			// FK lookup — CỐ Ý không lọc chi nhánh (AttachRelation = CrossBranchLookupScope).
 			handlerutil.AttachRelation(c, h.DB, items, "customer_id", "customer",
-				"customer", "id", "id, code, fullname, nickname, phone, avatar, status, province_id", customerIDs)
+				"customer", "id", "id, code, fullname, nickname, phone, avatar, stage_id, province_id", customerIDs)
 			phoneutil.MaskNestedCustomerPhone(c, h.DB, items, "customer")
 		}
 		if ids := handlerutil.CollectIDs(items, "id"); len(ids) > 0 {

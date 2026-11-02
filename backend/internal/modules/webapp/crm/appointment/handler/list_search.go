@@ -59,7 +59,7 @@ const keywordIDCap = 10000
 // ⚠ Thêm filter mới đụng `customer.*` trong BuildAppointmentQuery thì PHẢI thêm khoá
 // vào đây, nếu không MySQL báo "Unknown column 'customer.x'".
 var customerFilterColumns = []string{
-	"_status", "_gender", "customerType", "category",
+	"_stage_id", "_gender", "customerType", "category",
 	"_groupLocal", "_groupCountry",
 }
 

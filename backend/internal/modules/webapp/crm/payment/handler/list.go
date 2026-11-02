@@ -340,7 +340,7 @@ func (h *Handler) expandPaymentItems(c *gin.Context, items []map[string]interfac
 	if len(customerIds) > 0 {
 		custRows := make([]map[string]interface{}, 0)
 		tx := tenant.CrossBranchLookup(h.DB, "customer").Table("customer").
-			Select("id, code, old_code, fullname, nickname, phone, avatar, status, address, province_id, country_id, type_service_id, source_id").
+			Select("id, code, old_code, fullname, nickname, phone, avatar, stage_id, address, province_id, country_id, type_service_id, source_id").
 			Where("id IN ?", customerIds).Find(&custRows)
 		if pagination.IsQueryError(tx.Error) {
 			pagination.FailQuery(c, tx.Error)

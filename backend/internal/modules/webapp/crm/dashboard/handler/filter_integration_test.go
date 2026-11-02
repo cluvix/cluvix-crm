@@ -33,6 +33,11 @@ type dashFixture struct {
 func seedDash(t *testing.T) dashFixture {
 	t.Helper()
 	tn := testhelpers.FreshTenant(t, testDB)
+	// Phễu chỉ đếm khách có lịch sử bước; khách FreshTenant (branch_id NULL ⇒ luôn trong phạm vi) phải KHÔNG
+	// bị đếm — xoá dòng lịch sử khởi tạo mà fixture đã ghi.
+	if err := testDB.Exec("DELETE FROM customer_stage_history WHERE customer_id = ?", tn.CustomerID).Error; err != nil {
+		t.Fatalf("seedDash: %v", err)
+	}
 	return dashFixture{branchA: tn.BranchID, branchB: testhelpers.CreateBranch(t, testDB),
 		foreign: testhelpers.CreateBranch(t, testDB), customerID: tn.CustomerID}
 }
@@ -53,14 +58,12 @@ func addPayment(t *testing.T, fx dashFixture, branch uint, at int64, amount int6
 	t.Cleanup(func() { testDB.Exec("DELETE FROM payment WHERE customer_id = ?", fx.customerID) })
 }
 
-// addCustomer — khách thuộc chi nhánh branch, created_day = at.
+// addCustomer — khách thuộc chi nhánh branch, created_day = at, đứng ở bước mặc định "Liên hệ" (có 1 dòng
+// lịch sử — phễu chỉ đếm khách có lịch sử, story-07 customer-stage-pipeline).
 func addCustomer(t *testing.T, branch uint, at int64) {
 	t.Helper()
 	b := branch
-	id := testhelpers.CreateScopedCustomer(t, testDB, nil, &b)
-	if err := testDB.Exec("UPDATE customer SET created_day = ? WHERE id = ?", at, id).Error; err != nil {
-		t.Fatal(err)
-	}
+	addStagedCustomer(t, &b, at, 0, "Liên hệ")
 }
 
 func callDashWith(t *testing.T, h *Handler, fn func(*Handler) gin.HandlerFunc, query string, branchIDs []uint) *httptest.ResponseRecorder {
@@ -102,20 +105,18 @@ func thucThu(t *testing.T, w *httptest.ResponseRecorder) decimal.Decimal {
 	return body.ThucThu.HienTai
 }
 
-// customerTotal — tổng khách của status-customer-overview (mảng rỗng = 0).
+// customerTotal — tổng khách của phễu status-customer-overview = tầng ĐẦU (mọi khách có lịch sử đều từng
+// qua bước mở đầu tiên); mảng rỗng = 0.
 func customerTotal(t *testing.T, w *httptest.ResponseRecorder) int64 {
 	t.Helper()
-	var rows []struct {
-		Name  string `json:"name"`
-		Value int64  `json:"value"`
+	rows := decodeFunnel(t, w)
+	if len(rows) == 0 {
+		return 0
 	}
-	decodeJSON(t, w, &rows)
-	for _, r := range rows {
-		if r.Name == "Ticket" { // khách tạo bằng fixture có status Ticket (2)
-			return r.Value
-		}
+	if rows[0].Type == define.CustomerStageTypeLost {
+		t.Fatalf("tầng đầu phải là bước mở/thành công: %+v", rows)
 	}
-	return 0
+	return rows[0].Value
 }
 
 var pim = func(h *Handler) gin.HandlerFunc { return h.CrmPaymentInMonth }
@@ -160,7 +161,7 @@ func TestDashboardFilter_PaymentInMonth(t *testing.T) {
 	}
 }
 
-// Mọi endpoint data còn lại (14) đều: không tham số ⇒ 200; chi nhánh ngoài quyền ⇒ 403; kỳ > 366 ngày,
+// Mọi endpoint data còn lại (13 — payment-today đã gỡ ở 7fd7403) đều: không tham số ⇒ 200; chi nhánh ngoài quyền ⇒ 403; kỳ > 366 ngày,
 // thiếu 1 vế, branch_id không phải số ⇒ 422; chi nhánh hợp lệ ⇒ 200.
 func TestDashboardFilter_AllEndpointsGuard(t *testing.T) {
 	if testDB == nil {
@@ -183,8 +184,8 @@ func TestDashboardFilter_AllEndpointsGuard(t *testing.T) {
 		"overview-service-type-interest": func(h *Handler) gin.HandlerFunc { return h.CrmOverviewServiceTypeInterest },
 		"service-used-statistics":        func(h *Handler) gin.HandlerFunc { return h.CrmServiceUsedStatistics },
 	}
-	if len(eps) != 14 {
-		t.Fatalf("phải đủ 14 endpoint, có %d", len(eps))
+	if len(eps) != 13 {
+		t.Fatalf("phải đủ 13 endpoint, có %d", len(eps))
 	}
 	for name, fn := range eps {
 		if w := callDash(t, fn, "", both); w.Code != http.StatusOK {

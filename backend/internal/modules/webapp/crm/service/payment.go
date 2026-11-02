@@ -375,12 +375,12 @@ func (s *PaymentService) updateInstallmentPayment(tx *gorm.DB, serviceUsedId int
 }
 
 // updateCustomer: cập nhật financials cho customer (giống PHP updateCustomer)
-// PHP flow:
-//  1. Check accepted=ACCEPTED_OK + status not in [CUSTOMER,COMPLAINT,DONE_COMPLAINT,BROKER]
-//     → nếu có service đã thanh toán hết → status = STATUS_CUSTOMER (crm-standalone story-14: bỏ vế
-//     "hoàn thành điều trị" cùng liệu trình — D1)
-//  2. Switch payment_for → recalc financials
-//  3. Set customerType = OLD nếu có thanh toán đơn hàng
+// Flow:
+//  1. Switch payment_for → recalc financials
+//  2. Set customerType = OLD nếu có thanh toán đơn hàng
+//
+// KHÔNG đổi tiến trình khách (status/stage_id) — chỉ đổi tay (customer-stage-pipeline story-06 gỡ
+// bước PHP cũ "accepted + có dịch vụ thanh toán đủ ⇒ Khách hàng" và "đặt cọc giữ chỗ ⇒ Đặt cọc").
 func (s *PaymentService) updateCustomer(tx *gorm.DB, p *crmPaymentDao.Payment) error {
 	if p.CustomerId == nil {
 		return nil
@@ -392,34 +392,6 @@ func (s *PaymentService) updateCustomer(tx *gorm.DB, p *crmPaymentDao.Payment) e
 
 	custUpdates := map[string]interface{}{}
 	flagOldOrNew := false
-
-	// Step 1: Check customer status progression (giống PHP đoạn đầu updateCustomer)
-	var cust struct {
-		Accepted int `gorm:"column:accepted"`
-		Status   int `gorm:"column:status"`
-	}
-	tx.Table("customer").Select("COALESCE(accepted, 0) as accepted, COALESCE(status, 0) as status").Where("id = ?", custID).Take(&cust)
-
-	skipStatuses := map[int]bool{
-		define.CustomerStatusCustomer:      true,
-		define.CustomerStatusComplaint:     true,
-		define.CustomerStatusDoneComplaint: true,
-		define.CustomerStatusBroker:        true,
-	}
-	if cust.Accepted == define.CustomerAcceptedOk && !skipStatuses[cust.Status] {
-		// Check per-service: customer có dịch vụ nào đã thanh toán đủ không. Quy tắc cũ = "thanh toán đủ
-		// (totalEnd = payment) VÀ hoàn thành điều trị (tiến độ liệu trình theo khoa của dịch vụ)".
-		// Liệu trình + khoa đã bỏ (D1, D16) ⇒ story-14 giữ NGUYÊN vế thanh toán đủ, bỏ vế hoàn thành
-		// điều trị (không còn ai ghi các cột tiến độ đó).
-		var count int64
-		tx.Raw(`SELECT COUNT(*) FROM order_service_used osu
-			INNER JOIN service s ON s.id = osu.service_id
-			WHERE osu.customer_id = ? AND osu.totalEnd + osu.vat_amount = osu.payment`,
-			custID).Scan(&count)
-		if count > 0 {
-			custUpdates["status"] = define.CustomerStatusCustomer
-		}
-	}
 
 	switch *p.PaymentFor {
 	case define.PaymentForRefundDeposit:
@@ -452,9 +424,6 @@ func (s *PaymentService) updateCustomer(tx *gorm.DB, p *crmPaymentDao.Payment) e
 				Where("customer_id = ? AND payment_for = ? AND (deposit_type IS NULL OR deposit_type NOT IN ?)", custID, define.PaymentForDeposit, []int{define.PaymentTypeDepositKG}).
 				Select("COALESCE(SUM(deposit_after), 0)").Scan(&deposit)
 			custUpdates["totalDeposit"] = deposit
-			if *p.DepositType == define.PaymentTypeDepositReserve {
-				custUpdates["status"] = define.CustomerStatusDeposit
-			}
 		} else {
 			var consignment decimal.Decimal
 			tx.Table("payment").

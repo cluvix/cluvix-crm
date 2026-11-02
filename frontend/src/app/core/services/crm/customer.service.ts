@@ -4,15 +4,11 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { ApiResponseOneModel } from '@/core/interface/ApiResponseOneModel';
-import { CustomerModel } from '@/core/models/crm/customer.model';
+import { CustomerModel, CustomerStageChangeResult } from '@/core/models/crm/customer.model';
 import {
-  CUSTOMER_STATUS,
-
   getCustomerConnectKey,
   getCustomerConnectLabel,
   getCustomerDataLabel,
-  getCustomerStatusKey,
-  getCustomerStatusLabel,
   getCustomerTypeKey,
   getCustomerTypeLabel,
   getGenderKey,
@@ -31,6 +27,7 @@ import { CustomerCategoryHelperService } from '@/indexeddb/config/components/cus
 import { UserOptionHelperService } from '@/indexeddb/config/components/user-option';
 import { JobHelperService } from '@/indexeddb/config/components/job';
 import { EthnicityHelperService } from '@/indexeddb/config/components/ethnicity';
+import { CustomerStageHelperService } from '@/indexeddb/config/components/customer-stage';
 
 @Service()
 export class CustomerService extends BaseApiService<CustomerModel> {
@@ -58,6 +55,7 @@ export class CustomerService extends BaseApiService<CustomerModel> {
   private userOptionHelper = inject(UserOptionHelperService);
   private jobHelper = inject(JobHelperService);
   private ethnicityHelper = inject(EthnicityHelperService);
+  private customerStageHelper = inject(CustomerStageHelperService);
 
   /**
    * Khởi tạo ban đầu
@@ -239,25 +237,6 @@ export class CustomerService extends BaseApiService<CustomerModel> {
   }
 
   /**
-   * API trả về danh sách khách hàng Hoàn thành dịch vụ
-   * @param params
-   */
-  getCustomerDid(params: any = {}): Observable<ListApiResponse<CustomerModel>> {
-    params.page = params.page ? (params.page < 1 ? 1 : params.page) : 1;
-    return this.apiService
-      .get(`${this.path}/get-customer-with-status?status=${CUSTOMER_STATUS.COMPLETED}`, params)
-      .pipe<ListApiResponse<CustomerModel>>(
-        map((res: ListApiResponse<CustomerModel>) => {
-          const cloned = JSON.parse(JSON.stringify(res));
-          (res.items ?? []).map((value: any) => {
-            return this.afterLoad(value);
-          });
-          return cloned;
-        }),
-      );
-  }
-
-  /**
    * API cập nhật thông tin khách hàng
    * @param id
    * @param updateParams
@@ -297,6 +276,24 @@ export class CustomerService extends BaseApiService<CustomerModel> {
           const cloned = JSON.parse(JSON.stringify(res));
           this.afterLoad(cloned);
           return cloned;
+        }),
+      );
+  }
+
+  /**
+   * Đổi bước tiến trình của khách (PUT /crm/customer/:id/stage). BE ghi lịch sử cùng transaction và
+   * bump `updated_at` — caller PHẢI nhận `data.updated_at` về model, không thì lần sửa form kế tiếp
+   * bị 409 (optlock). Bước ẩn/không tồn tại ⇒ 422 (toast do interceptor hiện).
+   */
+  changeStage(id: number, stageId: number): Observable<ApiResponseOneModel<CustomerStageChangeResult>> {
+    return this.apiService
+      .put<ApiResponseOneModel<CustomerStageChangeResult>>(`${this.path}/${id}/stage`, { stage_id: stageId })
+      .pipe(
+        map((res) => {
+          if (res?.data) {
+            res.data = this.afterLoad(JSON.parse(JSON.stringify(res.data))) as CustomerStageChangeResult;
+          }
+          return res;
         }),
       );
   }
@@ -482,18 +479,6 @@ export class CustomerService extends BaseApiService<CustomerModel> {
    *
    * @param params
    */
-  getPortraitStatus(params: any = {}) {
-    params.params = {
-      ...params.params,
-    };
-    params.page = params.page ? (params.page < 1 ? 1 : params.page) : 1;
-    return this.apiService.get(`${this.path}/status`, params);
-  }
-
-  /**
-   *
-   * @param params
-   */
   getNotAppointment(params: any = {}) {
     params.params = {
       ...params.params,
@@ -537,14 +522,13 @@ export class CustomerService extends BaseApiService<CustomerModel> {
     return {
       ...itemWithFormattedDates,
       customerDisplayName: `${item.fullname || ''}${item.nickname ? ' - ' + item.nickname : ''}`,
-      statusClass: `statusCustomer-${item.status}`,
+      stageName: this.customerStageHelper.getName(item.stage_id),
+      stageColorClass: this.customerStageHelper.getBadgeClass(item.stage_id),
       genderLabel: getGenderLabel?.(item.gender!) ?? '',
       genderKey: getGenderKey(item.gender!),
       provinceLabel: this.locationProvinceHelper.getLabel(item.province_id),
       sourceLabel: this.sourceHelper.getSourceName(item.source_id),
       serviceTypeLabel: this.serviceTypeHelper.getLabel(item.type_service_id!),
-      statusLabel: getCustomerStatusLabel?.(item.status) ?? '',
-      statusKey: getCustomerStatusKey(item.status!),
       branchLabel: this.branchHelper.getBranchName(item?.branch_id),
       appointmentNotBookedReasonsLabel: this.appointmentNotBookedReasonsHelper.getReasonName(
         item.appointment_not_booked_reasons_id,
@@ -594,6 +578,7 @@ export class CustomerService extends BaseApiService<CustomerModel> {
       this.userOptionHelper.ensureSettingLoaded(),
       this.jobHelper.ensureJobLoaded(),
       this.ethnicityHelper.ensureEthnicityLoaded(),
+      this.customerStageHelper.ensureLoaded(),
     ]);
   }
 }

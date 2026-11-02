@@ -32,6 +32,7 @@ var configTables = map[string]tableConfig{
 	"groupLocals":          {Table: "group_local"},
 	"groupCountries":       {Table: "group_country"},
 	"customerCategories":   {Table: "customer_category"},
+	"customerStages":       {Table: "customer_stage", Select: "id, name, type, color, sort_order, is_default, status", OrderBy: "sort_order ASC, id ASC"}, // KHÔNG lọc status: FE cần cả bước ẩn
 	"hrDepartments":        {Table: "hr_department"},
 	"noteTemplates":        {Table: "note_template"},
 	"paymentMethods":       {Table: "payment_method"},
@@ -172,11 +173,16 @@ func parseJSONFields(rows []map[string]interface{}) {
 	}
 }
 
+// defaultSyncTables — danh sách bảng của full sync (không có tham số `tables`: lúc đăng nhập, /syncing).
+// Khoá mới thêm vào configTables/customTables PHẢI thêm vào đây, không thì store IndexedDB rỗng sau đăng nhập
+// (smoke S1 epic customer-stage-pipeline: thiếu `customerStages`). Test sync_default_tables_test.go khoá việc này.
+const defaultSyncTables = "ethnicity,job,controlFieldInTables,settings,userOptions,groupSources,groupLocals,groupCountries,roles,appointmentReasons,customerCategories,customerStages,hrDepartments,noteTemplates,appointmentNotBookedReasons,services,sources,paymentTypes,paymentMethods,taxRates,branches,users,appointmentTypes,units,serviceTypes,locationCountries,locationProvinces,appointmentIsAccepteds"
+
 // Sync — GET /crm/indexeddb/sync?tables=...
 func (h *Handler) Sync(c *gin.Context) {
 	tablesParam := c.Query("tables")
 	if tablesParam == "" {
-		tablesParam = "ethnicity,job,controlFieldInTables,settings,userOptions,groupSources,groupLocals,groupCountries,roles,appointmentReasons,customerCategories,hrDepartments,noteTemplates,appointmentNotBookedReasons,services,sources,paymentTypes,paymentMethods,taxRates,branches,users,appointmentTypes,units,serviceTypes,locationCountries,locationProvinces,appointmentIsAccepteds"
+		tablesParam = defaultSyncTables
 	}
 
 	requested := strings.Split(tablesParam, ",")

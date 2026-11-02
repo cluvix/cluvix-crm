@@ -57,6 +57,7 @@ func TestCrmCustomerDetail_TimelineOneBuilderErrorFailsWholeTimeline(t *testing.
 		TreatmentPlanDB: testDB,
 		PaymentDB:       testDB,
 		ReminderDB:      testDB,
+		StageHistoryDB:  testDB, // story-04 customer-stage-pipeline: builder chuyển bước
 		CustomerID:      1,
 		Customer:        map[string]interface{}{},
 	}
@@ -85,6 +86,7 @@ func TestCrmCustomerDetail_TimelineValidStaysOK(t *testing.T) {
 		TreatmentPlanDB: testDB,
 		PaymentDB:       testDB,
 		ReminderDB:      testDB,
+		StageHistoryDB:  testDB, // story-04 customer-stage-pipeline: builder chuyển bước
 		CustomerID:      999999,
 		Customer:        map[string]interface{}{},
 	}
@@ -97,4 +99,33 @@ func TestCrmCustomerDetail_TimelineValidStaysOK(t *testing.T) {
 		t.Fatalf("events phải là slice rỗng (không nil) khi build thành công, dù 0 sự kiện")
 	}
 	_ = dto.TimelineEvent{}
+}
+
+// Story-04 customer-stage-pipeline (QA pass 1, P2): builder chuyển bước (`customer_stage_history`, chạy
+// CUỐI) lỗi SQL ⇒ cả timeline phải trả lỗi — không được nuốt rồi trả timeline thiếu nhóm "chuyển bước".
+func TestCrmCustomerDetail_TimelineStageHistoryErrorFailsWholeTimeline(t *testing.T) {
+	if testDB == nil {
+		t.Skip("testDB nil — TEST_MYSQL_DSN chưa set")
+	}
+
+	deps := customerDetailSvc.TimelineDeps{
+		DB:              testDB,
+		AppointmentDB:   testDB,
+		ServiceDB:       testDB,
+		TreatmentPlanDB: testDB,
+		PaymentDB:       testDB,
+		ReminderDB:      testDB,
+		StageHistoryDB:  brokenDB(t),
+		CustomerID:      999999,
+		Customer:        map[string]interface{}{},
+	}
+
+	events, err := customerDetailSvc.BuildCustomerTimeline(deps)
+
+	if !pagination.IsQueryError(err) {
+		t.Fatalf("builder chuyển bước lỗi kết nối nhưng BuildCustomerTimeline không trả error — lỗi bị nuốt, err=%v", err)
+	}
+	if events != nil {
+		t.Fatalf("khi có lỗi, events phải nil, nhận %d events", len(events))
+	}
 }
