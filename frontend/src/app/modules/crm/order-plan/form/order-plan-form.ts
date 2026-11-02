@@ -347,7 +347,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
     // Bản gốc gọi `void this.handleService()` ngay sau khi nạp dòng (subscription không bắn lúc init).
     // `effectOnChange` cũng BỎ QUA lần chạy đầu → phải kích hoạt tay đúng 1 lần ở đây, nếu không mở
     // "Sửa" sẽ thấy tổng tiền = 0.
-    void this._recalcMoney();
+    this._recalcMoney();
   }
 
   /** Dựng 1 dòng form từ 1 bản ghi BE (hoặc `null` = dòng trống mới) + cập nhật side-state theo `_uid`. */
@@ -437,7 +437,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
           .join(';');
         return `${rowKey}#${this.model().vat_rate ?? ''}`;
       },
-      () => untracked(() => void this._recalcMoney()),
+      () => untracked(() => this._recalcMoney()),
     );
 
     effectOnChange(
@@ -480,7 +480,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
 
     // Bản gốc gọi `handleServiceUsed()` (chỉ cộng lại tổng). Ở đây danh sách dòng đổi → key của effect
     // tiền đổi theo, recalc tự chạy; vẫn gọi tay để tổng cập nhật ngay trong cùng tick khi xoá dòng cuối.
-    void this._recalcMoney();
+    this._recalcMoney();
   }
 
   /**

@@ -63,6 +63,13 @@ export class CrmReportServiceType extends BaseListV2<any> implements OnInit {
     this.initListV2();
   }
 
+  /** Lọc bỏ cột đã lưu localStorage không còn trong `displayCols` (vd `rank_discount_amount` đã gỡ 2026-11-01). */
+  override loadSelectedColumns() {
+    super.loadSelectedColumns();
+    const valid = new Set<string>(this.displayCols.map((c: { value: string }) => c.value));
+    this.selectedColumns.update((cols) => cols.filter((c) => valid.has(c)));
+  }
+
   /**
    * Khai báo filter — chỉ 1 field `created_day` (between), default tháng hiện tại → hôm nay.
    */
