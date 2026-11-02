@@ -149,7 +149,7 @@ func (h *Handler) ListOrderPlan(c *gin.Context) {
 			var svcRows []map[string]interface{}
 			tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
 				Select(`id, order_plan_id, service_id, quantity, unit_price, service_discount,
-					discount_other, rank_discount_amount, totalEnd, vat_amount, payment, status, isLock`).
+					discount_other, totalEnd, vat_amount, payment, status, isLock`).
 				Where("order_plan_id IN ?", ids).Order("id ASC").Find(&svcRows)
 			if pagination.IsQueryError(tx.Error) {
 				pagination.FailQuery(c, tx.Error)

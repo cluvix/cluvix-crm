@@ -53,7 +53,7 @@ var customerAllowedFields = map[string]bool{
 	"payment_user_id": true, "connect_id": true,
 	"type_service_id": true,
 	"loai_message":    true, "link_message": true, "chat_message": true,
-	"customer_rank_id": true, "job_id": true, "ethnicity_id": true,
+	"job_id": true, "ethnicity_id": true,
 	"tags": true, "relatives": true,
 	"last_contact_date": true, "last_visit_date": true,
 	"facebook": true, "zalo": true, "viber": true, "instagram": true,

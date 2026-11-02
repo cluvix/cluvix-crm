@@ -109,11 +109,6 @@
           −{{ model().discount_other | currencyFormat }}
         </app-slide-over-row>
       }
-      @if (model().rank_discount_amount) {
-        <app-slide-over-row label="common.label.member_rank_discount">
-          −{{ model().rank_discount_amount | currencyFormat }}
-        </app-slide-over-row>
-      }
       @if (model().discountServiceLock) {
         <app-slide-over-row label="crm.treatment_service.detail.lock_discount">
           −{{ model().discountServiceLock | currencyFormat }}

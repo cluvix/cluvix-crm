@@ -12,7 +12,8 @@
 //
 // story-10 (crm-standalone): gỡ mã giảm giá / CTV / điểm tích luỹ — đơn không còn nhận mã giảm
 // giá, không gán CTV, không ghi sổ hoa hồng CTV, không tích/trừ điểm. Các bước tính tiền còn lại
-// (rank_discount_amount, debtsPlan, totalRevenue/totalDebt) giữ nguyên thứ tự.
+// (debtsPlan, totalRevenue/totalDebt) giữ nguyên thứ tự. Giảm giá theo hạng thành viên đã gỡ hẳn
+// (2026-11-01, cùng bảng customer_ranks/customer_rank_services).
 package service
 
 import (
@@ -519,9 +520,8 @@ func (s *OrderPlanService) parseListRevenues(order *orderPlanDao.OrderPlan) {
 //  2. Với mỗi service từ FE:
 //     a. Nếu existing → selective merge (giữ ID, base fields). Nếu mới → json.Unmarshal
 //     b. Set fields kế thừa từ order (branch, appointment, revenue, source...)
-//     c. Tính rank_discount_amount server-side = totalEnd * rank_discount_percent / 100
-//     d. GORM Create hoặc Save
-//     e. Xử lý installment: có config → tạo/update kỳ trả góp; không có → xoá hết
+//     c. GORM Create hoặc Save
+//     d. Xử lý installment: có config → tạo/update kỳ trả góp; không có → xoá hết
 //  3. Delete orphan services (chỉ update): check payment + isLock trước khi xoá
 func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.OrderPlan, servicesData []map[string]interface{}, isUpdate bool, userID uint) error {
 	var oldIDs []uint
@@ -663,15 +663,6 @@ func (s *OrderPlanService) handleServices(tx *gorm.DB, order *orderPlanDao.Order
 		}
 		svc.ListRevenues = order.ListRevenues
 		svc.CustomerId = order.CustomerId
-
-		// rank_discount_amount: tính server-side (giống PHP populateOrderServiceUsed).
-		// amt = totalEnd * rank_discount_percent / 100
-		rankPct := helpers.DerefDecimal(svc.RankDiscountPercent)
-		if rankPct.IsPositive() {
-			svc.RankDiscountAmount = new(helpers.DerefDecimal(svc.TotalEnd).Mul(rankPct).Div(decimal.NewFromInt(100)))
-		} else {
-			svc.RankDiscountAmount = new(decimal.Zero)
-		}
 
 		if err := validateOrderServiceUsed(&svc); err != nil {
 			return err
@@ -879,12 +870,6 @@ func mergeServiceData(svc *crmServiceDao.OrderServiceUsed, data map[string]inter
 	}
 	if v, ok := data["totalEnd"]; ok {
 		svc.TotalEnd = new(helpers.ToDecimal(v))
-	}
-	if v, ok := data["rank_discount_percent"]; ok {
-		svc.RankDiscountPercent = new(helpers.ToDecimal(v))
-	}
-	if v, ok := data["rank_discount_amount"]; ok {
-		svc.RankDiscountAmount = new(helpers.ToDecimal(v))
 	}
 	if v, ok := data["note"]; ok {
 		svc.Note, _ = v.(string)

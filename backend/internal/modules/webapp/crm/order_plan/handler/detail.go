@@ -33,7 +33,7 @@ const orderPlanDetailColumns = `id, code, old_code, orderPlanType, customer_id, 
 const orderPlanServiceColumns = `id, code, service_id,
 	quantity,
 	unit_price, service_discount, discount_other,
-	rank_discount_amount, discountServiceLock,
+	discountServiceLock,
 	totalEnd, vat_amount, payment, refundServiceUsed,
 	isLock,
 	listRevenues`

@@ -56,10 +56,6 @@
     "customer_connect": {
       "disconnected": "Chưa kết nối"
     },
-    "customer_rank": {
-      "diamond": "Kim Cương",
-      "titan": "Titan"
-    },
     "appointment": {
       "confirm_status": {
         "not": "Chưa xác nhận",
@@ -167,9 +163,6 @@
         "note_template": "Mẫu ghi chú",
         "customer_job": "Nghề nghiệp",
         "customer_ethnicity": "Dân tộc"
-      },
-      "customer": {
-        "rank_services": "Giảm giá theo hạng"
       },
       "medical_form": {
         "template_type": "Loại phiếu"
@@ -304,19 +297,6 @@
       "appointment_type": "Loại hẹn",
       "is_consulting_no": "Không phải hẹn tư vấn",
       "online_type": "Loại hẹn online"
-    },
-    "customer_ranks": {
-      "rank_name": "Tên hạng thành viên",
-      "min_points": "Điểm tối thiểu",
-      "max_points": "Điểm tối đa",
-      "example_title": "Ví dụ phân hạng thành viên:",
-      "example_col_priority": "Mức ưu tiên",
-      "tier_bronze": "Đồng"
-    },
-    "customer_rank_services": {
-      "search_available": "Tìm kiếm dịch vụ chưa chọn...",
-      "search_selected": "Tìm kiếm dịch vụ đã chọn...",
-      "select_at_least_one": "Vui lòng chọn ít nhất một dịch vụ"
     },
     "location": {
       "group_country": {
@@ -1158,8 +1138,7 @@
         "tooltip_col_coupon": "(4) = Giảm giá dòng dịch vụ (giá trị lịch sử)",
         "tooltip_col_subtotal": "(4) = (1)×(2)−(3)",
         "tooltip_col_total": "(6) = (4)−(5)",
-        "add_service": "Thêm dịch vụ",
-        "quick_subtotal_hint": "Chưa trừ giảm theo hạng khách"
+        "add_service": "Thêm dịch vụ"
       },
       "order_type": "Đơn hàng mới/cũ",
       "change_service": {
@@ -1324,7 +1303,6 @@
       "refund_deposit_tooltip": "Số tiền hoàn cọc",
       "refund_service_tooltip": "Số tiền hoàn dịch vụ",
       "last_contact": "Liên hệ lần cuối",
-      "points_unit": "điểm",
       "add_tag": "Gắn nhãn",
       "add_tag_placeholder": "Thêm nhãn...",
       "captured_image_alt": "Ảnh đã chụp",
@@ -1571,10 +1549,7 @@
       "month": "Tháng",
       "max_size_prefix": "tối đa",
       "days": "ngày",
-      "rank": "Hạng thành viên",
       "discount_percent": "% giảm giá",
-      "min_points": "Điểm tối thiểu",
-      "max_points": "Điểm tối đa",
       "customer_group": "Nhóm khách hàng",
       "source": "Nguồn khách hàng",
       "unit_name": "Tên đơn vị",
@@ -1609,7 +1584,6 @@
       "treatment": "Điều trị",
       "history": "Lịch sử",
       "department": "Phòng ban",
-      "member": "Thành viên",
       "reminder": "Nhắc lịch",
       "deposit_amount": "Số tiền cọc",
       "appointment_code": "Mã lịch hẹn",
@@ -1682,9 +1656,6 @@
       "temporary_deposit": "Cọc tạm",
       "ticket": "Ticket",
       "connected": "Đã kết nối",
-      "no_rank": "Chưa có hạng",
-      "silver": "Bạc",
-      "gold": "Vàng",
       "planned": "Dự kiến",
       "general_clinic": "Chuỗi nhiều cơ sở",
       "feature": "Chức năng",
@@ -1705,7 +1676,6 @@
       "unlimited": "Không giới hạn",
       "select_all": "Chọn tất cả",
       "discount_percent_2": "Phần trăm giảm giá",
-      "rank_2": "Hạng",
       "detailed_description": "Mô tả chi tiết",
       "unit_category": "Danh mục đơn vị",
       "creating": "Đang tạo mới...",
@@ -1717,7 +1687,6 @@
       "importing": "Đang import...",
       "staff_list": "Danh sách nhân viên",
       "customer_info": "Thông tin khách hàng",
-      "reward": "Phần thưởng",
       "update_profile": "Thay đổi thông tin",
       "clear_cache": "Xóa bộ nhớ đệm",
       "software_info": "Thông tin phần mềm",
@@ -1819,7 +1788,6 @@
       "ethnicity": "Dân tộc",
       "ward_commune": "Phường/Xã",
       "ward": "Phường/Xã",
-      "member_rank": "Hạng thành viên",
       "current_image": "Hình ảnh hiện tại",
       "updated": "Cập nhật",
       "appointment_content": "Nội dung hẹn",
@@ -1848,7 +1816,6 @@
       "consultation": "Tư vấn",
       "start_date_2": "Ngày bắt đầu",
       "result": "Kết quả",
-      "reward_points": "Điểm thưởng",
       "expected_revenue": "Dự kiến thu",
       "position_region": "Vị trí/ Vùng",
       "previous": "% trước đó",
@@ -1870,8 +1837,6 @@
       "online_appointment_type": "Loại hẹn online",
       "zone": "Khu vực",
       "configuration": "Cấu hình",
-      "membership_rank_discount": "Giảm hạng thành viên",
-      "member_rank_discount": "Giảm hạng thành viên",
       "re_care": "Chăm lại",
       "not_booked": "Chưa đặt lịch",
       "deposit_customer": "Khách cọc",

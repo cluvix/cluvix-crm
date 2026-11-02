@@ -38,7 +38,6 @@ export class CrmReportServiceUsed extends BaseListV2<any> implements OnInit {
     {label: this.translate.instant('crm.order_plan.form.total_to_pay'), value: 'totalPayment'},
     {label: 'Giảm dịch vụ', labelKey: 'common.label.service_discount', value: 'totalDiscountService'},
     {label: 'Giảm khác', labelKey: 'common.label.other_discount', value: 'totalDiscountOther'},
-    {label: 'Hạng thành viên', labelKey: 'common.label.member_rank', value: 'rank_discount_amount'},
     {label: 'Hoàn dịch vụ', labelKey: 'common.label.service_refund', value: 'totalRefundServiceUsed'},
     {label: 'Trung bình 1 dịch vụ', labelKey: 'crm.report_service_used.average_per_service', value: 'mediumService'},
   ]; // dùng để hiển thị column table
@@ -61,7 +60,6 @@ export class CrmReportServiceUsed extends BaseListV2<any> implements OnInit {
   totalPayment = signal(0);
   totalDiscountService = signal(0);
   totalDiscountOther = signal(0);
-  totalRankDiscountAmount = signal(0);
   totalRefundServiceUsed = signal(0);
   keysToFilter = ['user'];
   protected override LS_SELECTED_COLUMNS_KEY =
@@ -124,7 +122,6 @@ export class CrmReportServiceUsed extends BaseListV2<any> implements OnInit {
         this.totalPayment.set(totals.totalPayment ?? 0);
         this.totalDiscountService.set(totals.totalDiscountService ?? 0);
         this.totalDiscountOther.set(totals.totalDiscountOther ?? 0);
-        this.totalRankDiscountAmount.set(totals.totalRankDiscountAmount ?? 0);
         this.totalRefundServiceUsed.set(totals.totalRefundServiceUsed ?? 0);
 
         const items = response['object']?.items ?? [];

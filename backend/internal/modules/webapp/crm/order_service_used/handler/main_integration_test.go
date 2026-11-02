@@ -18,7 +18,7 @@ var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
 	// SchemaAll: endpoint chi tiết select các cột thêm sau baseline (`activated_at`,
-	// `rank_discount_amount`, `installment_config`…).
+	// `installment_config`…).
 	s, err := testhelpers.New(testhelpers.MigrationsDir(), testhelpers.SchemaAll)
 	if err != nil {
 		log.Printf("testhelpers: %v — skipping integration tests", err)

@@ -114,32 +114,6 @@ export const getCustomerDataLabel = (value: number): string => {
   return CUSTOMER_DATA_LABELS[value as keyof typeof CUSTOMER_DATA_LABELS] || 'Không xác định';
 };
 
-export const CUSTOMER_RANK_SELECT = {
-  NONE: 0,
-  SILVER: 1,
-  GOLD: 2,
-  DIAMOND: 3,
-  TITAN: 4,
-} as const;
-
-export type CUSTOMER_RANK_INFO = { value: number; label: string; labelKey?: string; icon: string };
-
-export const CUSTOMER_RANK_OPTIONS = [
-  { value: CUSTOMER_RANK_SELECT.NONE, label: 'Chưa có hạng', labelKey: 'common.label.no_rank', icon: 'pi pi-user' },
-  { value: CUSTOMER_RANK_SELECT.SILVER, label: 'Bạc', labelKey: 'common.label.silver', icon: 'pi pi-circle' },
-  { value: CUSTOMER_RANK_SELECT.GOLD, label: 'Vàng', labelKey: 'common.label.gold', icon: 'pi pi-star-fill' },
-  { value: CUSTOMER_RANK_SELECT.DIAMOND, label: 'Kim Cương', labelKey: 'define.customer_rank.diamond', icon: 'pi pi-sparkles' },
-  { value: CUSTOMER_RANK_SELECT.TITAN, label: 'Titan', labelKey: 'define.customer_rank.titan', icon: 'pi pi-crown' },
-];
-
-export const CUSTOMER_RANK_MAP = CUSTOMER_RANK_OPTIONS.reduce(
-  (acc, item) => {
-    acc[item.value] = item;
-    return acc;
-  },
-  {} as Record<number, CUSTOMER_RANK_INFO>,
-);
-
 export const CUSTOMER_LEAD_TYPY_SELECT = {
   ZMA: 1,
   WEBSITE: 2,

@@ -29,7 +29,6 @@ export class CrmReportServiceType extends BaseListV2<any> implements OnInit {
     { label: 'Thực thu', labelKey: 'common.label.actual_revenue', value: 'totalPayment' },
     { label: 'Giảm dịch vụ', labelKey: 'common.label.service_discount', value: 'totalDiscountService' },
     { label: 'Giảm khác', labelKey: 'common.label.other_discount', value: 'totalDiscountOther' },
-    { label: 'Hạng TV', labelKey: 'common.label.member_rank', value: 'rank_discount_amount' },
     { label: 'Hoàn DV', labelKey: 'common.label.service_refund', value: 'totalRefundServiceUsed' },
     { label: 'TB/DV', labelKey: 'crm.report_service_used.average_per_service', value: 'mediumService' },
   ];
@@ -47,7 +46,6 @@ export class CrmReportServiceType extends BaseListV2<any> implements OnInit {
   totalPayment = signal(0);
   totalDiscountService = signal(0);
   totalDiscountOther = signal(0);
-  totalRankDiscountAmount = signal(0);
   totalRefundServiceUsed = signal(0);
 
   protected override LS_SELECTED_COLUMNS_KEY = '/report/app-report-service-type';
@@ -94,7 +92,6 @@ export class CrmReportServiceType extends BaseListV2<any> implements OnInit {
         this.totalPayment.set(+t.payment || 0);
         this.totalDiscountService.set(+t.service_discount_amount || 0);
         this.totalDiscountOther.set(+t.discount_other || 0);
-        this.totalRankDiscountAmount.set(+t.rank_discount_amount || 0);
         this.totalRefundServiceUsed.set(+t.refundServiceUsed || 0);
 
         const items = response.items ?? [];

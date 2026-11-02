@@ -207,21 +207,6 @@ export const CONFIG_MENU: ConfigMenuGroup[] = [
     column: 2,
     items: [
       {
-        label: 'Hạng thành viên',
-        labelKey: 'common.label.member_rank',
-        link: '/config/customer-ranks',
-        icon: 'pi pi-crown',
-        iconClass: 'text-yellow-600',
-        keywords: ['hang the', 'vip', 'thanh vien', 'rank'],
-      },
-      {
-        label: 'Quyền lợi thành viên',
-        labelKey: 'config.nav.customer.rank_services',
-        link: '/config/customer-rank-services',
-        icon: 'pi pi-gift',
-        iconClass: 'text-green-600',
-      },
-      {
         label: 'Mẫu ghi chú',
         labelKey: 'config.nav.marketing.note_template',
         link: '/config/note-template',

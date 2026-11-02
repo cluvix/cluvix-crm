@@ -240,9 +240,9 @@ func TestPaymentMoney_DeleteSinglePaymentRecalc(t *testing.T) {
 }
 
 // story-10 (crm-standalone) — đơn KHÔNG mã giảm giá có chiết khấu thường (chiết khấu dịch vụ % và
-// VND, giảm giá khác, giảm theo hạng) tạo qua OrderPlanService.Create thật: bỏ bước mã giảm
-// giá không được đổi totalEnd đã lưu, rank_discount_amount tính server-side, debtsPlan của đơn,
-// totalRevenue/totalDebt của khách.
+// VND, giảm giá khác) tạo qua OrderPlanService.Create thật: bỏ bước mã giảm giá không được đổi
+// totalEnd đã lưu, debtsPlan của đơn, totalRevenue/totalDebt của khách. (Giảm theo hạng thành viên
+// đã gỡ hẳn 2026-11-01.)
 func TestOrderMoney_RegularDiscountNoCoupon(t *testing.T) {
 	f := newLogFx(t)
 	ts := time.Now().Unix()
@@ -288,19 +288,19 @@ func TestOrderMoney_RegularDiscountNoCoupon(t *testing.T) {
 		return req.ID
 	}
 	type osuRow struct {
-		ServiceID                              uint
-		Total, TotalEnd, RankAmount, DiscOther decimal.Decimal
+		ServiceID                  uint
+		Total, TotalEnd, DiscOther decimal.Decimal
 	}
 	readOSU := func(planID uint) []osuRow {
 		t.Helper()
 		var out []osuRow
 		rows, err := testDB.Raw(`SELECT service_id, COALESCE(total,0), COALESCE(totalEnd,0),
-			COALESCE(rank_discount_amount,0), COALESCE(discount_other,0) FROM order_service_used WHERE order_plan_id = ? ORDER BY id`, planID).Rows()
+			COALESCE(discount_other,0) FROM order_service_used WHERE order_plan_id = ? ORDER BY id`, planID).Rows()
 		require.NoError(t, err)
 		defer rows.Close()
 		for rows.Next() {
 			var r osuRow
-			require.NoError(t, rows.Scan(&r.ServiceID, &r.Total, &r.TotalEnd, &r.RankAmount, &r.DiscOther))
+			require.NoError(t, rows.Scan(&r.ServiceID, &r.Total, &r.TotalEnd, &r.DiscOther))
 			out = append(out, r)
 		}
 		return out
@@ -321,12 +321,12 @@ func TestOrderMoney_RegularDiscountNoCoupon(t *testing.T) {
 	}
 
 	// Đơn 2 dòng — dòng A: 2 × 500.000, chiết khấu dịch vụ 10% (100.000), giảm khác 50.000 ⇒ total 900.000,
-	// totalEnd 850.000; hạng 10% ⇒ rank_discount_amount = 850.000 × 10% = 85.000 (server tính).
+	// totalEnd 850.000.
 	// Dòng B: 1 × 300.000, chiết khấu dịch vụ 20.000 VND ⇒ total = totalEnd = 280.000.
 	plan1 := create([]map[string]interface{}{
 		{"service_id": serviceA, "quantity": 2, "unit_price": 500_000, "service_discount": 10,
 			"service_discount_type": define.DiscountTypePercent, "discount_other": 50_000, "total": 900_000,
-			"totalEnd": 850_000, "rank_discount_percent": 10},
+			"totalEnd": 850_000},
 		{"service_id": serviceB, "quantity": 1, "unit_price": 300_000, "service_discount": 20_000,
 			"service_discount_type": define.DiscountTypeNormal, "total": 280_000, "totalEnd": 280_000},
 	})
@@ -335,9 +335,7 @@ func TestOrderMoney_RegularDiscountNoCoupon(t *testing.T) {
 	eq(900_000, rows[0].Total, "dòng A total")
 	eq(850_000, rows[0].TotalEnd, "dòng A totalEnd")
 	eq(50_000, rows[0].DiscOther, "dòng A discount_other")
-	eq(85_000, rows[0].RankAmount, "dòng A rank_discount_amount")
 	eq(280_000, rows[1].TotalEnd, "dòng B totalEnd")
-	eq(0, rows[1].RankAmount, "dòng B rank_discount_amount")
 	pp, dp := planMoney(plan1)
 	eq(0, pp, "đơn 1 paymentPlan")
 	eq(1_130_000, dp, "đơn 1 debtsPlan = Σ totalEnd")
@@ -361,8 +359,7 @@ func TestOrderMoney_RegularDiscountNoCoupon(t *testing.T) {
 	eq(2_030_000, debt, "khách totalDebt sau đơn 2")
 
 	// QA Pass 1 story-10 — SỬA đơn 1 qua OrderPlanService.Update thật (Update vừa bị sửa: bỏ
-	// handleCoupon + đổi chữ ký handleServices): dòng A giảm khác 50.000 → 100.000 ⇒ totalEnd 800.000,
-	// hạng 10% → 20% ⇒ rank_discount_amount tính LẠI = 800.000 × 20% = 160.000 (FE không gửi amount);
+	// handleCoupon + đổi chữ ký handleServices): dòng A giảm khác 50.000 → 100.000 ⇒ totalEnd 800.000;
 	// bỏ dòng B khỏi payload ⇒ dòng B bị xoá (mồ côi). debtsPlan đơn 1 = 800.000; khách = 800.000 +
 	// 900.000 (đơn 2) = 1.700.000 doanh thu = công nợ (chưa thu đồng nào).
 	var osuA uint
@@ -373,7 +370,7 @@ func TestOrderMoney_RegularDiscountNoCoupon(t *testing.T) {
 	upd := &OrderPlanRequest{ServicesData: []map[string]interface{}{
 		{"id": osuA, "service_id": serviceA, "quantity": 2, "unit_price": 500_000, "service_discount": 10,
 			"service_discount_type": define.DiscountTypePercent, "discount_other": 100_000, "total": 900_000,
-			"totalEnd": 800_000, "rank_discount_percent": 20},
+			"totalEnd": 800_000},
 	}}
 	upd.ID = plan1
 	upd.UpdatedAt = ver
@@ -384,7 +381,6 @@ func TestOrderMoney_RegularDiscountNoCoupon(t *testing.T) {
 	require.Len(t, rows, 1, "dòng B bỏ khỏi payload phải bị xoá")
 	eq(800_000, rows[0].TotalEnd, "sửa: dòng A totalEnd")
 	eq(100_000, rows[0].DiscOther, "sửa: dòng A discount_other")
-	eq(160_000, rows[0].RankAmount, "sửa: dòng A rank_discount_amount tính lại")
 	pp, dp = planMoney(plan1)
 	eq(0, pp, "sửa: đơn 1 paymentPlan")
 	eq(800_000, dp, "sửa: đơn 1 debtsPlan")

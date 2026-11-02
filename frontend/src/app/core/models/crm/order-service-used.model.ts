@@ -36,7 +36,6 @@ export interface OrderServiceUsedRow {
   updated_at: number | null;
   discountServiceLock: number | null;
   unitName: string | null;
-  rank_discount_percent: number | null;
   /** Tiền VAT của dòng = round(totalEnd × % VAT đơn / 100) — BE tính lại và đối chiếu (lệch > 1đ ⇒ chặn). */
   vat_amount: number | null;
 
@@ -72,8 +71,6 @@ export interface OrderServiceUsedModel extends Identifiable {
   refundServiceUsed?: number; // Tổng tiền hoàn dịch vụ
   total?: number;
   discountServiceLock?: number; // Số tiền giảm trừ vào doanh số do khoá dịch vụ
-  rank_discount_percent?: number; // % giảm theo hạng thành viên
-  rank_discount_amount?: number; // Số tiền giảm theo hạng thành viên
   totalEnd?: number; // Thành tiền TRƯỚC thuế — phải thu = totalEnd + vat_amount
   vat_amount?: number; // Tiền VAT của dòng (theo mức VAT của đơn)
   payment?: number;

@@ -39,7 +39,6 @@ export interface CustomerModel extends Identifiable {
   ward_id?: number;
   branch_id?: number;
   status?: any;
-  customer_rank_id?: number; // Hạng thành viên
   source_id?: number;
   loai_message?: string;
   chat_message?: string;
@@ -61,7 +60,6 @@ export interface CustomerModel extends Identifiable {
   affiliate_id?: number;
   affiliate_fullname?: string;
   type_service_id?: number;
-  reward_points?: number;
   year_born?: number;
   last_contact_date?: number | Date;
   last_visit_date?: number | Date;
@@ -103,7 +101,6 @@ export interface CustomerModel extends Identifiable {
   createdByInfo?: UserProfileModel;
   countryInfo?: LocationCountryModel;
   paymentUserInfo?: UserProfileModel;
-  customerRanking?: any;
 
   connect?: string;
   data?: string;

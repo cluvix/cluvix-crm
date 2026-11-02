@@ -56,10 +56,6 @@
     "customer_connect": {
       "disconnected": "Disconnected"
     },
-    "customer_rank": {
-      "diamond": "Diamond",
-      "titan": "Titan"
-    },
     "appointment": {
       "confirm_status": {
         "not": "Not confirmed",
@@ -167,9 +163,6 @@
         "note_template": "Note template",
         "customer_job": "Customer job",
         "customer_ethnicity": "Customer ethnicity"
-      },
-      "customer": {
-        "rank_services": "Rank Discount"
       },
       "medical_form": {
         "template_type": "Form type"
@@ -304,19 +297,6 @@
       "appointment_type": "Appointment type",
       "is_consulting_no": "Not a consulting appointment",
       "online_type": "Online appointment"
-    },
-    "customer_ranks": {
-      "rank_name": "Member rank name",
-      "min_points": "Minimum points",
-      "max_points": "Maximum points",
-      "example_title": "Member rank example:",
-      "example_col_priority": "Priority level",
-      "tier_bronze": "Bronze"
-    },
-    "customer_rank_services": {
-      "search_available": "Search available services...",
-      "search_selected": "Search selected services...",
-      "select_at_least_one": "Please select at least one service"
     },
     "location": {
       "group_country": {
@@ -1158,8 +1138,7 @@
         "tooltip_col_coupon": "(4) = Line discount (legacy value)",
         "tooltip_col_subtotal": "(4) = (1)×(2)−(3)",
         "tooltip_col_total": "(6) = (4)−(5)",
-        "add_service": "Add service",
-        "quick_subtotal_hint": "Before customer tier discount"
+        "add_service": "Add service"
       },
       "order_type": "Order type (new/old)",
       "change_service": {
@@ -1324,7 +1303,6 @@
       "refund_deposit_tooltip": "Refunded deposit amount",
       "refund_service_tooltip": "Refunded service amount",
       "last_contact": "Last contact",
-      "points_unit": "pts",
       "add_tag": "Add tag",
       "add_tag_placeholder": "Add tag...",
       "captured_image_alt": "Captured photo",
@@ -1571,10 +1549,7 @@
       "month": "Month",
       "max_size_prefix": "max",
       "days": "days",
-      "rank": "Membership Rank",
       "discount_percent": "Discount %",
-      "min_points": "Min Points",
-      "max_points": "Max Points",
       "customer_group": "Customer Group",
       "source": "Customer Source",
       "unit_name": "Unit Name",
@@ -1609,7 +1584,6 @@
       "treatment": "Treatment",
       "history": "History",
       "department": "Department",
-      "member": "Member",
       "reminder": "Reminder",
       "deposit_amount": "Deposit amount",
       "appointment_code": "Appointment code",
@@ -1682,9 +1656,6 @@
       "temporary_deposit": "Temporary deposit",
       "ticket": "Ticket",
       "connected": "Connected",
-      "no_rank": "No rank",
-      "silver": "Silver",
-      "gold": "Gold",
       "planned": "Planned",
       "general_clinic": "Multi-location chain",
       "feature": "Feature",
@@ -1705,7 +1676,6 @@
       "unlimited": "Unlimited",
       "select_all": "Select all",
       "discount_percent_2": "Discount percent",
-      "rank_2": "Rank",
       "detailed_description": "Detailed description",
       "unit_category": "Unit category",
       "creating": "Creating...",
@@ -1717,7 +1687,6 @@
       "importing": "Importing...",
       "staff_list": "Staff list",
       "customer_info": "Customer info",
-      "reward": "Reward",
       "update_profile": "Update profile",
       "clear_cache": "Clear cache",
       "software_info": "Software info",
@@ -1819,7 +1788,6 @@
       "ethnicity": "Ethnicity",
       "ward_commune": "Ward / Commune",
       "ward": "Ward",
-      "member_rank": "Member rank",
       "current_image": "Current image",
       "updated": "Updated",
       "appointment_content": "Appointment content",
@@ -1848,7 +1816,6 @@
       "consultation": "Consultation",
       "start_date_2": "Start date",
       "result": "Result",
-      "reward_points": "Reward points",
       "expected_revenue": "Expected Revenue",
       "position_region": "Position / Region",
       "previous": "% previous",
@@ -1870,8 +1837,6 @@
       "online_appointment_type": "Online appointment type",
       "zone": "Zone",
       "configuration": "Configuration",
-      "membership_rank_discount": "Membership rank discount",
-      "member_rank_discount": "Member rank discount",
       "re_care": "Re-care",
       "not_booked": "Not booked",
       "deposit_customer": "Deposit customer",

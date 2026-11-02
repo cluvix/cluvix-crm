@@ -6,7 +6,6 @@ import { map } from 'rxjs/operators';
 import { ApiResponseOneModel } from '@/core/interface/ApiResponseOneModel';
 import { CustomerModel } from '@/core/models/crm/customer.model';
 import {
-  CUSTOMER_RANK_MAP,
   CUSTOMER_STATUS,
 
   getCustomerConnectKey,
@@ -577,7 +576,6 @@ export class CustomerService extends BaseApiService<CustomerModel> {
       customerTypeLabel: getCustomerTypeLabel(item.customerType!),
       customerTypeKey: getCustomerTypeKey(item.customerType!),
       customerCategoryLabel: this.customerCategoryHelper.getCustomerCategoryName(item.category),
-      customerRanking: CUSTOMER_RANK_MAP[item.customer_rank_id!]!, // Thay xếp hàng vào đây, làm sau.
       jobLabel: this.jobHelper.getJobName(item.job_id),
       ethnicityLabel: this.ethnicityHelper.getEthnicityName(item.ethnicity_id),
       lastOrderAtFmt: anyItem.lastServiceDate

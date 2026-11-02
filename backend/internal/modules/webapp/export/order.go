@@ -254,7 +254,7 @@ func ExportOrderServiceUsed(c *gin.Context, q *gorm.DB) {
 			svt.name as service_type_name,
 			order_service_used.unit_price, order_service_used.quantity,
 			order_service_used.service_discount, order_service_used.service_discount_type,
-			order_service_used.discount_other, order_service_used.rank_discount_amount,
+			order_service_used.discount_other,
 			order_service_used.totalEnd, order_service_used.vat_amount, order_service_used.payment,
 			order_service_used.dayComplete, order_service_used.created_day,
 			order_service_used.created_at, order_service_used.updated_at,
@@ -296,7 +296,6 @@ func ExportOrderServiceUsed(c *gin.Context, q *gorm.DB) {
 		}},
 		{"service_discount", "Chiết khấu dịch vụ", func(r map[string]interface{}) interface{} { return toFloat(r["service_discount"]) }},
 		{"discount_other", "Giảm giá khác", func(r map[string]interface{}) interface{} { return toFloat(r["discount_other"]) }},
-		{"rank_discount_amount", "Giảm hạng thành viên", func(r map[string]interface{}) interface{} { return toFloat(r["rank_discount_amount"]) }},
 		{"totalEnd", "Doanh số", func(r map[string]interface{}) interface{} { return toFloat(r["totalEnd"]) }},
 		{"vat_amount", "Tiền VAT", func(r map[string]interface{}) interface{} { return toFloat(r["vat_amount"]) }},
 		{"total_after_vat", "Tổng sau VAT", func(r map[string]interface{}) interface{} {
@@ -337,7 +336,7 @@ func ExportOrderServiceUsedWithAppt(c *gin.Context, q *gorm.DB) {
 			order_service_used.code, svc.name as service_name,
 			order_service_used.unit_price, order_service_used.quantity,
 			order_service_used.service_discount, order_service_used.service_discount_type,
-			order_service_used.discount_other, order_service_used.rank_discount_amount,
+			order_service_used.discount_other,
 			order_service_used.totalEnd, order_service_used.vat_amount, order_service_used.payment,
 			order_service_used.listRevenues,
 			osrc.name as source_name, cust.address as customer_address,
@@ -366,7 +365,6 @@ func ExportOrderServiceUsedWithAppt(c *gin.Context, q *gorm.DB) {
 		}},
 		{"service_discount", "Chiết khấu dịch vụ", func(r map[string]interface{}) interface{} { return toFloat(r["service_discount"]) }},
 		{"discount_other", "Giảm giá khác", func(r map[string]interface{}) interface{} { return toFloat(r["discount_other"]) }},
-		{"rank_discount_amount", "Giảm hạng thành viên", func(r map[string]interface{}) interface{} { return toFloat(r["rank_discount_amount"]) }},
 		{"totalEnd", "Doanh số", func(r map[string]interface{}) interface{} { return toFloat(r["totalEnd"]) }},
 		{"vat_amount", "Tiền VAT", func(r map[string]interface{}) interface{} { return toFloat(r["vat_amount"]) }},
 		{"total_after_vat", "Tổng sau VAT", func(r map[string]interface{}) interface{} {

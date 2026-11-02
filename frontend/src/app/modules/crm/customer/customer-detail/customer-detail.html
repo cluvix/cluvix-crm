@@ -101,21 +101,6 @@
                     </div>
 
                     <div class="flex items-center gap-2 text-sm flex-wrap">
-                      <div
-                        class="flex items-center gap-1 px-2 py-1 rounded-md border"
-                        [style.background]="tint(C.rank, 12)"
-                        [style.border-color]="tint(C.rank, 30)"
-                        [pTooltip]="'common.label.member_rank' | translate" tooltipPosition="top">
-                        <i class="text-sm" [class]="m.customerRanking?.icon" [ngClass]="{
-                                    'text-gray-500': m.customerRanking?.value === 0,
-                                    'text-gray-400': m.customerRanking?.value === 1,
-                                    'text-yellow-500': m.customerRanking?.value === 2,
-                                    'text-blue-500': m.customerRanking?.value === 3,
-                                    'text-purple-600': m.customerRanking?.value === 4
-                                }"></i>
-                        <span class="font-medium" [style.color]="shade(C.rank)">{{ m.customerRanking?.label || ('common.label.no_rank' | translate) }}</span>
-                      </div>
-
                       <div class="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--p-content-hover-background)] border border-[var(--p-content-border-color)]"
                            [pTooltip]="'common.label.customer_code' | translate" tooltipPosition="top">
                         <i class="pi pi-hashtag text-[var(--p-text-muted-color)] text-xs"></i>
@@ -268,19 +253,6 @@
                             <div class="leading-tight min-w-0">
                               <div class="text-xs truncate text-[var(--p-text-muted-color)]">{{ 'common.label.last_visit' | translate }}</div>
                               <div class="font-semibold truncate cx-num" [style.color]="shade(C.lastVisit)">{{ lastVisitRelative() }}</div>
-                            </div>
-                          </div>
-
-                          <!-- Điểm thưởng -->
-                          <div class="flex items-center gap-2 min-w-0 min-h-[44px] px-4 py-3 rounded-md shadow-sm" [style.background]="tint(C.reward, 10)"
-                               [pTooltip]="'common.label.reward_points' | translate"
-                               tooltipPosition="top">
-                            <i class="pi pi-gift shrink-0" [style.color]="C.reward"></i>
-                            <div class="leading-tight min-w-0">
-                              <div class="text-xs truncate text-[var(--p-text-muted-color)]">{{ 'common.label.reward_points' | translate }}</div>
-                              <div class="font-semibold truncate cx-num" [style.color]="shade(C.reward)">{{ (m.reward_points ?? 0) | number:'1.0-1' }}
-                                {{ 'crm.customer.points_unit' | translate }}
-                              </div>
                             </div>
                           </div>
                         </div>

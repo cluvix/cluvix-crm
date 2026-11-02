@@ -83,7 +83,7 @@ bench-clone-từ-dev KHÔNG có, trong đó có đúng những chỉ mục ngày
 
 ```
 appointment          ← appointment_date        ·  created_at
-customer             ← created_day · customer_rank_id · job_id · userZaloID
+customer             ← created_day · job_id · userZaloID
 order_service_used   ← created_day
 order_treatment_plan ← created_time
 payment              ← payment_time · payment_of_date · deposit_id

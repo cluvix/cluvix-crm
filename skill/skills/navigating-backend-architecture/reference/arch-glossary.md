@@ -302,9 +302,6 @@ Code reference dùng dạng: `model.Field` hoặc `route /path` hoặc `file:pat
 
 | VN | EN | Code reference |
 |---|---|---|
-| điểm tích luỹ | loyalty points | `Customer.LoyaltyPoints`; `point_type=1` |
-| điểm thưởng | reward points | `Customer.RewardPoints`; `point_type=2` |
-| hạng thành viên | membership rank / tier | `customer_rank_id` |
 | coupon | coupon | `loyalty.Coupon`; `/loyalty/coupon` |
 | khuyến mại | promotion | `Coupon.Type=promotion` |
 | chủ coupon | coupon owner | `Chủ coupon` |

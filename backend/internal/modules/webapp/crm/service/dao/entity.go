@@ -43,8 +43,6 @@ type OrderServiceUsed struct {
 	RefundServiceUsed   *decimal.Decimal ` gorm:"column:refundServiceUsed;type:decimal(20,2);default:0.00;comment:Hoàn trả dịch vụ" json:"refundServiceUsed"`
 	Total               *decimal.Decimal ` gorm:"type:decimal(20,2);default:0.00;comment:Tổng tiền sau khi khấu trừ service_discount" json:"total"`
 	DiscountServiceLock decimal.Decimal  ` gorm:"column:discountServiceLock;type:decimal(20,2);default:0.00;comment:Giảm trừ do khoá dịch vụ" json:"discountServiceLock"`
-	RankDiscountPercent *decimal.Decimal ` gorm:"column:rank_discount_percent;type:decimal(5,2);default:0.00;comment:Giảm trừ theo hạng thành viên" json:"rank_discount_percent"`
-	RankDiscountAmount  *decimal.Decimal ` gorm:"column:rank_discount_amount;type:decimal(20,2);default:0.00;comment:Số tiền giảm trừ theo hạng thành viên" json:"rank_discount_amount"`
 	InstallmentConfig   datatypes.JSON   `gorm:"column:installment_config;type:json;comment:Cấu hình trả góp (JSON)" json:"installment_config"`
 	TotalEnd            *decimal.Decimal ` gorm:"column:totalEnd;type:decimal(20,2);default:0.00;comment:Tổng tiền sau khi khấu trừ service_discount, discount_other" json:"totalEnd"`
 	VatAmount           decimal.Decimal  ` gorm:"column:vat_amount;type:decimal(20,2);not null;default:0.00;comment:Tiền VAT của dòng = round(totalEnd × vat_rate đơn / 100); phải thu = totalEnd + vat_amount" json:"vat_amount"`

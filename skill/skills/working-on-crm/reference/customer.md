@@ -14,10 +14,6 @@
 - Financial fields (KHÔNG update trực tiếp từ handler)
 - Business actions
 - Auto-update từ các module khác
-- loyalty_points
-  - Flow DỊCH VỤ (`serviceCategory_id = 1`)
-  - Flow SẢN PHẨM + PHÍ KHÁM (`serviceCategory_id = 2 hoặc 4`)
-  - Common
 - accepted
 - customerType và orderPlanType
 - Mã khách hàng (code)
@@ -188,7 +184,7 @@ Entity-side fields + công thức:
 | Payment FOR_ORDER insert | afterSave | last_visit_date, last_contact_date = payment_time |
 | OrderTreatmentPlan insert | afterSave | last_visit_date, last_contact_date = created_time |
 | TreatmentCourse insert | afterSave | status → Treatment/Customer, last_visit_date, last_contact_date |
-| OrderServiceUsed CUD | handleServices | totalRevenue, totalDebt (updateCustomerRevenue), loyalty_points (updateLoyaltyPoints) |
+| OrderServiceUsed CUD | handleServices | totalRevenue, totalDebt (updateCustomerRevenue) |
 | Payment/Order | afterSaveAll/afterDeleteAll | totalPayment, totalDebt, totalDeposit, refundDeposit, refundService, consignment, refundConsignment |
 | Broker | afterSave/afterDelete | status → Broker/Customer |
 | CustomerCare | afterSave | last_contact_date = time_care |
@@ -196,34 +192,6 @@ Entity-side fields + công thức:
 | Reminder | afterCreate | last_contact_date = now |
 | CustomerCareComplaints | afterSave | status → Complaint |
 | CustomerReview | afterSave | customer_review (rating) |
-
-## loyalty_points
-
-Phân biệt 3 flow theo `service.serviceCategory_id`:
-
-### Flow DỊCH VỤ (`serviceCategory_id = 1`)
-- **Trigger**: `order_service_used.treatment_course_status` thay đổi
-- **Cộng**: non-COMPLETE → COMPLETE (3) → insert `customer_point_transaction` (point_type=1, transaction_type=1) → `customer.loyalty_points += service.loyalty_points`
-- **Trừ**: COMPLETE → non-COMPLETE (vd treatment back về chưa đủ 100%) hoặc delete service → xoá transaction cũ → `customer.loyalty_points -= points`
-- **Hàm**: `updateLoyaltyPoints(tx, serviceUsedID, oldTreatmentStatus, newTreatmentStatus)` — `services/crm/loyalty_points.go`
-- **Caller**:
-  - `OrderTreatmentPlanService.handleServices()` — khi FE gửi services_used trực tiếp (Create/Update/Delete)
-  - `TreatmentCourseService.updateServiceUsedCommon()` — khi bác sĩ tạo/sửa/xoá buổi điều trị (trigger chính trong vận hành)
-
-### Flow SẢN PHẨM + PHÍ KHÁM (`serviceCategory_id = 2 hoặc 4`)
-- **Trigger**: `order_service_used.payment_status` thay đổi (tính lại trong `calculatorPaymentServiceUsed`)
-- **Cộng**: payment_status → `ServicePaymentStatusDone (4)` (đã thanh toán đủ 100%) → insert transaction → cộng điểm
-- **Trừ**: từ DONE → non-DONE (xoá payment / hoàn tiền làm tụt khỏi 100%) hoặc delete → xoá transaction → trừ điểm
-- **Hàm**: `updateLoyaltyPointsForProduct(tx, serviceUsedID, oldPaymentStatus, newPaymentStatus)`
-- **Caller**:
-  - `PaymentService.calculatorPaymentServiceUsed()` — auto chạy sau mọi payment Create/Update/Delete (gồm refund)
-  - `OrderTreatmentPlanService.handleServices()` — khi xoá product/phí khám khỏi order (orphan delete)
-
-### Common
-- **Chống duplicate**: cả 2 flow check `customer_point_transaction WHERE order_service_used_id = ? AND point_type = 1` trước khi insert → idempotent
-- **Category guard** (`applyLoyaltyPointDelta`): expectedCategory=1 → skip category 2 và 4; expectedCategory=2 → cho phép cả 2 và 4; default → phải khớp chính xác
-- **Description**: `"Tích điểm từ dịch vụ: <name>"` / `"Tích điểm từ sản phẩm: <name>"` / `"Tích điểm từ phí khám: <name>"`
-- **reward_points**: chưa có logic update (field dead — model có, không trigger)
 
 ## accepted
 - `1 = ACCEPTED_DEFAULT` — khởi tạo, chưa có quyết định

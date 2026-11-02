@@ -47,7 +47,6 @@ type Customer struct {
 	RefundService     *decimal.Decimal ` gorm:"column:refundService;type:decimal(20,2);default:0.00;comment:Hoàn dịch vụ" json:"refundService"`
 	Consignment       *decimal.Decimal ` gorm:"type:decimal(20,2);default:0.00;comment:Ký gửi" json:"consignment"`
 	RefundConsignment *decimal.Decimal ` gorm:"column:refundConsignment;type:decimal(20,2);default:0.00;comment:Hoàn ký gửi" json:"refundConsignment"`
-	CustomerRankId    *int             ` gorm:"column:customer_rank_id;index;comment:Hạng thành viên" json:"customer_rank_id"`
 	WardId            *int             ` gorm:"column:ward_id;index" json:"ward_id"`
 	ProvinceId        *int             ` gorm:"column:province_id;index" json:"province_id"`
 	CountryId         *int             ` gorm:"column:country_id;index" json:"country_id"`

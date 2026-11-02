@@ -41,8 +41,6 @@ const STAT_COLOR = {
   behavior: '#6366F1',
   lastContact: '#6366F1',
   lastVisit: '#14B8A6',
-  reward: '#EC4899',
-  rank: '#F59E0B',
 } as const;
 
 /** 1 ô stat trên rail. `digits` undefined → DecimalPipe dùng format mặc định. */
@@ -142,7 +140,7 @@ export class CustomerDetail extends BaseDetail<CustomerModel> implements OnInit,
   readonly lastContactRelative = signal('');
   readonly lastVisitRelative = signal('');
   readonly skeletonRows = Array(15);
-  readonly skeletonStats = Array(4);
+  readonly skeletonStats = Array(2);
   customerInfoFields = CUSTOMER_INFO_FIELDS;
   readonly tags = signal<string[]>([]);
   newTag = '';

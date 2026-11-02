@@ -44,8 +44,6 @@ export const TABLE_CONFIGS: TableConfig[] = [
   { name: 'settings', keyPath: 'id' },
   { name: 'userOptions', keyPath: 'id' },
   { name: 'controlFieldInTables', keyPath: 'id' },
-  { name: 'customerRanks', keyPath: 'id' },
-  { name: 'customerRankServices', keyPath: 'id' },
   { name: 'job', keyPath: 'id' },
   { name: 'ethnicity', keyPath: 'id' },
   // BE `config/indexeddb/handler/sync.go` "roles" — danh sách vai trò (rbac_auth_item type=1,

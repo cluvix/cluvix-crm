@@ -122,9 +122,6 @@
       @if (isColVisible('totalDiscountOther')()) {
         <th class="min-w-[130px]">{{ 'common.label.other_discount' | translate }}</th>
       }
-      @if (isColVisible('rank_discount_amount')()) {
-        <th class="min-w-[130px]">{{ 'common.label.member_rank' | translate }}</th>
-      }
       @if (isColVisible('totalRefundServiceUsed')()) {
         <th class="min-w-[130px]">{{ 'common.label.service_refund' | translate }}</th>
       }
@@ -183,9 +180,6 @@
       @if (isColVisible('totalDiscountOther')()) {
         <td class="text-blue-500">{{ model.discount_other | currencyFormat }}</td>
       }
-      @if (isColVisible('rank_discount_amount')()) {
-        <td class="text-blue-500">{{ model.rank_discount_amount | currencyFormat }}</td>
-      }
       @if (isColVisible('totalRefundServiceUsed')()) {
         <td class="text-red-500">{{ model.refundServiceUsed | currencyFormat }}</td>
       }
@@ -219,9 +213,6 @@
       }
       @if (isColVisible('totalDiscountOther')()) {
         <td><b class="text-blue-500">{{ totalDiscountOther() | currencyFormat }}</b></td>
-      }
-      @if (isColVisible('rank_discount_amount')()) {
-        <td><b class="text-blue-500">{{ totalRankDiscountAmount() | currencyFormat }}</b></td>
       }
       @if (isColVisible('totalRefundServiceUsed')()) {
         <td><b class="text-red-500">{{ totalRefundServiceUsed() | currencyFormat }}</b></td>

@@ -32,7 +32,6 @@ func (h *Handler) buildReportServiceUsedQuery(c *gin.Context) *gorm.DB {
 			SUM(payment) as payment,
 			SUM(CASE WHEN service_discount_type = 2 THEN (service_discount * unit_price * quantity / 100) ELSE service_discount END) as service_discount_amount,
 			SUM(discount_other) as discount_other,
-			SUM(rank_discount_amount) as rank_discount_amount,
 			SUM(refundServiceUsed) as refundServiceUsed`).
 		Joins("LEFT JOIN service ON service.id = order_service_used.service_id").
 		Joins("LEFT JOIN service_type ON service_type.id = service.service_type_id").
@@ -117,7 +116,7 @@ func reportServiceUsedNeedsService(c *gin.Context) bool {
 	return strings.TrimSpace(c.Query("_keyword")) != "" || hasFilterParam(c, "service_type_id")
 }
 
-// reportServiceUsedAgg — 9 cột tổng của 1 nhóm dịch vụ (cột osu ghi rõ bảng: câu 1 lượt có thể JOIN service/customer).
+// reportServiceUsedAgg — 8 cột tổng của 1 nhóm dịch vụ (cột osu ghi rõ bảng: câu 1 lượt có thể JOIN service/customer).
 const reportServiceUsedAgg = `COUNT(DISTINCT order_service_used.customer_id) AS customerCount,
 			COUNT(order_service_used.id) AS numService,
 			SUM(order_service_used.quantity) AS quantity,
@@ -125,13 +124,12 @@ const reportServiceUsedAgg = `COUNT(DISTINCT order_service_used.customer_id) AS 
 			SUM(order_service_used.payment) AS payment,
 			SUM(CASE WHEN order_service_used.service_discount_type = 2 THEN (order_service_used.service_discount * order_service_used.unit_price * order_service_used.quantity / 100) ELSE order_service_used.service_discount END) AS service_discount_amount,
 			SUM(order_service_used.discount_other) AS discount_other,
-			SUM(order_service_used.rank_discount_amount) AS rank_discount_amount,
 			SUM(order_service_used.refundServiceUsed) AS refundServiceUsed`
 
 // reportServiceUsedMoneyCols — alias tiền/SUM ra chuỗi khi scan vào map, phải parse tay (bảng dẫn xuất ⇒
 // Paginate/extractTables không suy ra được bảng gốc). `quantity` = SUM(int) ⇒ DECIMAL.
 var reportServiceUsedMoneyCols = []string{"totalEnd", "payment", "service_discount_amount",
-	"discount_other", "rank_discount_amount", "refundServiceUsed", "quantity"}
+	"discount_other", "refundServiceUsed", "quantity"}
 
 // reportServiceUsedOnePass — danh sách nhóm + dòng tổng trong MỘT lượt đọc osu.
 //
@@ -193,15 +191,14 @@ func (h *Handler) reportServiceUsedOnePass(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"object": result,
 		"totals": gin.H{
-			"customerCount":           helpers.ToInt64(totalRow["customerCount"]),
-			"numService":              helpers.ToInt64(totalRow["numService"]),
-			"numQuantity":             helpers.ToInt64(totalRow["quantity"]),
-			"totalTotalEnd":           helpers.ToDecimal(totalRow["totalEnd"]),
-			"totalPayment":            helpers.ToDecimal(totalRow["payment"]),
-			"totalDiscountService":    helpers.ToDecimal(totalRow["service_discount_amount"]),
-			"totalDiscountOther":      helpers.ToDecimal(totalRow["discount_other"]),
-			"totalRankDiscountAmount": helpers.ToDecimal(totalRow["rank_discount_amount"]),
-			"totalRefundServiceUsed":  helpers.ToDecimal(totalRow["refundServiceUsed"]),
+			"customerCount":          helpers.ToInt64(totalRow["customerCount"]),
+			"numService":             helpers.ToInt64(totalRow["numService"]),
+			"numQuantity":            helpers.ToInt64(totalRow["quantity"]),
+			"totalTotalEnd":          helpers.ToDecimal(totalRow["totalEnd"]),
+			"totalPayment":           helpers.ToDecimal(totalRow["payment"]),
+			"totalDiscountService":   helpers.ToDecimal(totalRow["service_discount_amount"]),
+			"totalDiscountOther":     helpers.ToDecimal(totalRow["discount_other"]),
+			"totalRefundServiceUsed": helpers.ToDecimal(totalRow["refundServiceUsed"]),
 		},
 	})
 }
@@ -223,7 +220,7 @@ func (h *Handler) reportServiceUsedRollupQuery(c *gin.Context) *gorm.DB {
 	return h.DB.Table("(?) AS a", inner).
 		Select(`a.id, service.name AS service_name, service.code AS service_code,
 			a.customerCount, a.numService, a.quantity, a.totalEnd, a.payment, a.service_discount_amount,
-			a.discount_other, a.rank_discount_amount, a.refundServiceUsed`).
+			a.discount_other, a.refundServiceUsed`).
 		Joins("LEFT JOIN service ON service.id = a.id").
 		Order("a.numService DESC, a.id")
 }
@@ -290,16 +287,15 @@ func (h *Handler) ReportServiceUsed(c *gin.Context) {
 	// tách ra chỉ tổ quét thêm một lượt nữa. Đo ca không lọc ngày @898.720 dòng (2026-09-09):
 	// 2 câu riêng 15,8–28,4s -> gộp 1 câu 2,3–2,8s (~7x).
 	var totals struct {
-		TotalGroups        int64           `gorm:"column:totalGroups"`
-		CustomerCount      int64           `gorm:"column:customerCount"`
-		NumService         int64           `gorm:"column:numService"`
-		Quantity           int64           `gorm:"column:quantity"`
-		TotalEnd           decimal.Decimal `gorm:"column:totalEnd"`
-		Payment            decimal.Decimal `gorm:"column:payment"`
-		ServiceDiscount    decimal.Decimal `gorm:"column:service_discount_amount"`
-		DiscountOther      decimal.Decimal `gorm:"column:discount_other"`
-		RankDiscountAmount decimal.Decimal `gorm:"column:rank_discount_amount"`
-		RefundServiceUsed  decimal.Decimal `gorm:"column:refundServiceUsed"`
+		TotalGroups       int64           `gorm:"column:totalGroups"`
+		CustomerCount     int64           `gorm:"column:customerCount"`
+		NumService        int64           `gorm:"column:numService"`
+		Quantity          int64           `gorm:"column:quantity"`
+		TotalEnd          decimal.Decimal `gorm:"column:totalEnd"`
+		Payment           decimal.Decimal `gorm:"column:payment"`
+		ServiceDiscount   decimal.Decimal `gorm:"column:service_discount_amount"`
+		DiscountOther     decimal.Decimal `gorm:"column:discount_other"`
+		RefundServiceUsed decimal.Decimal `gorm:"column:refundServiceUsed"`
 	}
 	// Builder closure → mỗi Scan dùng *gorm.DB tươi, tránh GORM append Joins duplicate.
 	// ⚠ Câu totals KHÔNG áp `_groupLocal`/`_groupCountry` (câu danh sách có) — lệch sẵn từ trước, giữ
@@ -325,7 +321,6 @@ func (h *Handler) ReportServiceUsed(c *gin.Context) {
 		COALESCE(SUM(payment), 0) as payment,
 		COALESCE(SUM(CASE WHEN service_discount_type = 2 THEN (service_discount * unit_price * quantity / 100) ELSE service_discount END), 0) as service_discount_amount,
 		COALESCE(SUM(discount_other), 0) as discount_other,
-		COALESCE(SUM(rank_discount_amount), 0) as rank_discount_amount,
 		COALESCE(SUM(refundServiceUsed), 0) as refundServiceUsed,
 		COUNT(DISTINCT order_service_used.customer_id) as customerCount,
 		COUNT(DISTINCT order_service_used.service_id) as totalGroups`).
@@ -356,7 +351,7 @@ func (h *Handler) ReportServiceUsed(c *gin.Context) {
 	// ParseDecimalFieldsForTables). `service_discount_amount` là alias của biểu thức CASE,
 	// KHÔNG phải cột của bảng nào ⇒ vẫn ra JSON string nếu không gọi tay.
 	// Các alias tiền còn lại (totalEnd, payment, discount_other,
-	// rank_discount_amount, refundServiceUsed) TRÙNG tên cột `order_service_used` nên đã được
+	// refundServiceUsed) TRÙNG tên cột `order_service_used` nên đã được
 	// Paginate phủ; `quantity` = SUM(int) — MySQL vẫn trả DECIMAL cho SUM() dù cột gốc INT, và vì
 	// `ParseDecimalFieldsForTables` tra theo SCHEMA thật (quantity là INT, không phải decimal) nên
 	// không phủ được alias này dù trùng tên cột — parse tường minh (story-34 F-E, đã duyệt vá).
@@ -379,15 +374,14 @@ func (h *Handler) ReportServiceUsed(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"object": result,
 		"totals": gin.H{
-			"customerCount":           totals.CustomerCount,
-			"numService":              totals.NumService,
-			"numQuantity":             totals.Quantity,
-			"totalTotalEnd":           totals.TotalEnd,
-			"totalPayment":            totals.Payment,
-			"totalDiscountService":    totals.ServiceDiscount,
-			"totalDiscountOther":      totals.DiscountOther,
-			"totalRankDiscountAmount": totals.RankDiscountAmount,
-			"totalRefundServiceUsed":  totals.RefundServiceUsed,
+			"customerCount":          totals.CustomerCount,
+			"numService":             totals.NumService,
+			"numQuantity":            totals.Quantity,
+			"totalTotalEnd":          totals.TotalEnd,
+			"totalPayment":           totals.Payment,
+			"totalDiscountService":   totals.ServiceDiscount,
+			"totalDiscountOther":     totals.DiscountOther,
+			"totalRefundServiceUsed": totals.RefundServiceUsed,
 		},
 	})
 }
@@ -432,7 +426,7 @@ func (h *Handler) buildServiceTypeStatsQuery(c *gin.Context) *gorm.DB {
 	return query.ApplyFilter(c, q, "created_day", "osu.created_day")
 }
 
-// serviceTypeStatsAggSelect — 10 cột tổng của 1 nhóm loại dịch vụ, tính trên dòng osu.
+// serviceTypeStatsAggSelect — 8 cột tổng của 1 nhóm loại dịch vụ, tính trên dòng osu.
 const serviceTypeStatsAggSelect = `COUNT(DISTINCT osu.customer_id) AS customerCount,
 			COUNT(osu.id) AS numService,
 			SUM(osu.quantity) AS quantity,
@@ -440,7 +434,6 @@ const serviceTypeStatsAggSelect = `COUNT(DISTINCT osu.customer_id) AS customerCo
 			SUM(osu.payment) AS payment,
 			SUM(CASE WHEN osu.service_discount_type = 2 THEN (osu.service_discount * osu.unit_price * osu.quantity / 100) ELSE osu.service_discount END) AS service_discount_amount,
 			SUM(osu.discount_other) AS discount_other,
-			SUM(osu.rank_discount_amount) AS rank_discount_amount,
 			SUM(osu.refundServiceUsed) AS refundServiceUsed`
 
 // serviceTypeStatsQuery — câu báo cáo: gom osu theo KHOÁ SỐ `service.service_type_id` trong bảng dẫn
@@ -469,7 +462,7 @@ func (h *Handler) serviceTypeStatsQuery(c *gin.Context) *gorm.DB {
 		Group("service.service_type_id WITH ROLLUP")
 	return h.DB.Table("(?) AS a", inner).
 		Select(`st.id, st.name, a.customerCount, a.numService, a.quantity, a.totalEnd, a.payment,
-			a.service_discount_amount, a.discount_other, a.rank_discount_amount, a.refundServiceUsed`).
+			a.service_discount_amount, a.discount_other, a.refundServiceUsed`).
 		Joins("LEFT JOIN service_type st ON st.id = a.tid").
 		Order("a.totalEnd DESC")
 }
@@ -501,11 +494,11 @@ func (h *Handler) ServiceTypeStatistics(c *gin.Context) {
 	// numService/customerCount = COUNT thuần → BIGINT, không cần parse.
 	for _, r := range rows {
 		helpers.ParseDecimalFields(r, "totalEnd", "payment", "service_discount_amount",
-			"discount_other", "rank_discount_amount", "refundServiceUsed", "quantity")
+			"discount_other", "refundServiceUsed", "quantity")
 	}
 
 	var tNumService, tQuantity int64
-	var tTotalEnd, tPayment, tDiscountService, tDiscountOther, tRankDiscount, tRefund decimal.Decimal
+	var tTotalEnd, tPayment, tDiscountService, tDiscountOther, tRefund decimal.Decimal
 	for _, r := range rows {
 		tNumService += helpers.ToInt64(r["numService"])
 		tQuantity += helpers.ToInt64(r["quantity"])
@@ -513,7 +506,6 @@ func (h *Handler) ServiceTypeStatistics(c *gin.Context) {
 		tPayment = tPayment.Add(helpers.ToDecimal(r["payment"]))
 		tDiscountService = tDiscountService.Add(helpers.ToDecimal(r["service_discount_amount"]))
 		tDiscountOther = tDiscountOther.Add(helpers.ToDecimal(r["discount_other"]))
-		tRankDiscount = tRankDiscount.Add(helpers.ToDecimal(r["rank_discount_amount"]))
 		tRefund = tRefund.Add(helpers.ToDecimal(r["refundServiceUsed"]))
 	}
 
@@ -555,7 +547,6 @@ func (h *Handler) ServiceTypeStatistics(c *gin.Context) {
 			"payment":                 tPayment,
 			"service_discount_amount": tDiscountService,
 			"discount_other":          tDiscountOther,
-			"rank_discount_amount":    tRankDiscount,
 			"refundServiceUsed":       tRefund,
 		},
 	})

@@ -304,7 +304,6 @@ Constants: `pkg/define/order_service_used.go` → `define.ServiceCategoryFee = 4
 ### Được phép
 - Vào `order_treatment_plan` bình thường
 - Điền commission fields (telesale, directSale, doctor) trên form — trường vẫn hiển thị
-- Loyalty points — nếu `service.loyalty_points > 0` thì tính (flow giống sản phẩm, trigger qua `payment_status=DONE`)
 
 ### Bị loại trừ
 | Rule | File | Logic |

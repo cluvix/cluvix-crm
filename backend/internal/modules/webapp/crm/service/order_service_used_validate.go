@@ -19,7 +19,7 @@ import (
 // Cross-field: payment <= totalEnd + vat_amount (số phải thu của dòng — bmad/order-vat D4).
 // Number min 0: unit_price, service_discount, discount_other, total,
 //
-//	discountServiceLock, rank_discount_percent, rank_discount_amount, totalEnd, vat_amount, payment.
+//	discountServiceLock, totalEnd, vat_amount, payment.
 //
 // quantity min 1.
 // Enum: service_discount_type ∈ {1, 2}.
@@ -42,8 +42,6 @@ func validateOrderServiceUsed(svc *crmServiceDao.OrderServiceUsed) error {
 	checkOSUDecimalNonNeg(v, svc.DiscountOther, "Giảm giá khác")
 	checkOSUDecimalNonNeg(v, svc.Total, "Tổng tiền")
 	checkOSUDecimalNonNeg(v, &svc.DiscountServiceLock, "Giảm trừ khoá dịch vụ")
-	checkOSUDecimalNonNeg(v, svc.RankDiscountPercent, "% giảm theo hạng")
-	checkOSUDecimalNonNeg(v, svc.RankDiscountAmount, "Số tiền giảm theo hạng")
 	checkOSUDecimalNonNeg(v, svc.TotalEnd, "Tổng tiền cuối")
 	checkOSUDecimalNonNeg(v, &svc.VatAmount, "Tiền VAT")
 	checkOSUDecimalNonNeg(v, svc.Payment, "Đã thanh toán")
@@ -82,8 +80,6 @@ var serviceMoneyTolerance = decimal.NewFromInt(1)
 //	gross    = đơn giá × số lượng
 //	total    = round(gross − chiết khấu dịch vụ (VND, hoặc round(% × gross)))
 //	totalEnd = round(total − giảm khác − giảm trừ khoá dịch vụ)
-//
-// (rank_discount_amount KHÔNG trừ vào totalEnd — server tính riêng.)
 func expectedServiceUsedMoney(svc *crmServiceDao.OrderServiceUsed) (total, totalEnd decimal.Decimal) {
 	unit := derefDec(svc.UnitPrice)
 	qty := decimal.Zero

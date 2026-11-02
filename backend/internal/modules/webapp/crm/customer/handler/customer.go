@@ -57,7 +57,7 @@ const customerListSelect = `customer.id, customer.code, customer.old_code, custo
 			customer.payment_user_id, customer.connect_id, customer.created_by, customer.updated_by,
 			customer.type_service_id,
 			customer.appointment_not_booked_reasons_id, customer.loai_message,
-			customer.customerType, customer.customer_rank_id, customer.job_id, customer.ethnicity_id,
+			customer.customerType, customer.job_id, customer.ethnicity_id,
 			customer.tags,
 			customer.totalRevenue, customer.totalPayment, customer.totalDebt, customer.totalDeposit, customer.totalBonus,
 			customer.refundDeposit, customer.refundService, customer.consignment, customer.refundConsignment`

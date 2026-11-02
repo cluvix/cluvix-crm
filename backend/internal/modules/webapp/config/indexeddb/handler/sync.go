@@ -27,8 +27,6 @@ type tableConfig struct {
 var configTables = map[string]tableConfig{
 	"ethnicity":            {Table: "ethnicity"},
 	"job":                  {Table: "job"},
-	"customerRankServices": {Table: "customer_rank_services", OrderBy: "id DESC"},
-	"customerRanks":        {Table: "customer_ranks", OrderBy: "id DESC"},
 	"controlFieldInTables": {Table: "control_field_in_table", OrderBy: "id ASC"},
 	"groupSources":         {Table: "group_source"},
 	"groupLocals":          {Table: "group_local"},
@@ -175,7 +173,7 @@ func parseJSONFields(rows []map[string]interface{}) {
 func (h *Handler) Sync(c *gin.Context) {
 	tablesParam := c.Query("tables")
 	if tablesParam == "" {
-		tablesParam = "ethnicity,job,customerRankServices,customerRanks,controlFieldInTables,settings,userOptions,groupSources,groupLocals,groupCountries,roles,appointmentReasons,customerCategories,hrDepartments,noteTemplates,appointmentNotBookedReasons,services,sources,paymentTypes,paymentMethods,taxRates,branches,users,appointmentTypes,units,serviceTypes,locationCountries,locationProvinces,appointmentIsAccepteds"
+		tablesParam = "ethnicity,job,controlFieldInTables,settings,userOptions,groupSources,groupLocals,groupCountries,roles,appointmentReasons,customerCategories,hrDepartments,noteTemplates,appointmentNotBookedReasons,services,sources,paymentTypes,paymentMethods,taxRates,branches,users,appointmentTypes,units,serviceTypes,locationCountries,locationProvinces,appointmentIsAccepteds"
 	}
 
 	requested := strings.Split(tablesParam, ",")

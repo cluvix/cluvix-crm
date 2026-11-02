@@ -83,7 +83,6 @@ func treatmentServicesCols() []exportCol {
 		{"totalPayment", "Thanh toán", func(r map[string]interface{}) interface{} { return toFloat(r["payment"]) }},
 		{"totalDiscountService", "Giảm dịch vụ", func(r map[string]interface{}) interface{} { return toFloat(r["service_discount_amount"]) }},
 		{"totalDiscountOther", "Giảm khác", func(r map[string]interface{}) interface{} { return toFloat(r["discount_other"]) }},
-		{"rank_discount_amount", "Giảm hạng thành viên", func(r map[string]interface{}) interface{} { return toFloat(r["rank_discount_amount"]) }},
 		{"totalRefundServiceUsed", "Hoàn dịch vụ", func(r map[string]interface{}) interface{} { return toFloat(r["refundServiceUsed"]) }},
 		{"mediumService", "Trung bình", func(r map[string]interface{}) interface{} {
 			numService := toFloat(r["numService"])
@@ -110,7 +109,6 @@ func ExportTreatmentServices(c *gin.Context, q *gorm.DB) {
 			SUM(payment) as payment,
 			SUM(CASE WHEN service_discount_type = 2 THEN (service_discount * unit_price * quantity / 100) ELSE service_discount END) as service_discount_amount,
 			SUM(discount_other) as discount_other,
-			SUM(rank_discount_amount) as rank_discount_amount,
 			SUM(refundServiceUsed) as refundServiceUsed`).
 		Group("order_service_used.service_id")
 

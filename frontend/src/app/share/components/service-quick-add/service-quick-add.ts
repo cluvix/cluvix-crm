@@ -102,8 +102,6 @@ const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min)
 export class ServiceQuickAdd {
   /** Đơn hàng: bật luật giá [min, max] + khoá giá cố định (giống ô đơn giá trên dòng). */
   readonly enforcePriceRange = input(false);
-  /** Đơn hàng: ghi chú cạnh "Tạm tính" rằng số này CHƯA trừ giảm theo hạng khách (tính trên dòng sau khi thêm). */
-  readonly subtotalBeforePromotions = input(false);
   readonly add = output<ServiceQuickAddEvent>();
 
   private readonly servicesCache = inject(ServicesCacheService);

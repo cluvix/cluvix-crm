@@ -84,7 +84,7 @@ FE sẽ full sync khi thấy mismatch sentinel này.
 
 ```
 companies, branches, units, services, serviceTypes, serviceCombos, serviceComboTypes,
-users, departments, ethnicity, job, customerRanks, customerRankServices,
+users, departments, ethnicity, job,
 customerCategories, customerMedicalHistories, customerPathologies,
 customerCareTypes, customerCareChannels, customerCareClassifications,
 customerCareResults, customerCareStatus, customerCareComplaintsTypes,

@@ -28,8 +28,6 @@ import {UserCacheService, UserMultiSelectFormControl} from '@/indexeddb/config/c
 import {UnitHelperService} from '@/indexeddb/config/components/unit';
 import {UserOptionHelperService} from '@/indexeddb/config/components/user-option';
 import {ServicesHelperService} from '@/indexeddb/config/components/services';
-import {CustomerRankServicesHelperService} from '@/indexeddb/config/components/customer-rank-services';
-import {CustomerRanksHelperService} from '@/indexeddb/config/components/customer-ranks';
 import {ChangeServiceDialog} from '@/modules/crm/order-plan/change-service-dialog/change-service-dialog';
 import {isRowFieldLocked, LockableRowField} from '@/modules/crm/order-plan/form/order-plan-row-lock';
 import {ServiceQuickAdd, ServiceQuickAddEvent} from '@/share/components/service-quick-add/service-quick-add';
@@ -91,7 +89,6 @@ function emptyServiceRow(seed?: Partial<OrderServiceUsedRow>): OrderServiceUsedR
     updated_at: null,
     discountServiceLock: 0,
     unitName: null,
-    rank_discount_percent: 0,
     vat_amount: 0,
     _uid: ++rowUidCounter,
     unitPriceLocked: false,
@@ -232,7 +229,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   /**
    * SNAPSHOT BẤT BIẾN lúc mở dialog — `BaseSignalForm.model()` là nguồn SỐNG 2 chiều (mọi phím user gõ
    * ghi thẳng vào đó), KHÁC hẳn `BaseForm.model()` vốn chỉ set 1 lần lúc `initialForm()`. Mọi logic cần
-   * "giá trị đã lưu ở DB" (rank_discount_percent gốc, discountServiceLock, tiền đã thanh toán, ngày tạo
+   * "giá trị đã lưu ở DB" (discountServiceLock, tiền đã thanh toán, ngày tạo
    * đơn để tính min/maxDate) PHẢI đọc từ đây, KHÔNG đọc lại `model()`.
    * Xem `skill/bmad/hr-signal-forms/dev-notes-common.md` mục 9.
    */
@@ -245,8 +242,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   private userOptionHelper = inject(UserOptionHelperService);
   private unitHelper = inject(UnitHelperService);
   private servicesHelper = inject(ServicesHelperService);
-  private customerRankServicesHelper = inject(CustomerRankServicesHelperService);
-  private customerRanksHelper = inject(CustomerRanksHelperService);
   private userCacheForOrderScope = inject(UserCacheService);
 
   constructor() {
@@ -383,7 +378,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       updated_at: orderServiceItem?.updated_at ?? null,
       discountServiceLock: orderServiceItem?.discountServiceLock || 0,
       unitName: this.unitHelper.getLabel(orderServiceItem?.serviceInfo?.unit_id) ?? null,
-      rank_discount_percent: orderServiceItem?.rank_discount_percent || 0,
       vat_amount: orderServiceItem?.vat_amount || 0,
       serviceLocked: rowLocked,
       unitPriceLocked: false,
@@ -424,7 +418,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
    * [CRITICAL] Toàn bộ recalculation tiền gom vào effect key theo CHUỖI SERIALIZE các field ĐIỀU KHIỂN
    * (`service_discount`/`unit_price`/`quantity`/`discount_other`/`service_id`).
    *
-   * Field bị GHI (`total`/`totalEnd`/`rank_discount_percent` cấp dòng và
+   * Field bị GHI (`total`/`totalEnd`/`vat_amount` cấp dòng và
    * `total`/`discount_other` cấp form) TUYỆT ĐỐI KHÔNG được có mặt trong key — nếu không sẽ
    * lặp vô hạn. Mọi lệnh ghi bọc `untracked()`.
    */
@@ -441,7 +435,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
             [r.quantity, r.unit_price, r.service_discount, r.service_discount_type, r.discount_other, r.service_id].join('|'),
           )
           .join(';');
-        return `${rowKey}#${this.customer()?.customer_rank_id ?? ''}#${this.model().vat_rate ?? ''}`;
+        return `${rowKey}#${this.model().vat_rate ?? ''}`;
       },
       () => untracked(() => void this._recalcMoney()),
     );
@@ -561,26 +555,10 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
   // ============ CALCULATIONS ============
 
   /**
-   * Gộp `handleService()` + `calculateRankDiscount()` + `handleServiceUsed()` của bản gốc thành 1 lượt
-   * đọc-tính-ghi duy nhất (Signal Forms ghi cả mảng dòng 1 lần thay vì patch từng control).
+   * Gộp `handleService()` + `handleServiceUsed()` của bản gốc thành 1 lượt đọc-tính-ghi duy nhất
+   * (Signal Forms ghi cả mảng dòng 1 lần thay vì patch từng control).
    */
-  private async _recalcMoney(): Promise<void> {
-    const customerRankId = this.customer()?.customer_rank_id;
-
-    if (customerRankId && !this.isEditMode()) {
-      await this.customerRankServicesHelper.ensureCustomerRankServicesLoaded();
-      await this.customerRanksHelper.ensureCustomerRanksLoaded();
-    }
-
-    const hasRankServiceConfig =
-      !!customerRankId && !this.isEditMode()
-        ? this.customerRankServicesHelper.getAll().some((item) => item.rank_id === customerRankId)
-        : false;
-    const generalRankPercent =
-      !!customerRankId && !this.isEditMode() && !hasRankServiceConfig
-        ? Number(this.customerRanksHelper.getRankById(customerRankId)?.discount_percent) || 0
-        : 0;
-
+  private _recalcMoney(): void {
     const rows = this.model().services_used ?? [];
     const vatRate = this.model().vat_rate;
 
@@ -589,26 +567,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       const quantity = Number(row.quantity) || 0;
       const unitPrice = Number(row.unit_price) || 0;
       const serviceDiscount = Number(row.service_discount) || 0;
-
-      // Rank discount percent
-      let rankDiscountPercent = 0;
-      if (customerRankId && row.service_id) {
-        if (this.isEditMode()) {
-          // Lookup by id (không dùng positional index — index lệch khi user thêm/xóa dòng)
-          const originalSvc = this.originalServiceUseds.find((s: any) => s.id === row.id);
-          rankDiscountPercent = originalSvc?.rank_discount_percent || 0;
-        } else if (hasRankServiceConfig) {
-          const rankService = this.customerRankServicesHelper.getRankServiceByRankAndService(
-            customerRankId,
-            row.service_id,
-          );
-          if (rankService) {
-            rankDiscountPercent = Number(rankService.discount_percent) || 0;
-          }
-        } else {
-          rankDiscountPercent = generalRankPercent;
-        }
-      }
 
       const total = this.totalTotalService(
         unitPrice,
@@ -637,8 +595,7 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
       if (
         row.total === nextTotal &&
         row.totalEnd === nextTotalEnd &&
-        row.vat_amount === nextVat &&
-        row.rank_discount_percent === rankDiscountPercent
+        row.vat_amount === nextVat
       ) {
         return row;
       }
@@ -648,12 +605,10 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         total: nextTotal,
         totalEnd: nextTotalEnd,
         vat_amount: nextVat,
-        rank_discount_percent: rankDiscountPercent,
       };
     });
 
-    // Tổng đơn = Σ totalEnd (trước thuế) — ĐÚNG số BE cho thu. Giảm theo hạng (`rank_discount_amount`) BE chỉ lưu,
-    // KHÔNG trừ vào số phải thu ⇒ không trừ ở đây (bản cũ trừ ⇒ form hiện "còn lại" thấp hơn số BE thu — order-vat D11a).
+    // Tổng đơn = Σ totalEnd (trước thuế) — ĐÚNG số BE cho thu.
     let total = 0;
     let discountOther = 0;
     updated.forEach((row) => {
@@ -940,7 +895,6 @@ export class OrderPlanForm extends BaseSignalForm<OrderPlanModel> {
         updated_at: r.updated_at,
         discountServiceLock: r.discountServiceLock,
         unitName: r.unitName,
-        rank_discount_percent: r.rank_discount_percent,
         vat_amount: r.vat_amount,
       })),
     };

@@ -87,9 +87,6 @@
       <span class="text-sm text-muted-color">
         {{ 'common.label.subtotal' | translate }}:
         <span class="font-semibold text-color tabular-nums">{{ subtotal() | currencyFormat }}</span>
-        @if (subtotalBeforePromotions()) {
-          <span class="text-xs">({{ 'crm.order_plan.form.quick_subtotal_hint' | translate }})</span>
-        }
       </span>
       <!-- `[fluid]="false"`: form cha bọc `<p-fluid>` ⇒ pButton mặc định giãn hết chiều ngang. -->
       <button pButton type="button" [fluid]="false" [disabled]="!service()" (click)="commit()">

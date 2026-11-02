@@ -41,8 +41,6 @@ export const DOCS_ROUTE_MAP: Record<string, string> = {
   '/config/branch': 'config/he-thong/chi-nhanh',
   '/config/unit': 'config/he-thong/don-vi-tinh',
   '/config/option': 'config/he-thong/lua-chon-tac-vu',
-  '/config/customer-ranks': 'config/khach-hang/hang-thanh-vien',
-  '/config/customer-rank-services': 'config/khach-hang/giam-gia-theo-hang',
   '/config/customer-source': 'config/marketing/nguon-khach-hang',
   '/config/group-source': 'config/marketing/nhom-nguon-khach-hang',
   '/config/service': 'config/phong-kham/dich-vu-san-pham',

@@ -21,10 +21,6 @@ import (
 	// Plan 06 B2:
 	customerCategory "erpCluvix/internal/modules/webapp/config/customer_category"
 	customerCategoryHandler "erpCluvix/internal/modules/webapp/config/customer_category/handler"
-	customerRankServices "erpCluvix/internal/modules/webapp/config/customer_rank_services"
-	customerRankServicesHandler "erpCluvix/internal/modules/webapp/config/customer_rank_services/handler"
-	customerRanks "erpCluvix/internal/modules/webapp/config/customer_ranks"
-	customerRanksHandler "erpCluvix/internal/modules/webapp/config/customer_ranks/handler"
 
 	// Plan 06 B3:
 	ethnicity "erpCluvix/internal/modules/webapp/config/ethnicity"
@@ -123,13 +119,6 @@ func Register(authed *gin.RouterGroup, d deps.Deps) {
 
 		// CustomerCategory — Plan 06 B2: layered module.
 		customerCategory.RegisterRoutes(cfg, customerCategoryHandler.Deps{DB: d.DB})
-
-		// CustomerRanks — Plan 06 B2: layered module. Khôi phục story-15 patch P1 (2026-09-24):
-		// architecture §1 chốt GIỮ (story-10 — giảm giá theo hạng vào tổng đơn).
-		customerRanks.RegisterRoutes(cfg, customerRanksHandler.Deps{DB: d.DB})
-
-		// CustomerRankServices — Plan 06 B2: layered module. Khôi phục story-15 patch P1.
-		customerRankServices.RegisterRoutes(cfg, customerRankServicesHandler.Deps{DB: d.DB})
 
 		// GroupCountry — Plan 06 B3: layered module.
 		groupCountry.RegisterRoutes(cfg, groupCountryHandler.Deps{DB: d.DB})

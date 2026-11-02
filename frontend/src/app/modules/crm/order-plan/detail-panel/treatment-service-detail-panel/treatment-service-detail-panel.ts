@@ -111,7 +111,6 @@ export class TreatmentServiceDetailPanel extends BaseDetailPanel<OrderServiceUse
     return this.round2(
       Number(m.service_discount ?? 0) +
         Number(m.discount_other ?? 0) +
-        Number(m.rank_discount_amount ?? 0) +
         Number(m.discountServiceLock ?? 0),
     );
   });

@@ -200,7 +200,7 @@ const hasInvalidNumTreatment = (raw.services_used as any[]).some(
 | `total` (rfModel) | `SUM(row.totalEnd)` — set bởi `handleServiceUsed()` | Bottom total |
 
 `handleService()` tính `total` row = `totalTotalService(unitPrice, qty, service_discount, ...)` (đã trừ discount).
-`handleServiceUsed()` (order-plan-form.ts:848-876) cộng dồn CẢ 3: `totalEnd`→`rfModel.total`, `discount`→`rfModel.discount`, `discount_other`→`rfModel.discount_other` (trừ `totalRankDiscount()` khỏi total). KHÔNG recalculate row values (giá/discount từng dòng), chỉ aggregate cấp đơn.
+`handleServiceUsed()` (order-plan-form.ts:848-876) cộng dồn CẢ 3: `totalEnd`→`rfModel.total`, `discount`→`rfModel.discount`, `discount_other`→`rfModel.discount_other`. KHÔNG recalculate row values (giá/discount từng dòng), chỉ aggregate cấp đơn.
 
 ### onSelectServiceCombo — phải gọi handleService() (CRITICAL)
 

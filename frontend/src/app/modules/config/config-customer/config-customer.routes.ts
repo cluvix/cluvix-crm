@@ -1,22 +1,6 @@
 import {Routes} from '@angular/router';
 
 export default [
-  {
-    path: 'customer-ranks',
-    loadComponent: () =>
-      import('./customer-ranks/list/customer-ranks-list').then(
-        (c) => c.CustomerRanksList,
-      ),
-    data: {breadcrumb: 'common.label.member_rank', title: 'common.label.member_rank'},
-  },
-  {
-    path: 'customer-rank-services',
-    loadComponent: () =>
-      import('./customer-rank-services/list/customer-rank-services-list').then(
-        (c) => c.CustomerRankServicesList,
-      ),
-    data: {breadcrumb: 'config.nav.customer.rank_services'},
-  },
   // story-20: relocated từ config-marketing (đã xoá — architecture.md §1 xoá module marketing,
   // nhưng customer_category/source/group_source/job/ethnicity/note_template nằm ở BE
   // `webapp/config` keep-list, KHÔNG thuộc marketing — chỉ từng bị gom nhầm thư mục).
