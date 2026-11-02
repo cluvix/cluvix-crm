@@ -473,7 +473,6 @@ Code reference dùng dạng: `model.Field` hoặc `route /path` hoặc `file:pat
 | chưa điều trị | untreated | `treatment_status=1 (UNTREATED)` |
 | dừng CS | stopped care (Trash) | customer status=1 |
 | timeline / dòng thời gian | timeline | `addTimelineEvent`, `timeline-customer` |
-| sao chép / chuyển | switch / clone | `create-customer-switch` (clone customer to another branch) |
 | ghi chú admin | admin note | |
 | lý do | reason | |
 | mã vạch / QR | barcode / QR code | `Mã bảo hành (barcode, qr code)` |

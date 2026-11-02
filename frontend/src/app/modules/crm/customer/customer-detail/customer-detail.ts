@@ -10,7 +10,6 @@ import {CUSTOMER_INFO_FIELDS} from '@/modules/crm/customer/customer-detail/custo
 import {SKIP_ERROR_NOTIFICATION} from '@/core/interceptors/response-handler.interceptor';
 import {consumeCustomerPreload} from '@/share/utils/customer-preload.util';
 import {CustomerFormV2} from '@/modules/crm/customer/form/form-customer/customer-form-v2';
-import {SwitchForm} from '@/modules/crm/customer/form/form-switch/switch-form';
 import {OrderPlanInCustomer} from '@/modules/crm/order-plan/list/order-plan-in-customer';
 import {PaymentOfCustomer} from '@/modules/crm/payment/list/detail-customer/payment-of-customer';
 import {ReminderOfCustomer} from '@/modules/crm/reminder/customer/reminder-of-customer';
@@ -440,25 +439,6 @@ export class CustomerDetail extends BaseDetail<CustomerModel> implements OnInit,
           this.afterModelLoaded(dataWithLabels as any);
         }
       });
-  }
-
-  /**
-   * Clone customer
-   */
-  createCustomerSwitch(): void {
-    this.dialogRef = this.dialogWrapperService.open(SwitchForm, {
-      width: '840px',
-      header: this.translate.instant('crm.customer.create_existing_dialog_title'),
-      data: {
-        customer: this.model(),
-      },
-    });
-
-    this.dialogRef.onClose.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result: any) => {
-      if (result) {
-        void this.route.navigate([`/customer/detail/${result.id}`], { state: { customer: result } });
-      }
-    });
   }
 
   /**

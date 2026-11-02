@@ -29,7 +29,7 @@ func (h *Handler) PrintOrderPlan(c *gin.Context) {
 	}
 
 	var orderPlan map[string]interface{}
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", tenant.IsCrossBranchServiceEnabled(c, h.DB)).Table("order_plan").
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", true).Table("order_plan").
 		// VAT (bmad/order-vat): `total` giữ tiền TRƯỚC thuế (Σ totalEnd); `vat_total` = Σ vat_amount; phải thu của
 		// đơn = `total_after_vat` (tính dưới). debtsPlan do service tính sẵn theo phải thu có VAT.
 		Select("id, code, branch_id, customer_id, note, discount_other, vat_rate, paymentPlan, debtsPlan, created_time, "+

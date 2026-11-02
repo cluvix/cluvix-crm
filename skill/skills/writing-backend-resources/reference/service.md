@@ -141,7 +141,8 @@ tx.Model(&item).Where("id = ? AND version = ?", item.ID, dbVersion).Updates(upda
 
 JSON array fields phải `json.Marshal` trước khi GORM update (tránh serialize thành SQL tuple):
 - `treatment_step_ids`
-- `installment_config` (nested form keys `installment_config[xxx]` được gom lại)
+
+Cột `installment_config` đã bỏ khỏi bảng `service` (02/11/2026): key phẳng nằm trong `removedServicePayloadKeys`, key lồng `installment_config[xxx]` (PWA cũ) bị `normalizeFormPayload` gỡ — không còn gom thành JSON.
 
 ---
 

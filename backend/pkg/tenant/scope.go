@@ -3,8 +3,6 @@ package tenant
 import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-
-	"erpCluvix/pkg/define"
 )
 
 // Story-41 (E6/D15 — 1 thương hiệu/DB): registry bảng có company_id + mọi API scope theo company
@@ -68,24 +66,6 @@ func IsCrossBranchEnabled(c *gin.Context, db *gorm.DB) bool {
 	return enabled
 }
 
-// ctxKeyCrossBranchService là key lưu cache per-request trong gin.Context.
-const ctxKeyCrossBranchService = "_opt_cross_branch_service"
-
-// IsCrossBranchServiceEnabled trả true khi user_option UserOptionCrossBranchService (id=23) = 1 (ON).
-// Khác IsCrossBranchEnabled (id=18, cross-branch chung cho mọi module) — id=23 chỉ áp dụng cho các
-// list liên quan tới flow "dùng dịch vụ đã mua ở chi nhánh khác": danh sách dịch vụ,
-// payment của khách, treatment course của khách. Cache trong gin.Context để chỉ query DB 1 lần/request.
-func IsCrossBranchServiceEnabled(c *gin.Context, db *gorm.DB) bool {
-	if v, ok := c.Get(ctxKeyCrossBranchService); ok {
-		return v.(bool)
-	}
-	var val int
-	db.Table("user_option").Where("id = ?", define.UserOptionCrossBranchService).Limit(1).Pluck("options", &val)
-	enabled := val == 1
-	c.Set(ctxKeyCrossBranchService, enabled)
-	return enabled
-}
-
 // ScopeFunc khớp chữ ký ScopedDBNullBranch/CrossBranchLookupScope — dùng khi caller cần NHẬN scope
 // function làm tham số (story-33: gộp các bản fork attachRelation* khác nhau ở khoản chọn
 // ScopedDB* nào, xem pkg/handlerutil).
@@ -96,8 +76,8 @@ func ScopedDBNullBranch(c *gin.Context, db *gorm.DB, table string, alias ...stri
 }
 
 // ScopedDBNullBranchSkipBranch là ScopedDBNullBranch nhưng bỏ qua branch filter khi skipBranch=true.
-// Dùng cho các flow có user_option riêng cho phép bypass branch scope (khác id=18 cross-branch chung) —
-// ví dụ UserOptionCrossBranchService cho phép dùng dịch vụ đã mua ở chi nhánh khác.
+// Dùng cho các flow cố ý bypass branch scope (khác id=18 cross-branch chung) — ví dụ đơn hàng /
+// dịch vụ đã dùng / thanh toán của khách luôn dùng được ở mọi chi nhánh (`true`; option 23 cũ đã gỡ).
 // KHÔNG dùng tùy tiện: chỉ bypass đúng phạm vi flow cần, không thay ScopedDBNullBranch ở nơi khác.
 func ScopedDBNullBranchSkipBranch(c *gin.Context, db *gorm.DB, table string, skipBranch bool, alias ...string) *gorm.DB {
 	return scopedDBNullBranch(c, db, table, skipBranch, alias...)

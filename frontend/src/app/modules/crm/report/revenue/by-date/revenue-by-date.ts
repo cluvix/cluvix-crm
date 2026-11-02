@@ -59,6 +59,7 @@ export class RevenueByDate extends BaseListV2<any> implements OnInit {
       {
         name: '_ngay_thang',
         kind: 'dateRange',
+        required: true, // BE bắt buộc dải ngày (422 khi thiếu) → Xoá bộ lọc về mặc định
         default: () => [this.timezoneService.monthStart(), this.timezoneService.todayEnd()],
       },
       {name: 'branch_id', kind: 'in'},

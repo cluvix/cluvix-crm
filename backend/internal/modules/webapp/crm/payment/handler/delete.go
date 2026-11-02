@@ -50,5 +50,5 @@ func (h *Handler) DeleteRefundOrderPlan(c *gin.Context) {
 
 // paymentScope — db của bảng payment đã gắn phạm vi tenant (cùng phạm vi verifyPaymentOwnership).
 func (h *Handler) paymentScope(c *gin.Context) *gorm.DB {
-	return tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", tenant.IsCrossBranchServiceEnabled(c, h.DB))
+	return tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", true)
 }

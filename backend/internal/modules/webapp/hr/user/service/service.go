@@ -347,7 +347,8 @@ func (s *UserService) GetAllUsers() ([]map[string]interface{}, error) {
 		Select("p.user_id, p.fullname, p.nickname, p.avatar, p.departmentList, u.status, u.branchId").
 		Joins("JOIN user u ON u.id = p.user_id").
 		Joins("JOIN rbac_auth_assignment a ON a.user_id = u.id").
-		Where("u.id <> 1 AND a.item_name <> 'partner' AND u.status = ?", define.UserStatusActive)
+		// Gồm cả admin (id 1) — xem ghi chú "users" ở config/indexeddb/handler/sync.go.
+		Where("a.item_name <> 'partner' AND u.status = ?", define.UserStatusActive)
 
 	var rows []map[string]interface{}
 	tx := q.Find(&rows)

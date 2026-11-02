@@ -22,7 +22,6 @@ type User struct {
 	AllowedIps         datatypes.JSON `gorm:"column:allowed_ips;type:json;comment:Override IP allowlist riêng user" json:"allowed_ips"`
 	CreatedAt          int64          `gorm:"column:created_at;not null" json:"created_at"`
 	UpdatedAt          int64          `gorm:"column:updated_at;not null" json:"updated_at"`
-	LoggedAt           *int64         `gorm:"column:logged_at" json:"logged_at"`
 	CreatedBy          *int           `gorm:"column:created_by" json:"created_by"`
 	UpdatedBy          *int           `gorm:"column:updated_by" json:"updated_by"`
 }

@@ -5,7 +5,6 @@ import (
 
 	"gorm.io/gorm"
 
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -194,35 +193,14 @@ func catalogIDBelongs(tx *gorm.DB, src exportHandlers.CatalogSource, id int64) (
 }
 
 // normalizeFormPayload chuẩn hoá payload dạng map trước khi ghi DB — DÙNG CHUNG cho cả create và
-// update, vì `toFormData` (FE `share/services/utils.service.ts`) serialize object → key lồng
-// (`installment_config[periods]`, `installment_config[interest_rate]`...).
-//
-// Trước đây chỉ `UpdateService` gom key lồng, `CreateService` thì không → tạo dịch vụ qua multipart
-// sinh `INSERT ... installment_config[periods]` = cột không tồn tại → Error 1054, luôn 500.
+// update. FE bản cũ (PWA còn cache) `toFormData` (FE `share/services/utils.service.ts`) serialize
+// object → key lồng `installment_config[periods]`...; cột `installment_config` đã bỏ khỏi bảng
+// `service` nên gỡ cả các key lồng này (key phẳng `installment_config` đã nằm trong
+// `removedServicePayloadKeys`) — để không sinh `INSERT ... installment_config[periods]` = Error 1054.
 func normalizeFormPayload(updates map[string]interface{}) {
-	// Gom nested form keys (installment_config[xxx]) thành JSON object
-	for _, prefix := range []string{"installment_config"} {
-		nested := map[string]interface{}{}
-		var toDelete []string
-		for k, v := range updates {
-			if strings.HasPrefix(k, prefix+"[") && strings.HasSuffix(k, "]") {
-				field := k[len(prefix)+1 : len(k)-1]
-				nested[field] = v
-				toDelete = append(toDelete, k)
-			}
-		}
-		for _, k := range toDelete {
+	for k := range updates {
+		if strings.HasPrefix(k, "installment_config[") {
 			delete(updates, k)
-		}
-		if len(nested) > 0 {
-			b, _ := json.Marshal(nested)
-			updates[prefix] = string(b)
-		} else if v, ok := updates[prefix]; ok {
-			switch v.(type) {
-			case map[string]interface{}, []interface{}:
-				b, _ := json.Marshal(v)
-				updates[prefix] = string(b)
-			}
 		}
 	}
 }
@@ -268,9 +246,8 @@ func (h *Handler) BuildServiceQuery(c *gin.Context) *gorm.DB {
 }
 
 // serviceListSelectFields — cột thực sự dùng bởi ServiceList (FE service-list.html/ts) qua toàn bộ
-// displayCols có thể toggle. KHÔNG select `installment_config` (JSON nặng, chỉ dùng ở form detail
-// qua GetService) hay các field `_new`/`_type` hoa hồng, `id_old` — list không hiển thị các cột
-// này (Hard Rule: KHÔNG SELECT *).
+// displayCols có thể toggle. KHÔNG select các field `_new`/`_type` hoa hồng, `id_old` — list không
+// hiển thị các cột này (Hard Rule: KHÔNG SELECT *).
 var serviceListSelectFields = []string{
 	"service.id", "service.code", "service.code_old", "service.name",
 	"service.status",
@@ -281,14 +258,14 @@ var serviceListSelectFields = []string{
 }
 
 // removedServicePayloadKeys — key của các cột đã xoá khỏi bảng `service` (ảnh/mô tả/nội dung/điểm…
-// của Zalo Mini App cũ) cùng field FE chưa từng có cột (`time_expired_*`, `numTreatment` — bảng
+// của Zalo Mini App cũ, cấu hình trả góp `installment_config`) cùng field FE chưa từng có cột (`time_expired_*`, `numTreatment` — bảng
 // keep-set CRM không có cột này) và file upload `fileImage`.
 // FE bản cũ còn cache (PWA) vẫn có thể gửi các key này trong payload dạng map — bỏ đi để không lỗi
 // 1054 (unknown column), cùng cách xử lý key `company_id`.
 var removedServicePayloadKeys = []string{
 	"image", "fileImage", "desc", "content", "treatment_duration", "validity_days",
 	"companion_expired_at", "companion_expired_type", "point", "time_expired_at", "time_expired_type",
-	"numTreatment",
+	"numTreatment", "installment_config",
 }
 
 func (h *Handler) ListService(c *gin.Context) {
@@ -364,7 +341,7 @@ func (h *Handler) CreateService(c *gin.Context) {
 
 		stripBhytMappingFields(updates)
 
-		// Chuẩn hoá payload multipart: gom `installment_config[...]`, marshal mảng — DÙNG CHUNG với
+		// Chuẩn hoá payload multipart: gỡ key lồng `installment_config[...]` — DÙNG CHUNG với
 		// UpdateService. Bỏ chuỗi rỗng để cột nhận DEFAULT thay vì '' (chỉ áp dụng cho create).
 		normalizeFormPayload(updates)
 		dropEmptyStringsForCreate(updates)

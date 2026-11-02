@@ -4,7 +4,6 @@ import (
 	"erpCluvix/internal/models"
 
 	"github.com/shopspring/decimal"
-	"gorm.io/datatypes"
 )
 
 type Service struct {
@@ -20,7 +19,6 @@ type Service struct {
 	ServiceCategoryId *int             ` gorm:"column:serviceCategory_id;default:1;comment:Dịch vụ hay sản phẩm" json:"serviceCategory_id"`
 	Child             *int             ` gorm:"default:0;comment:Thuộc răng trẻ em hay người lớn" json:"child"`
 	IsInstallment     *int             ` gorm:"column:is_installment;default:0;comment:Dịch vụ được trả góp hay không?" json:"is_installment"`
-	InstallmentConfig datatypes.JSON   `gorm:"column:installment_config;comment:Cấu hình trả góp" json:"installment_config"`
 	TimeReminder      *int             ` gorm:"column:time_reminder;default:0;comment:Thời gian nhắc lịch hẹn sau khi sử dụng dịch vụ" json:"time_reminder"`
 	// Field code commission_telesale* giữ nguyên (không migration đổi tên cột) — chỉ nhãn hiển thị
 	// FE/export/import đổi "Telesale" → "Tư vấn viên" (đúng vai trò thực tế nhận hoa hồng này).

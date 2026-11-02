@@ -24,7 +24,6 @@ Route prefix: `/dashboard/crm/`
 
 ### Tài chính
 - `payment-in-month` — doanhSo + doanhThu + thucThu + hoanDV + hoanCoc + so sánh tháng trước
-- `payment-today` — doanhSo + doanhThu + thucThu (hôm nay)
 - `payment-branch-overview` — 7 metrics per branch (1 query, 7 LEFT JOIN subqueries)
 - `marketing-view` — budget + thucThu online + doanhSo online + ROI
 

@@ -35,6 +35,7 @@ var vi = map[string]string{
 	"import_no_recognized_column":      "Không nhận diện được cột nào trong file — kiểm tra lại dòng tiêu đề (dòng 1 nhãn, dòng 2 tên cột)",
 	"import_duplicate_column":          "Cột %s xuất hiện nhiều lần trong file, vui lòng bỏ bớt để tránh ghi nhầm giá trị",
 	"import_column_required_empty":     "Cột %s bắt buộc, không được để trống",
+	"import_missing_required_column":   "File không đúng mẫu: thiếu cột %s",
 	"import_invalid_number":            "Giá trị không hợp lệ ở cột %s: %s",
 	"import_id_old_duplicated_in_file": "Giá trị cột 'id cũ' = %d bị trùng với dòng %d trong file — mỗi id cũ chỉ được dùng một lần cho mỗi thương hiệu",
 	"import_id_old_taken":              "Giá trị cột 'id cũ' = %d đã thuộc dịch vụ khác (id=%d, mã %s) — đổi giá trị hoặc bỏ cột 'id cũ' khỏi file",

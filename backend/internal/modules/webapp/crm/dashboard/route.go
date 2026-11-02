@@ -14,7 +14,6 @@ func New(d handler.Deps) *handler.Handler { return handler.New(d) }
 func RegisterRoutes(crm gin.IRouter, h *handler.Handler) {
 	dashGrp := crm.Group("/crm-dashboard")
 	dashGrp.GET("/payment-in-month", h.CrmPaymentInMonth)
-	dashGrp.GET("/payment-today", h.CrmPaymentToday)
 	dashGrp.GET("/quick-starts", h.CrmQuickStarts)
 	dashGrp.GET("/additional-stats", h.CrmAdditionalStats)
 	dashGrp.GET("/compare-appointment", h.CrmCompareAppointment)

@@ -101,6 +101,7 @@ export class CrmReportServiceUsed extends BaseListV2<any> implements OnInit {
       {
         name: 'created_day',
         kind: 'dateRange',
+        required: true, // BE bắt buộc dải ngày (422 khi thiếu) → Xoá bộ lọc về mặc định
         // factory: clearFilter() tính lại theo hôm nay, không dính ngày lúc mở trang
         default: () => [this.timezoneService.monthStart(), this.timezoneService.todayStart()],
       },

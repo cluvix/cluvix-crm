@@ -163,7 +163,7 @@ if !tenant.IsCrossBranchEnabled(c, h.DB) {
 }
 ```
 
-**KHÔNG mở rộng option 18 sang endpoint mới ngoài search** (đúng bug đã fix 2026-07-28). Cần cross-branch cho report/list/EMR → phải là 1 `user_option` riêng (pattern giống option 23 `IsCrossBranchTreatmentEnabled`), không tái sử dụng id=18.
+**KHÔNG mở rộng option 18 sang endpoint mới ngoài search** (đúng bug đã fix 2026-07-28). Cần cross-branch cho report/list/EMR → phải là 1 `user_option` riêng (như option 23 cũ — đã gỡ 2026-11-01), không tái sử dụng id=18.
 
 ### Write-path security
 

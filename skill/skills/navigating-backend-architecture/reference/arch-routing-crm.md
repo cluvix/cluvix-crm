@@ -24,7 +24,6 @@
 - GET    `/api/crm/customer/get-customer-by-code` → `GetCustomerByCode` (internal/modules/webapp/crm/customer/handler/customer.go:163).
 - GET    `/api/crm/customer/:id` → `GetCustomer` (internal/modules/webapp/crm/customer/handler/customer.go:179).
 - POST   `/api/crm/customer` → `CreateCustomer` (internal/modules/webapp/crm/customer/handler/customer.go:210).
-- POST   `/api/crm/customer/:id/create-customer-switch` → `CreateCustomerSwitch` (internal/modules/webapp/crm/customer/handler/customer.go:417) — chuyển từ lead → khách hàng.
 - PUT    `/api/crm/customer/:id` → `UpdateCustomer` (internal/modules/webapp/crm/customer/handler/customer.go:616).
 - DELETE `/api/crm/customer/:id` → `DeleteCustomer` (internal/modules/webapp/crm/customer/handler/customer.go:1022).
 - POST   `/api/crm/customer/:id/add-tag` → `AddTag` (internal/modules/webapp/crm/customer/handler/customer.go:748).
@@ -100,7 +99,6 @@
 
 #### Dashboard (`/crm-dashboard`)
 - GET    `/api/crm/crm-dashboard/payment-in-month` → `CrmPaymentInMonth` (internal/modules/webapp/crm/dashboard/handler/handler.go).
-- GET    `/api/crm/crm-dashboard/payment-today` → `CrmPaymentToday` (internal/modules/webapp/crm/dashboard/handler/handler.go).
 - GET    `/api/crm/crm-dashboard/quick-starts` → `CrmQuickStarts` (internal/modules/webapp/crm/dashboard/handler/handler.go).
 - GET    `/api/crm/crm-dashboard/additional-stats` → `CrmAdditionalStats` (internal/modules/webapp/crm/dashboard/handler/handler.go).
 - GET    `/api/crm/crm-dashboard/compare-appointment` → `CrmCompareAppointment` (internal/modules/webapp/crm/dashboard/handler/handler.go).

@@ -9,7 +9,6 @@ import (
 type Unit struct {
 	models.SimpleModel
 	Name        string         `gorm:"size:255;not null;comment:Tên của đơn vị tính" json:"name"`
-	Type        *int           `gorm:"comment:Loại đơn vị" json:"type"`
 	Description string         `gorm:"comment:Mô tả đơn vị tính đó" json:"description"`
 	CategoryId  datatypes.JSON `gorm:"column:categoryId;type:json;default:'[]';comment:Danh sách danh mục" json:"categoryId"`
 	SortOrder   *int           `gorm:"column:SortOrder;comment:Vị trí hiển thị" json:"SortOrder"`

@@ -151,9 +151,6 @@ func (h *Handler) UpdateUnit(c *gin.Context) {
 		}
 		item.Name = fmt.Sprintf("%v", v)
 	}
-	if v, ok := body["type"]; ok {
-		item.Type = new(toIntVal(v))
-	}
 	if v, ok := body["description"]; ok {
 		item.Description = fmt.Sprintf("%v", v)
 	}
@@ -251,10 +248,15 @@ func (h *Handler) ImportUnitFromExcel(c *gin.Context) {
 		return
 	}
 
-	// Skip header row
+	// Map cột theo TÊN tiêu đề (dòng 1), không theo vị trí — file xuất trước khi bỏ cột "Loại"
+	// vẫn nhập lại đúng; cột lạ bị bỏ qua.
+	cols, ok := resolveUnitImportColumns(rows[0])
+	if !ok {
+		response.Validate(c, i18n.TF(c, "import_missing_required_column", unitImportHeaderName))
+		return
+	}
 	rows = rows[1:]
 
-	// Map cột: 0:id, 1:name, 2:type, 3:description, 4:categoryId, 5:(skip tên danh mục), 6:SortOrder, 7:status
 	now := time.Now().Unix()
 	uid := int(middleware.GetUserID(c))
 
@@ -265,10 +267,10 @@ func (h *Handler) ImportUnitFromExcel(c *gin.Context) {
 		if len(row) == 0 || allEmpty(row) {
 			continue
 		}
-		if len(row) > 0 && row[0] != "" {
-			rawIDs = append(rawIDs, row[0])
-		} else if len(row) > 1 && row[1] != "" {
-			rawNames = append(rawNames, row[1])
+		if v := cols.cell(row, cols.id); v != "" {
+			rawIDs = append(rawIDs, v)
+		} else if v := cols.cell(row, cols.name); v != "" {
+			rawNames = append(rawNames, v)
 		}
 	}
 
@@ -298,29 +300,26 @@ func (h *Handler) ImportUnitFromExcel(c *gin.Context) {
 		}
 		var item dao.Unit
 		isUpdate := false
-		if len(row) > 0 && row[0] != "" {
-			if u, ok := byID[uint(parseUint(row[0]))]; ok {
+		if v := cols.cell(row, cols.id); v != "" {
+			if u, ok := byID[uint(parseUint(v))]; ok {
 				item = u
 				isUpdate = true
 			}
 		}
-		if !isUpdate && len(row) > 1 && row[1] != "" {
-			if u, ok := byName[row[1]]; ok {
+		if name := cols.cell(row, cols.name); !isUpdate && name != "" {
+			if u, ok := byName[name]; ok {
 				item = u
 				isUpdate = true
 			}
 		}
-		if len(row) > 1 && row[1] != "" {
-			item.Name = row[1]
+		if name := cols.cell(row, cols.name); name != "" {
+			item.Name = name
 		}
-		if len(row) > 2 && row[2] != "" {
-			item.Type = new(int(parseUint(row[2])))
+		if cols.description >= 0 && cols.description < len(row) {
+			item.Description = row[cols.description]
 		}
-		if len(row) > 3 {
-			item.Description = row[3]
-		}
-		if len(row) > 4 && row[4] != "" {
-			raw := strings.TrimSpace(row[4])
+		if v := cols.cell(row, cols.categoryID); v != "" {
+			raw := strings.TrimSpace(v)
 			if !strings.HasPrefix(raw, "[") {
 				raw = "[" + raw + "]"
 			}
@@ -329,12 +328,11 @@ func (h *Handler) ImportUnitFromExcel(c *gin.Context) {
 				item.CategoryId = datatypes.JSON(raw)
 			}
 		}
-		// index 5 = tên danh mục (skip)
-		if len(row) > 6 && row[6] != "" {
-			item.SortOrder = new(int(parseUint(strings.TrimSpace(row[6]))))
+		if v := cols.cell(row, cols.sortOrder); v != "" {
+			item.SortOrder = new(int(parseUint(strings.TrimSpace(v))))
 		}
-		if len(row) > 7 && row[7] != "" {
-			item.Status = new(int(parseUint(strings.TrimSpace(row[7]))))
+		if v := cols.cell(row, cols.status); v != "" {
+			item.Status = new(int(parseUint(strings.TrimSpace(v))))
 		}
 		item.UpdatedAt = now
 		item.UpdatedBy = &uid
@@ -375,6 +373,52 @@ func (h *Handler) ImportUnitFromExcel(c *gin.Context) {
 	}
 	h.invalidateUnitCache()
 	c.JSON(http.StatusOK, gin.H{"message": i18n.T(c, "created")})
+}
+
+// Nhãn dòng tiêu đề file import đơn vị tính — khớp header export ở
+// internal/modules/webapp/export/unit.go (ExportUnit). Literal ở đây để không phải sửa package export;
+// đổi nhãn bên export thì đổi cả ở đây. Cột khác (vd "Loại" của file cũ, "Tên danh mục",
+// "Trạng thái (text)") không nằm trong danh sách này nên bị bỏ qua.
+const (
+	unitImportHeaderID          = "ID"
+	unitImportHeaderName        = "Tên đơn vị"
+	unitImportHeaderDescription = "Mô tả"
+	unitImportHeaderCategoryID  = "Danh mục (categoryId)"
+	unitImportHeaderSortOrder   = "Vị trí"
+	unitImportHeaderStatus      = "Trạng thái"
+)
+
+// unitImportCols — chỉ số cột (0-based) của từng trường trong file import; -1 = file không có cột đó.
+type unitImportCols struct {
+	id, name, description, categoryID, sortOrder, status int
+}
+
+// resolveUnitImportColumns map dòng tiêu đề → chỉ số cột theo nhãn (TrimSpace, phân biệt hoa/thường
+// như export). Nhãn trùng: lấy cột đầu tiên. ok=false khi thiếu cột bắt buộc "Tên đơn vị".
+func resolveUnitImportColumns(header []string) (cols unitImportCols, ok bool) {
+	cols = unitImportCols{id: -1, name: -1, description: -1, categoryID: -1, sortOrder: -1, status: -1}
+	targets := map[string]*int{
+		unitImportHeaderID:          &cols.id,
+		unitImportHeaderName:        &cols.name,
+		unitImportHeaderDescription: &cols.description,
+		unitImportHeaderCategoryID:  &cols.categoryID,
+		unitImportHeaderSortOrder:   &cols.sortOrder,
+		unitImportHeaderStatus:      &cols.status,
+	}
+	for i, label := range header {
+		if dst, found := targets[strings.TrimSpace(label)]; found && *dst < 0 {
+			*dst = i
+		}
+	}
+	return cols, cols.name >= 0
+}
+
+// cell trả giá trị ô tại idx của dòng; "" khi cột vắng (idx < 0) hoặc dòng ngắn hơn idx.
+func (unitImportCols) cell(row []string, idx int) string {
+	if idx < 0 || idx >= len(row) {
+		return ""
+	}
+	return row[idx]
 }
 
 func allEmpty(row []string) bool {

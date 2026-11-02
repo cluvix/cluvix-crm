@@ -176,63 +176,6 @@ func (h *Handler) CrmPaymentInMonth(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// CrmPaymentToday GET /dashboard/crm/payment-today
-func (h *Handler) CrmPaymentToday(c *gin.Context) {
-	loc := tz.LocFromContext(c, h.DB)
-	sod := tz.StartOfDay(loc)
-	f, ok := h.parseDashboardFilter(c, loc, sod, sod+86400)
-	if !ok {
-		return
-	}
-	// Khối theo NGÀY: tính trên ngày tham chiếu (= hôm nay khi không gửi kỳ). Giữ nguyên cặp
-	// (đầu ngày, đầu ngày + 86400) code cũ truyền vào `BETWEEN` để kết quả mặc định không đổi.
-	from := f.RefDay
-	to := from + 86400
-	branchID := f.BranchID
-
-	cacheKey := dashCacheKey(c, "crm_payment_today", f)
-	if h.Cache != nil {
-		var cached gin.H
-		if err := h.Cache.Get(cacheKey, &cached); err == nil {
-			c.JSON(http.StatusOK, cached)
-			return
-		}
-	}
-
-	// Aggregator: mỗi query độc lập — return NGAY khi query đầu tiên lỗi, không chạy tiếp query sau.
-	doanhSo, err := h.queryDoanhSo(c, from, to, branchID)
-	if pagination.IsQueryError(err) {
-		pagination.FailQuery(c, err)
-		return
-	}
-	doanhThu, err := h.queryDoanhThu(c, from, to, branchID)
-	if pagination.IsQueryError(err) {
-		pagination.FailQuery(c, err)
-		return
-	}
-	thucThu, err := h.queryThucThu(c, from, to, branchID)
-	if pagination.IsQueryError(err) {
-		pagination.FailQuery(c, err)
-		return
-	}
-	congNo, err := h.queryCongNo(c, from, to, branchID)
-	if pagination.IsQueryError(err) {
-		pagination.FailQuery(c, err)
-		return
-	}
-
-	result := gin.H{
-		"doanhSo":  doanhSo,
-		"doanhThu": doanhThu,
-		"thucThu":  thucThu,
-		"congNo":   congNo,
-	}
-	if h.Cache != nil {
-		h.Cache.Set(cacheKey, result, 300*time.Second)
-	}
-	c.JSON(http.StatusOK, result)
-}
-
 // CrmQuickStarts GET /dashboard/crm/quick-starts
 func (h *Handler) CrmQuickStarts(c *gin.Context) {
 	loc := tz.LocFromContext(c, h.DB)
@@ -1292,7 +1235,7 @@ func tenantCacheKey(c *gin.Context) string {
 }
 
 // queryDoanhSo/queryDoanhThu/queryThucThu/queryHoanDichVu/queryHoanCoc trả (giá trị, error) thay vì
-// tự gọi pagination.FailQuery — các handler aggregator (CrmPaymentInMonth, CrmPaymentToday) gọi
+// tự gọi pagination.FailQuery — các handler aggregator (CrmPaymentInMonth) gọi
 // NHIỀU helper này rồi gộp field vào 1 response; error phải trả về caller để caller return NGAY khi
 // query đầu tiên lỗi, không chạy tiếp các query sau (nguyên tắc aggregator).
 func (h *Handler) queryDoanhSo(c *gin.Context, from, to int64, branchID int) (decimal.Decimal, error) {

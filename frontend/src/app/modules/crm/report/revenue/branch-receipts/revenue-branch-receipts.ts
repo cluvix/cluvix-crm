@@ -84,6 +84,7 @@ export class RevenueBranchReceipts extends BaseListV2<PaymentModel> implements O
       {
         name: 'payment_time',
         kind: 'dateRange',
+        required: true, // BE bắt buộc dải ngày (422 khi thiếu) → Xoá bộ lọc về mặc định
         default: () => [this.timezoneService.monthStart(), this.timezoneService.todayEnd()],
       },
     ];

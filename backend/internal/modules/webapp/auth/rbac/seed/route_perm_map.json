@@ -81,15 +81,6 @@
   "note": ""
  },
  {
-  "method": "POST",
-  "path": "/api/crm/customer/:id/create-customer-switch",
-  "module": "crm",
-  "perm": "createCustomer",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": "creates a switched/linked customer record"
- },
- {
   "method": "PUT",
   "path": "/api/crm/customer/:id",
   "module": "crm",
@@ -1132,15 +1123,6 @@
   "kind": "perm",
   "enforce_phase1": true,
   "note": "CRM dashboard; R-5: widget doanh thu — cần quyền xem tiền (viewPayment hoặc manageCrmReport), không còn mở cho viewAppointment/viewCustomer/viewPlanOrder"
- },
- {
-  "method": "GET",
-  "path": "/api/crm/crm-dashboard/payment-today",
-  "module": "crm",
-  "perm": "viewPayment,manageCrmReport",
-  "kind": "perm",
-  "enforce_phase1": true,
-  "note": "R-5: widget doanh thu — cần quyền xem tiền (viewPayment hoặc manageCrmReport), không còn mở cho viewAppointment/viewCustomer/viewPlanOrder"
  },
  {
   "method": "GET",

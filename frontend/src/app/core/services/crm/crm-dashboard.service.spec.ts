@@ -19,12 +19,11 @@ function setup() {
 describe('CrmDashboardService', () => {
   it('query rỗng ⇒ URL không có tham số', () => {
     const { svc, http } = setup();
-    svc.paymentToday().subscribe();
     svc.paymentInMonth({}).subscribe();
     const reqs = http.match(() => true);
-    expect(reqs).toHaveLength(2);
+    expect(reqs).toHaveLength(1);
     for (const r of reqs) expect(r.request.params.keys()).toEqual([]);
-    expect(reqs[0].request.url).toMatch(/crm-dashboard\/payment-today$/);
+    expect(reqs[0].request.url).toMatch(/crm-dashboard\/payment-in-month$/);
   });
 
   it('gửi from/to/branch_id qua HttpParams (bản cũ truyền sai chỗ nên KHÔNG BAO GIỜ gửi)', () => {
@@ -45,7 +44,7 @@ describe('CrmDashboardService', () => {
 
   it('403 là lỗi của khối ⇒ tắt toast toàn cục (SKIP_GLOBAL_403) cho mọi endpoint', () => {
     const { svc, http } = setup();
-    svc.paymentToday().subscribe();
+    svc.paymentInMonth().subscribe();
     svc.overviewChartSource({ branch_id: 2 }).subscribe();
     for (const r of http.match(() => true)) expect(r.request.context.get(SKIP_GLOBAL_403)).toBe(true);
   });

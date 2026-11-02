@@ -124,10 +124,10 @@ func TestLayout_UserSaveGetResetIsolation(t *testing.T) {
 	require.Equal(t, "null", string(v.Config))
 	require.False(t, v.HasBrandDefault)
 
-	code, v, body = call(t, ra, http.MethodPut, "", `{"config":`+cfg("quick_stats", "payment_today")+`}`)
+	code, v, body = call(t, ra, http.MethodPut, "", `{"config":`+cfg("quick_stats", "additional_stats")+`}`)
 	require.Equal(t, http.StatusOK, code, body)
 	require.Equal(t, define.CrmDashboardLayoutSourceUser, v.Source)
-	require.Contains(t, string(v.Config), "payment_today")
+	require.Contains(t, string(v.Config), "additional_stats")
 	require.NotZero(t, v.UpdatedAt)
 
 	// Lưu lần 2 ⇒ cập nhật đúng dòng cũ, không sinh dòng mới.
@@ -178,7 +178,7 @@ func TestLayout_BrandDefault(t *testing.T) {
 	require.Equal(t, define.CrmDashboardLayoutSourceBrand, v.Source)
 
 	// Lưu mặc định 2 lần ⇒ vẫn 1 dòng (UNIQUE với user_id NULL qua COALESCE).
-	call(t, radmin, http.MethodPut, "/brand-default", `{"config":`+cfg("payment_today")+`}`)
+	call(t, radmin, http.MethodPut, "/brand-default", `{"config":`+cfg("additional_stats")+`}`)
 	require.EqualValues(t, 1, count(t, "user_id IS NULL"))
 
 	// Blame: bản mặc định do admin tạo.
@@ -314,7 +314,7 @@ func TestLayout_ConcurrentUpsert(t *testing.T) {
 			}()
 			go func() {
 				defer wg.Done()
-				c, _, _ := call(t, radmin, http.MethodPut, "/brand-default", `{"config":`+cfg("payment_today")+`}`)
+				c, _, _ := call(t, radmin, http.MethodPut, "/brand-default", `{"config":`+cfg("additional_stats")+`}`)
 				codes <- c
 			}()
 		}

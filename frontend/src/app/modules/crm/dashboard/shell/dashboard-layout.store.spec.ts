@@ -38,12 +38,12 @@ function setup(stored: unknown) {
 const userCfg = { version: 1, items: [{ key: 'customer_region', zone: 'top', visible: true, size: 'full' }] };
 
 describe('DashboardLayoutStore', () => {
-  it('không có bản tạm ⇒ layout null (skeleton) tới khi API về; API system ⇒ 5 khối mặc định (AC1, AC3)', () => {
+  it('không có bản tạm ⇒ layout null (skeleton) tới khi API về; API system ⇒ 4 khối mặc định (AC1, AC3)', () => {
     const { store, res } = setup(null);
     expect(store.layout()).toBeNull();
     res.next({ config: null, source: 'system', hasBrandDefault: false, updatedAt: 0 });
     expect([...store.top(), ...store.main(), ...store.side()].map((x) => x.key)).toEqual([
-      'payment_in_month', 'quick_stats', 'appointment_accepted_stats', 'payment_today', 'overview_appointment',
+      'payment_in_month', 'quick_stats', 'appointment_accepted_stats', 'overview_appointment',
     ]);
   });
 
@@ -94,7 +94,7 @@ describe('provideDashboardLayoutOwner (QA story-10 P2)', () => {
 });
 
 describe('provideDashboardWidgetRegistry (gác quyền khối CRM)', () => {
-  const MONEY = ['payment_in_month', 'payment_branch_overview', 'service_statistics', 'payment_today'];
+  const MONEY = ['payment_in_month', 'payment_branch_overview', 'service_statistics'];
   const registryFor = (perms: string[], role = 'staff') => {
     const prevUser = authUser();
     const prevPerms = userPermissions();

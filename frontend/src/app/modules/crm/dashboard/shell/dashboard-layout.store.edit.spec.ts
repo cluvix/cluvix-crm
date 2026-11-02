@@ -141,16 +141,16 @@ describe('DashboardLayoutStore — chế độ sửa (story-10)', () => {
     expect(store.dirty()).toBe(true);
   });
 
-  it('Mẫu bố cục khi XEM ⇒ đủ 14 khối + PUT; lỗi ⇒ trả lại bố cục cũ', () => {
+  it('Mẫu bố cục khi XEM ⇒ đủ 13 khối + PUT; lỗi ⇒ trả lại bố cục cũ', () => {
     const { store, get, calls } = setup();
     get.next(sys);
     expect(store.serverLoaded()).toBe(true);
     store.applyPreset('marketing').subscribe({ error: () => undefined });
-    expect(store.visibleCount()).toBe(14);
+    expect(store.visibleCount()).toBe(13);
     expect(store.activePreset()).toBe('marketing');
     expect(calls.map((c) => c.m)).toEqual(['save']);
     calls[0].res.error(new Error('500'));
-    expect(store.visibleCount()).toBe(5);
+    expect(store.visibleCount()).toBe(4);
     expect(store.activePreset()).toBeNull();
   });
 
@@ -163,7 +163,7 @@ describe('DashboardLayoutStore — chế độ sửa (story-10)', () => {
     expect(store.activePreset()).toBe('front_desk');
     expect(store.dirty()).toBe(true);
     store.cancelEdit();
-    expect(store.visibleCount()).toBe(5);
+    expect(store.visibleCount()).toBe(4);
   });
 
   it('đang có 1 lệnh ghi ⇒ lệnh thứ 2 bị bỏ (không gọi API, không đổi state)', () => {
@@ -248,7 +248,7 @@ describe('DashboardLayoutStore — chế độ sửa (story-10)', () => {
   });
 
   it('Gác quyền khối (CRM): registry thiếu khối tiền ⇒ không vào bố cục/mẫu, không thêm được', () => {
-    const money = ['payment_in_month', 'payment_branch_overview', 'service_statistics', 'payment_today'];
+    const money = ['payment_in_month', 'payment_branch_overview', 'service_statistics'];
     const noMoney = CRM_DASHBOARD_WIDGETS.filter((w) => !money.includes(w.key));
     const get = new Subject<DashboardLayoutView>();
     const calls: string[] = [];
@@ -272,7 +272,7 @@ describe('DashboardLayoutStore — chế độ sửa (story-10)', () => {
     expect(store.layout()!.items.some((x) => money.includes(x.key))).toBe(false);
     expect(store.visibleCount()).toBe(noMoney.length);
     // Thêm khối tiền (vd lệnh cũ) ⇒ không đổi gì, không gọi API.
-    store.addWidget('payment_today').subscribe();
+    store.addWidget('payment_branch_overview').subscribe();
     expect(calls).toEqual([]);
     // Mẫu bố cục cũng chỉ gồm khối được thấy.
     store.startEdit();
@@ -297,7 +297,7 @@ describe('DashboardLayoutStore — chế độ sửa (story-10)', () => {
       ],
     });
     const store = TestBed.inject(DashboardLayoutStore);
-    expect(store.visibleCount()).toBe(5);
+    expect(store.visibleCount()).toBe(4);
     store.addWidget('source_overview').subscribe();
     store.hideWidget('quick_stats').subscribe();
     store.applyPreset('revenue').subscribe();
@@ -305,7 +305,7 @@ describe('DashboardLayoutStore — chế độ sửa (story-10)', () => {
     store.startEdit();
     expect(store.editing()).toBe(false);
     expect(calls).toEqual([]);
-    expect(store.visibleCount()).toBe(5);
+    expect(store.visibleCount()).toBe(4);
   });
 });
 

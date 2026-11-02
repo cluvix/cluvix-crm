@@ -106,9 +106,4 @@ export class CrmDashboardService extends BaseApiService<any> {
   paymentInMonth(q?: DashboardQuery): Observable<any> {
     return this.fetch('payment-in-month', q);
   }
-
-  /** Doanh thu trong ngày tham chiếu. */
-  paymentToday(q?: DashboardQuery): Observable<any> {
-    return this.fetch('payment-today', q);
-  }
 }

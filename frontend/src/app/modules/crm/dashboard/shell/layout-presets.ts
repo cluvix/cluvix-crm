@@ -46,7 +46,7 @@ const SLOTS: Record<Exclude<DashboardPresetId, 'overview'>, PresetSlots> = {
       ['customer_region', H], ['appointment_status', H],
     ],
     side: [
-      ['payment_today'], ['overview_appointment'], ['additional_stats'], ['customer_status_overview'], ['source_overview'],
+      ['overview_appointment'], ['additional_stats'], ['customer_status_overview'], ['source_overview'],
     ],
   },
   // Lễ tân / quản lý ca: lịch hẹn và trạng thái tư vấn trong ngày trước, tiền xuống dưới.
@@ -60,7 +60,7 @@ const SLOTS: Record<Exclude<DashboardPresetId, 'overview'>, PresetSlots> = {
       ['service_statistics'],
     ],
     side: [
-      ['payment_today'], ['additional_stats'], ['customer_region'], ['service_type_accepted'],
+      ['additional_stats'], ['customer_region'], ['service_type_accepted'],
     ],
   },
   // Marketing: nguồn khách, nhóm dịch vụ quan tâm/đồng ý và tiến trình khách trước; doanh thu và lịch hẹn làm bối cảnh.
@@ -73,7 +73,7 @@ const SLOTS: Record<Exclude<DashboardPresetId, 'overview'>, PresetSlots> = {
       ['service_statistics'], ['payment_branch_overview'],
     ],
     side: [
-      ['appointment_status'], ['payment_today'], ['overview_appointment'], ['additional_stats'],
+      ['appointment_status'], ['overview_appointment'], ['additional_stats'],
     ],
   },
 };

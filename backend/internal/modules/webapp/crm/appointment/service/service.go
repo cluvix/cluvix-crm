@@ -695,12 +695,6 @@ func mergeAppointment(dst, src *appointmentDao.Appointment) {
 	if src.CheckinDate != nil {
 		dst.CheckinDate = src.CheckinDate
 	}
-	if src.SaleStart != nil {
-		dst.SaleStart = src.SaleStart
-	}
-	if src.SaleEnd != nil {
-		dst.SaleEnd = src.SaleEnd
-	}
 	if src.CheckoutDate != nil {
 		dst.CheckoutDate = src.CheckoutDate
 	}

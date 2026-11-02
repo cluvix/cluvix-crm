@@ -207,7 +207,8 @@ func (h *Handler) MoveDepositToPayment(c *gin.Context) {
 
 func (h *Handler) UpdatePaymentCustomer(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	if !h.verifyCanEditPaymentCustomer(c, uint(id)) {
+	curBranchID, ok := h.verifyCanEditPaymentCustomer(c, uint(id))
+	if !ok {
 		return
 	}
 	var input UpdatePaymentInput
@@ -215,10 +216,9 @@ func (h *Handler) UpdatePaymentCustomer(c *gin.Context) {
 		response.ValidateErr(c, err)
 		return
 	}
-	// verifyCanEditPaymentCustomer chỉ check branch HIỆN TẠI của record — branch_id MỚI FE gửi
-	// lên (mergePaymentParams sẽ ghi thẳng) phải verify riêng, tránh đổi payment sang branch
-	// ngoài phạm vi được gán.
-	if !branchAllowed(c, input.BranchID) {
+	// branch_id MỚI FE gửi lên (mergePaymentParams ghi thẳng) phải nằm trong phạm vi được gán — chỉ kiểm
+	// khi ĐỔI: phiếu ở chi nhánh khác giữ nguyên branch vẫn sửa được (dùng chéo chi nhánh luôn bật).
+	if input.BranchID != curBranchID && !branchAllowed(c, input.BranchID) {
 		response.Forbidden(c)
 		return
 	}
@@ -232,7 +232,8 @@ func (h *Handler) UpdatePaymentCustomer(c *gin.Context) {
 
 func (h *Handler) UpdateDepositCustomer(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	if !h.verifyCanEditPaymentCustomer(c, uint(id)) {
+	curBranchID, ok := h.verifyCanEditPaymentCustomer(c, uint(id))
+	if !ok {
 		return
 	}
 	var input UpdatePaymentInput
@@ -240,7 +241,8 @@ func (h *Handler) UpdateDepositCustomer(c *gin.Context) {
 		response.ValidateErr(c, err)
 		return
 	}
-	if !branchAllowed(c, input.BranchID) {
+	// Như UpdatePaymentCustomer: chỉ kiểm khi đổi chi nhánh.
+	if input.BranchID != curBranchID && !branchAllowed(c, input.BranchID) {
 		response.Forbidden(c)
 		return
 	}

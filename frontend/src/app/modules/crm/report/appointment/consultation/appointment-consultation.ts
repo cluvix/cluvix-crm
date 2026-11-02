@@ -78,7 +78,7 @@ export class AppointmentConsultation
       {
         name: 'appointment_date',
         kind: 'dateRange',
-        // factory: clearFilter() tính lại theo tháng hiện tại, không dính giá trị lúc mở trang
+        // factory: chỉ áp lúc mở màn / bấm lại menu (tính theo hôm nay); "Xoá bộ lọc" xoá về rỗng
         // Chốt ở HÔM NAY, không phải cuối tháng: đây là report kết quả tư vấn — lịch hẹn
         // tương lai chưa diễn ra nên luôn rơi vào "Chưa đến", làm loãng tỉ lệ chốt.
         default: () => [this.timezoneService.monthStart(), this.timezoneService.todayEnd()],

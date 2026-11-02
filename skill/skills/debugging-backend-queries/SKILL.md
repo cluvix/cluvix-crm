@@ -149,7 +149,7 @@ IndexedDB sync: set `NullableBranch: true` trong `configTables` map (`internal/m
 q := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", someOptionEnabled(h.DB), "osu")
 ```
 
-Precedent: `OPTION_CROSS_BRANCH_TREATMENT` (id=23) — xem `skills/managing-crm-options/SKILL.md` §Option 23.
+Precedent: `OPTION_CROSS_BRANCH_TREATMENT` (id=23) — đã gỡ 2026-11-01, các flow đó nay truyền hằng `true` (xem `skills/managing-crm-options/SKILL.md` §Option 21–23).
 
 ## Global Config Table — không có branch_id
 

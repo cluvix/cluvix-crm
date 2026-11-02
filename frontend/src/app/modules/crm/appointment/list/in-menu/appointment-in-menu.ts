@@ -185,7 +185,7 @@ export class AppointmentInMenu extends BaseListV2<AppointmentModel> implements O
         name: 'appointment_date',
         kind: 'dateRange',
         urlKey: 'date',
-        // factory: clearFilter() tính lại theo hôm nay, không dính ngày lúc mở trang
+        // factory: chỉ áp lúc mở màn / bấm lại menu (tính theo hôm nay); "Xoá bộ lọc" xoá về rỗng
         default: () => [this.timezoneService.todayStart(), this.timezoneService.todayEnd()],
       },
       {name: 'appointment_date_first', kind: 'dateRange', urlKey: 'date_first'},

@@ -38,13 +38,12 @@ const crmModulePermCSV = "viewAppointment,viewCustomer,viewPlanOrder"
 // crmDashboardMoneyPermCSV — R-5 (rereview crm-prod-readiness, 2026-10-18): widget dashboard trả SỐ TIỀN
 // (doanh thu/thực thu/công nợ) KHÔNG dùng tập quyền module CRM (lễ tân chỉ có viewAppointment cũng mở
 // được) mà đòi quyền xem tiền: viewPayment (đã xem được danh sách phiếu + tổng tiền) OR manageCrmReport
-// (báo cáo doanh thu). FE ẩn đúng 4 widget này bằng *hasPerm cùng tập (modules/crm/dashboard).
+// (báo cáo doanh thu). FE ẩn đúng 3 widget này bằng *hasPerm cùng tập (modules/crm/dashboard).
 const crmDashboardMoneyPermCSV = "viewPayment,manageCrmReport"
 
 // crmDashboardMoneySuffixes — endpoint dashboard trả tiền (phần path sau crmDashboardPathPrefix).
 var crmDashboardMoneySuffixes = map[string]bool{
 	"payment-in-month":        true,
-	"payment-today":           true,
 	"payment-branch-overview": true,
 	"service-used-statistics": true,
 }
@@ -165,10 +164,11 @@ func TestCrmDashboardModulePermSet(t *testing.T) {
 	// route_perm_map.json, ghi nhận ở story-35; 18 → 17 (2026-10-17) — `GET .../clv-overview` xoá
 	// cùng tính năng CLV); 17 → 20 (2026-10-19, dashboard tuỳ biến) — bỏ customer-status-marketing +
 	// overview-online, thêm 5 route bố cục (layout GET/PUT/DELETE + layout/brand-default PUT/DELETE;
-	// scan này đếm MỌI method dưới prefix) — lệch số (kể cả THÊM/BỚT
+	// scan này đếm MỌI method dưới prefix); 20 → 19 (2026-11-01) — bỏ khối "Doanh thu trong ngày"
+	// (`payment-today`, trùng bộ lọc ngày của payment-in-month) — lệch số (kể cả THÊM/BỚT
 	// entry hợp lệ) là tín hiệu phải rà tay xem entry mới/bị xoá có cần mirror ở mobile hay không,
 	// không phải lỗi test.
-	const wantDashboardEntryCount = 20
+	const wantDashboardEntryCount = 19
 	// Sàn cho nhánh tiền: đổi tên/xoá 1 endpoint tiền mà quên map ⇒ entry đó rơi về tập module (lỏng)
 	// mà test vẫn xanh — đếm đúng số entry tiền đã khớp.
 	if moneyMatched != len(crmDashboardMoneySuffixes) {

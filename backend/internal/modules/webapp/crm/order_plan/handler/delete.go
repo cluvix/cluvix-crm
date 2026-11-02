@@ -16,7 +16,7 @@ func (h *Handler) DeleteOrderPlan(c *gin.Context) {
 	if !h.verifyCanDeleteOrderPlan(c, uint(id)) {
 		return
 	}
-	scopedDB := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", tenant.IsCrossBranchServiceEnabled(c, h.DB))
+	scopedDB := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", true)
 	if err := h.svc.Delete(uint(id), middleware.GetUserID(c), scopedDB); err != nil {
 		response.HandleError(c, err)
 		return

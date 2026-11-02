@@ -139,44 +139,6 @@ func listContainsID(t *testing.T, w *httptest.ResponseRecorder, id uint) bool {
 	return false
 }
 
-// CreateCustomerSwitch (clone khách cũ thành khách MỚI) cũng là điểm tạo khách ⇒ Contact(16)
-// như CreateCustomer (trước D14: Lead(4) vô điều kiện). Có ngày hẹn ⇒ override như cũ.
-func TestCreateCustomerSwitch_NewCustomerContact(t *testing.T) {
-	if testDB == nil {
-		t.Fatal("TEST_MYSQL_DSN chưa set — integration test này KHÔNG được skip")
-	}
-	tn := testhelpers.FreshTenant(t, testDB)
-	t.Cleanup(func() { cleanupS33Customers(tn) })
-	uid := testhelpers.CreateScopedUser(t, testDB, "s33sw", tn, tn.BranchID)
-	require.NoError(t, testDB.Exec("UPDATE user_profile SET departmentList = ? WHERE user_id = ?",
-		fmt.Sprintf("[%d]", define.HrDepartmentTelesale), uid).Error)
-
-	name := fmt.Sprintf("S33 Switch %d", time.Now().UnixNano())
-	raw, err := json.Marshal(map[string]any{"fullname": name, "payment_user_id": uid})
-	require.NoError(t, err)
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	id := fmt.Sprint(tn.CustomerID)
-	c.Request = httptest.NewRequest("POST", "/crm/customer/"+id+"/create-customer-switch", strings.NewReader(string(raw)))
-	c.Request.Header.Set("Content-Type", "application/json")
-	c.Params = gin.Params{{Key: "id", Value: id}}
-	c.Set("userID", uid)
-	h := &Handler{DB: testDB, CustomerSvc: customerService.NewCustomerService(testDB)}
-	h.CreateCustomerSwitch(c)
-	require.Less(t, w.Code, 300, "body: %s", w.Body.String())
-
-	var row struct {
-		ID     uint
-		Status int
-	}
-	require.NoError(t, testDB.Table("customer").Select("id, status").
-		Where("fullname = ?", name).Take(&row).Error)
-	require.Equal(t, define.CustomerStatusContact, row.Status)
-	require.True(t, listContainsID(t, listCustomerAs(t, "per-page=50", uid), row.ID),
-		"khách switch %d không có trong ListCustomer", row.ID)
-}
-
 // seedS33AppointmentConfigCode — CreateCustomer có appointment_date sinh mã lịch hẹn qua
 // codegen; SchemaAll không seed config_code cho appointment (khuôn walkin_episode_http_test.go).
 func seedS33AppointmentConfigCode(t *testing.T, tn *testhelpers.TestTenant) {

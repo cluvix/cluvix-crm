@@ -11,7 +11,6 @@ export interface UserModel extends Identifiable {
   device?: string;
   status?: number;
   branchId?: number[];
-  logged_at?: number;
   created_at?: number;
   updated_at?: number;
   created_by?: number;

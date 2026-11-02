@@ -71,12 +71,15 @@ var customTables = map[string]func(c *gin.Context, db *gorm.DB) interface{}{
 	"branches": func(c *gin.Context, d *gorm.DB) interface{} {
 		return findRows(c, tenant.ScopedDBNullBranch(c, d, "branch").Table("branch").Order("SortOrder DESC"))
 	},
+	// users — danh sách cho MỌI ô chọn người dùng ở FE. KHÔNG loại `u.id = 1`: ở CRM id 1 là tài khoản `admin`
+	// do seed tạo (người vận hành thật), loại đi thì không chọn được admin làm người liên quan / tư vấn viên…
+	// (bảo vệ admin khỏi bị sửa/xoá nằm ở màn nhân viên `hr/user`, không phải ở đây).
 	"users": func(c *gin.Context, d *gorm.DB) interface{} {
 		return withImageURLs(findRows(c, tenant.ScopedDBNullBranch(c, d, "user_profile", "p").Table("user_profile p").
 			Select("p.user_id as id, p.user_id, p.fullname, p.nickname, p.avatar, p.departmentList, u.status, u.branchId").
 			Joins("JOIN user u ON u.id = p.user_id").
 			Joins("JOIN rbac_auth_assignment a ON a.user_id = u.id").
-			Where("u.id <> 1 AND a.item_name <> 'partner'")), "avatar")
+			Where("a.item_name <> 'partner'")), "avatar")
 	},
 	"roles": func(c *gin.Context, d *gorm.DB) interface{} {
 		return findRows(c, d.Table("rbac_auth_item").

@@ -25,9 +25,6 @@ export class OptionCrm extends BaseApp implements OnInit {
   selectedAllowPreviousDay!: number;
   selectedCrossBranch!: number;
   selectedExportPhone!: number;
-  selectedPaymentByTotal!: number;
-  selectedSkipPaymentCheck!: number;
-  selectedCrossBranchTreatment!: number;
   categoryOptionUpdate: any[] = [
     { nameKey: 'config.option_crm.opt_deny', key: 0 },
     { nameKey: 'config.option_crm.opt_allow_change', key: 1 },
@@ -63,18 +60,6 @@ export class OptionCrm extends BaseApp implements OnInit {
   categoryExportPhone: any[] = [
     { nameKey: 'config.option_crm.opt_export_phone_manager_only', key: 0 },
     { nameKey: 'config.option_crm.opt_export_phone_all', key: 1 },
-  ];
-  categoryPaymentByTotal: any[] = [
-    { nameKey: 'config.option_crm.opt_pay_per_session_default', key: 0 },
-    { nameKey: 'config.option_crm.opt_pay_by_package_total', key: 1 },
-  ];
-  categorySkipPaymentCheck: any[] = [
-    { nameKey: 'config.option_crm.opt_require_payment_check_default', key: 0 },
-    { nameKey: 'config.option_crm.opt_skip_payment_check', key: 1 },
-  ];
-  categoryCrossBranchTreatment: any[] = [
-    { nameKey: 'config.option_crm.opt_same_branch_only_default', key: 0 },
-    { nameKey: 'config.option_crm.opt_any_branch_treatment', key: 1 },
   ];
   modelService = inject(OptionsService);
   protected readonly CONFIG_OPTION_CRM_SELECT = CONFIG_OPTION_CRM_SELECT;
@@ -123,15 +108,6 @@ export class OptionCrm extends BaseApp implements OnInit {
                 break;
               case CONFIG_OPTION_CRM_SELECT.OPTION_EXPORT_PHONE:
                 this.selectedExportPhone = this.categoryExportPhone[option.options];
-                break;
-              case CONFIG_OPTION_CRM_SELECT.OPTION_PAYMENT_BY_TOTAL:
-                this.selectedPaymentByTotal = this.categoryPaymentByTotal[option.options];
-                break;
-              case CONFIG_OPTION_CRM_SELECT.OPTION_SKIP_PAYMENT_CHECK:
-                this.selectedSkipPaymentCheck = this.categorySkipPaymentCheck[option.options];
-                break;
-              case CONFIG_OPTION_CRM_SELECT.OPTION_CROSS_BRANCH_TREATMENT:
-                this.selectedCrossBranchTreatment = this.categoryCrossBranchTreatment[option.options];
                 break;
             }
           }

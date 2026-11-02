@@ -2,10 +2,9 @@ package define
 
 // UserOption IDs (bảng user_option)
 const (
-	UserOptionUpdateOrderPlan    = 3  // Cho phép user sửa đơn hàng trong ngày (không có quyền updatePlanOrder)
-	UserOptionViewLeadOfTele     = 5  // OPTION_VIEW_LEAD_OF_TELE — bật (=1): nhân viên phòng Telesale thấy mọi khách; tắt: chỉ khách mình phụ trách (customer.payment_user_id)
-	UserOptionDeleteNote         = 6  // Cho phép user xóa note do chính mình tạo trong ngày
-	UserOptionCrossBranchService = 23 // Cho phép dùng dịch vụ đã mua ở chi nhánh khác (mặc định tắt: chỉ dùng đúng chi nhánh mua)
+	UserOptionUpdateOrderPlan = 3 // Cho phép user sửa đơn hàng trong ngày (không có quyền updatePlanOrder)
+	UserOptionViewLeadOfTele  = 5 // OPTION_VIEW_LEAD_OF_TELE — bật (=1): nhân viên phòng Telesale thấy mọi khách; tắt: chỉ khách mình phụ trách (customer.payment_user_id)
+	UserOptionDeleteNote      = 6 // Cho phép user xóa note do chính mình tạo trong ngày
 )
 
 // User statuses

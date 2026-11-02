@@ -106,7 +106,7 @@ if !h.hasPermission(userID, "createPayment") { ... }
 
 `Payment.BranchId` là `int`; `OrderTreatmentPlan.BranchId` và `TreatmentCourse.BranchId` là `*int` (deref cần nil check).
 
-**Ngoại lệ option 23 (2026-07):** `!branchAllowed(...) && !tenant.IsCrossBranchTreatmentEnabled(c, h.DB)` — option 23 ON bypass luôn `branchAllowed` trong creator+same-day path của cả 3 hàm `verifyCanEdit*`, khác option 18 (chỉ bypass filter đọc, không bypass ghi). Xem `skills/managing-crm-options/SKILL.md` §Option 23.
+**CRM hiện tại (2026-11-01, gỡ option 23):** `verifyCanEditOrderPlan`/`verifyCanEditPaymentCustomer` KHÔNG còn check `branchAllowed` — đơn hàng/thanh toán của khách luôn sửa được ở mọi chi nhánh (hành vi option 23 ON, user chốt). `branchAllowed` chỉ còn ở `payment/handler/upsert.go` (chặn TẠO thanh toán vào chi nhánh ngoài phạm vi). Xem `skills/managing-crm-options/SKILL.md` §Option 21–23.
 
 ### Timestamp gotcha — đã fix toàn bộ 3 module
 

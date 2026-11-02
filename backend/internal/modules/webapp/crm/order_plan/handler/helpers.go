@@ -24,56 +24,56 @@ import (
 //     2. user_option id=3 (OPTION_UPDATE_ORDER_PLAN) = 1 (bật).
 //     3. Là người tạo ra đơn hàng đó (created_by = userID).
 //     4. Vẫn trong cùng ngày tạo (theo timezone của thương hiệu).
-func (h *Handler) verifyCanEditOrderPlan(c *gin.Context, id uint) bool {
+//
+// Trả về branch_id HIỆN TẠI của đơn để caller chỉ kiểm branch payload khi đổi (orderBranchAllowed).
+func (h *Handler) verifyCanEditOrderPlan(c *gin.Context, id uint) (*int, bool) {
 	var o otpDao.OrderPlan
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", tenant.IsCrossBranchServiceEnabled(c, h.DB)).First(&o, id).Error; err != nil {
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", true).First(&o, id).Error; err != nil {
 		response.NotFound(c)
-		return false
+		return nil, false
 	}
 
 	userID := middleware.GetUserID(c)
 
 	if h.hasPermission(userID, "updatePlanOrder") {
-		return true
-	}
-
-	// Creator+same-day path: branch ownership must hold even when cross-branch read (option 18) là general
-	// viewing toggle. Option 23 (UserOptionCrossBranchService) bypass được nhánh này — cùng lý do với
-	// payment (xem verifyCanEditPaymentCustomer).
-	branchID := 0
-	if o.BranchId != nil {
-		branchID = *o.BranchId
-	}
-	if !branchAllowed(c, branchID) && !tenant.IsCrossBranchServiceEnabled(c, h.DB) {
-		response.Forbidden(c)
-		return false
+		return o.BranchId, true
 	}
 
 	if !h.hasPermission(userID, "createPlanOrder") {
 		response.Forbidden(c)
-		return false
+		return nil, false
 	}
 
 	var optionVal int
 	h.DB.Table("user_option").Where("id = ?", define.UserOptionUpdateOrderPlan).Limit(1).Pluck("options", &optionVal)
 	if optionVal != 1 {
 		response.Forbidden(c)
-		return false
+		return nil, false
 	}
 
 	if o.CreatedBy == nil || *o.CreatedBy != userID {
 		response.Forbidden(c)
-		return false
+		return nil, false
 	}
 
 	now := time.Now().In(tz.LocFromContext(c, h.DB))
 	createdAt := time.Unix(o.CreatedAt, 0).In(now.Location())
 	if now.Year() != createdAt.Year() || now.Month() != createdAt.Month() || now.Day() != createdAt.Day() {
 		response.Forbidden(c)
-		return false
+		return nil, false
 	}
 
-	return true
+	return o.BranchId, true
+}
+
+// orderBranchAllowed — branch_id FE gửi lên (create/update ghi thẳng vào đơn + dịch vụ con) phải nằm trong
+// phạm vi chi nhánh được gán (Hard Rule, chống IDOR ghi). Chỉ kiểm khi KHÁC `cur` (branch đang lưu; nil khi
+// tạo mới): đơn ở chi nhánh khác giữ nguyên branch vẫn sửa được. nil ⇒ để validateOrderPlan báo thiếu.
+func orderBranchAllowed(c *gin.Context, next, cur *int) bool {
+	if next == nil || (cur != nil && *cur == *next) {
+		return true
+	}
+	return *next > 0 && middleware.IsBranchAllowed(c, uint(*next))
 }
 
 // verifyCanDeleteOrderPlan kiểm tra order tồn tại trong tenant + user có quyền
@@ -81,7 +81,7 @@ func (h *Handler) verifyCanEditOrderPlan(c *gin.Context, id uint) bool {
 // không có nhánh creator/same-day như update).
 func (h *Handler) verifyCanDeleteOrderPlan(c *gin.Context, id uint) bool {
 	var o otpDao.OrderPlan
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", tenant.IsCrossBranchServiceEnabled(c, h.DB)).First(&o, id).Error; err != nil {
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", true).First(&o, id).Error; err != nil {
 		response.NotFound(c)
 		return false
 	}
@@ -101,22 +101,6 @@ func (h *Handler) hasPermission(userID uint, permCode string) bool {
 	perms, _ := h.RbacSvc.GetUserPermissions(userID)
 	for _, p := range perms {
 		if p == permCode {
-			return true
-		}
-	}
-	return false
-}
-
-// branchAllowed: true khi branchID = 0 (unassigned) hoặc nằm trong branch list của user.
-func branchAllowed(c *gin.Context, branchID int) bool {
-	if branchID == 0 {
-		return true
-	}
-	if active := middleware.GetBranchActiveID(c); active > 0 {
-		return int(active) == branchID
-	}
-	for _, bid := range middleware.GetBranchIDs(c) {
-		if int(bid) == branchID {
 			return true
 		}
 	}

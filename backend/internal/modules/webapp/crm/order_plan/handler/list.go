@@ -57,9 +57,9 @@ func orderPlanKeywordCond(kw string) (string, []interface{}) {
 // S-10: phạm vi telesale (khách mình phụ trách) áp qua `order_plan.customer_id IN (khách trong
 // phạm vi)`; đọc phạm vi lỗi ⇒ trả error (fail-closed), caller dừng bằng 500.
 func (h *Handler) orderPlanFilterBase(c *gin.Context) (*gorm.DB, error) {
-	// Cùng option xem chéo chi nhánh với GetOrderPlan (user_option id=23) — ERP dùng
-	// IsCrossBranchTreatmentEnabled, bản CRM tương ứng là IsCrossBranchServiceEnabled.
-	q := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, orderPlanTable, tenant.IsCrossBranchServiceEnabled(c, h.DB)).
+	// Danh sách + export TOÀN hệ thống ⇒ GIỮ lọc chi nhánh. Khác GetOrderPlan/sửa/xoá/in theo id (bỏ lọc
+	// branch để dùng đơn đã mua ở chi nhánh khác): mở list tổng = lộ doanh thu, khách của chi nhánh khác.
+	q := tenant.ScopedDBNullBranch(c, h.DB, orderPlanTable).
 		Table(orderPlanTable)
 
 	if kw := strings.TrimSpace(c.Query("_keyword")); kw != "" {

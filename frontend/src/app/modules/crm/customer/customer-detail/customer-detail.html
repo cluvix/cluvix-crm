@@ -87,16 +87,6 @@
                             <i class="pi pi-pencil text-xs"></i>
                           </button>
                         }
-                        <button
-                          type="button"
-                          *hasPerm="permission.permissionCreateCustomer"
-                          class="flex items-center gap-1 px-2 py-1 rounded-md bg-gradient-to-br from-blue-500 to-blue-700 shadow-md text-white cursor-pointer hover:from-blue-600 hover:to-blue-800 transition-all min-h-[22px]"
-                          [pTooltip]="'crm.customer.create_existing_tooltip' | translate"
-                          tooltipPosition="top"
-                          [attr.aria-label]="'crm.customer.create_existing_tooltip' | translate"
-                          (click)="createCustomerSwitch()">
-                          <i class="pi pi-copy text-xs"></i>
-                        </button>
                       </div>
                     </div>
 

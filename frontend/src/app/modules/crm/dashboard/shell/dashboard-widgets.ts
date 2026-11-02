@@ -3,7 +3,7 @@ import type { Type } from '@angular/core';
 import { CRM_MODULE_PERMISSIONS, PERMISSION_SELECT } from '@/define';
 
 /**
- * Registry 14 khối Dashboard CRM (port từ ERP epic crm-dashboard-customizable story-05).
+ * Registry 13 khối Dashboard CRM (port từ ERP epic crm-dashboard-customizable story-05).
  * Hợp đồng chung với BE: `key` khớp allowlist `define.CrmDashboardWidgetKeys` (BE KHÔNG giữ vùng/thứ tự/cỡ).
  * So với ERP (20 khối) KHÔNG có: clv_overview, marketing_view, estimate_price_marketing, event_overview (CRM standalone
  * không có nguồn dữ liệu), customer_status_marketing, convert_online (user chốt 2026-10-19 bỏ 2 khối marketing).
@@ -80,7 +80,7 @@ export interface DashboardWidgetDef {
   perms?: readonly string[];
 }
 
-/** 4 khối tiền: BE `/payment-in-month|payment-today|payment-branch-overview|service-used-statistics` = viewPayment OR manageCrmReport. */
+/** 3 khối tiền: BE `/payment-in-month|payment-branch-overview|service-used-statistics` = viewPayment OR manageCrmReport. */
 export const DASHBOARD_MONEY_PERMS: readonly string[] = [
   PERMISSION_SELECT.permissionViewPayment,
   PERMISSION_SELECT.permissionManageCrmReport,
@@ -111,8 +111,6 @@ const RAW: readonly Omit<DashboardWidgetDef, 'titleKey' | 'descKey'>[] = [
     perms: MODULE_PERMS, loadComponent: () => import('../component/chart-service-type-overview').then((m) => m.ChartServiceTypeOverview) },
   { key: 'service_type_interest', chartHeight: 320, category: 'service', thumb: 'bar', defaultZone: 'main', defaultOrder: 7, defaultSize: 'half', defaultVisible: false, skeleton: 'chart', timeMode: 'range',
     perms: MODULE_PERMS, loadComponent: () => import('../component/chart-service-type-interest').then((m) => m.ChartServiceTypeInterest) },
-  { key: 'payment_today', category: 'revenue', thumb: 'kpi', defaultZone: 'side', defaultOrder: 1, defaultSize: 'full', defaultVisible: true, skeleton: 'kpi', timeMode: 'day',
-    perms: DASHBOARD_MONEY_PERMS, loadComponent: () => import('../component/payment-today').then((m) => m.PaymentToday) },
   { key: 'overview_appointment', category: 'appointment', thumb: 'kpi', defaultZone: 'side', defaultOrder: 2, defaultSize: 'full', defaultVisible: true, skeleton: 'kpi', timeMode: 'mixed',
     perms: MODULE_PERMS, loadComponent: () => import('../component/overview-appointment').then((m) => m.OverviewAppointment) },
   // CRM: BE chỉ còn nhắc việc trong NGÀY tham chiếu (CSKH/CTV/coupon/liên hệ đã bỏ) ⇒ `day`, không phải `mixed` như ERP.

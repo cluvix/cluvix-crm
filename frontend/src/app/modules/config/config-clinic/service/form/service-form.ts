@@ -112,7 +112,6 @@ const NON_SUBMIT_KEYS = [
   // nhận default của DB (tạo mới: `child` = 0 không phân biệt, `is_installment` = 0).
   'child',
   'is_installment',
-  'installment_config',
 ] as const;
 
 @Component({

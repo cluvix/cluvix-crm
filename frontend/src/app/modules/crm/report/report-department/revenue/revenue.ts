@@ -63,6 +63,7 @@ export class Revenue extends BaseListV2<any> implements OnInit {
       {
         name: 'created_at',
         kind: 'dateRange',
+        required: true, // BE bắt buộc dải ngày (422 khi thiếu) → Xoá bộ lọc về mặc định
         default: () => [this.timezoneService.monthStart(), this.timezoneService.todayStart()],
       },
     ];

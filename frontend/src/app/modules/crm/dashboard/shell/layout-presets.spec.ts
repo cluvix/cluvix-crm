@@ -8,7 +8,7 @@ import { presetCards } from './preset-chooser';
 const ALL_KEYS = CRM_DASHBOARD_WIDGETS.map((w) => w.key).sort();
 
 describe('Mẫu bố cục đủ khối', () => {
-  it.each(DASHBOARD_LAYOUT_PRESETS.map((p) => p.id))('%s: đủ 14 khối, mỗi khối 1 lần, đều hiện', (id) => {
+  it.each(DASHBOARD_LAYOUT_PRESETS.map((p) => p.id))('%s: đủ 13 khối, mỗi khối 1 lần, đều hiện', (id) => {
     const cfg = presetLayout(id, CRM_DASHBOARD_WIDGETS);
     expect(cfg.items.map((x) => x.key).sort()).toEqual(ALL_KEYS);
     expect(cfg.items.every((x) => x.visible)).toBe(true);
@@ -37,7 +37,7 @@ describe('Mẫu bố cục đủ khối', () => {
     }
   });
 
-  it('slot của 3 mẫu vai trò liệt kê ĐỦ 14 khối (không dựa vào phần bù tự chèn)', () => {
+  it('slot của 3 mẫu vai trò liệt kê ĐỦ 13 khối (không dựa vào phần bù tự chèn)', () => {
     for (const id of ['revenue', 'front_desk', 'marketing'] as const) {
       const s = presetSlots(id);
       expect([...s.top, ...s.main, ...s.side].map(([k]) => k).sort(), id).toEqual(ALL_KEYS);
@@ -58,7 +58,7 @@ describe('Mẫu bố cục đủ khối', () => {
   });
 
   it.each(DASHBOARD_LAYOUT_PRESETS.map((p) => p.id))('%s: registry thiếu khối tiền (gác quyền CRM) ⇒ mẫu không có khối tiền, ½ vẫn đi cặp', (id) => {
-    const money = ['payment_in_month', 'payment_branch_overview', 'service_statistics', 'payment_today'];
+    const money = ['payment_in_month', 'payment_branch_overview', 'service_statistics'];
     const noMoney = CRM_DASHBOARD_WIDGETS.filter((w) => !money.includes(w.key));
     const cfg = presetLayout(id, noMoney);
     expect(cfg.items.map((x) => x.key).sort()).toEqual(noMoney.map((w) => w.key).sort());
@@ -67,7 +67,7 @@ describe('Mẫu bố cục đủ khối', () => {
   });
 
   it('thẻ "Chọn bố cục khởi đầu" dựng trên registry đã lọc ⇒ hình thu nhỏ không có khối thiếu quyền', () => {
-    const money = ['payment_in_month', 'payment_branch_overview', 'service_statistics', 'payment_today'];
+    const money = ['payment_in_month', 'payment_branch_overview', 'service_statistics'];
     const noMoney = CRM_DASHBOARD_WIDGETS.filter((w) => !money.includes(w.key));
     for (const c of presetCards(noMoney)) {
       const keys = [...c.top, ...c.main, ...c.side].map((b) => b.key);

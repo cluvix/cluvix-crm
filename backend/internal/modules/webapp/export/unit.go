@@ -20,7 +20,7 @@ func ExportUnit(c *gin.Context, q *gorm.DB) {
 	url, err := doExport(c, q, export.Config{
 		FileName: "Don_vi_tinh",
 		Headers: []string{
-			"ID", "Tên đơn vị", "Loại", "Mô tả",
+			"ID", "Tên đơn vị", "Mô tả",
 			"Danh mục (categoryId)", "Tên danh mục",
 			"Vị trí", "Trạng thái", "Trạng thái (text)",
 		},
@@ -43,7 +43,7 @@ func ExportUnit(c *gin.Context, q *gorm.DB) {
 			statusText = "Hoạt động"
 		}
 		return []interface{}{
-			row["id"], row["name"], row["type"], row["description"],
+			row["id"], row["name"], row["description"],
 			fmtJSON(catIDs), strings.Join(catNames, ", "),
 			row["SortOrder"], status, statusText,
 		}

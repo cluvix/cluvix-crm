@@ -74,7 +74,7 @@ func (h *Handler) ListServiceUsedCustomer(c *gin.Context) {
 		return
 	}
 
-	q := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB)).
+	q := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", true).
 		Table("order_service_used").
 		Where("order_service_used.customer_id = ?", id)
 	q = scope.WhereCustomerID(c, h.DB, q, "order_service_used.customer_id") // S-10
@@ -276,7 +276,7 @@ func (h *Handler) GetPaymentDetailForCustomer(c *gin.Context) {
 	if paymentForceCustomerIdx(c) {
 		table = "payment FORCE INDEX (" + paymentCustomerIdx + ")"
 	}
-	q := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", tenant.IsCrossBranchServiceEnabled(c, h.DB)).Table(table).
+	q := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", true).Table(table).
 		Where("payment.customer_id = ?", customerID)
 	q = scope.WhereCustomerID(c, h.DB, q, "payment.customer_id") // S-10
 

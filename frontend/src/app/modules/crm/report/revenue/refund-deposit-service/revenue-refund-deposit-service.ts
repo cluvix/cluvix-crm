@@ -76,6 +76,7 @@ export class RevenueRefundDepositService extends BaseListV2<PaymentModel> implem
       {
         name: 'payment_time',
         kind: 'dateRange',
+        required: true, // BE bắt buộc dải ngày (422 khi thiếu) → Xoá bộ lọc về mặc định
         default: () => [this.timezoneService.monthStart(), this.timezoneService.todayEnd()],
       },
       {name: 'branch_id', kind: 'in'},

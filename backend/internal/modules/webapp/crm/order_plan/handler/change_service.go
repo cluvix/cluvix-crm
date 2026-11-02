@@ -54,8 +54,7 @@ func (h *Handler) ChangeServiceForOSU(c *gin.Context) {
 		}
 	}
 
-	scopedDB := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used",
-		tenant.IsCrossBranchServiceEnabled(c, h.DB))
+	scopedDB := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", true)
 
 	updated, err := h.svc.ChangeServiceForOSU(scopedDB, uint(id), req.NewServiceId, req.Reason, req.UpdatedAt, uid)
 	if err != nil {

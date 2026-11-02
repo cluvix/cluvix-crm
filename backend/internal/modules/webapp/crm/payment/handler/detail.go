@@ -53,7 +53,7 @@ func (h *Handler) GetPaymentDetail(c *gin.Context) {
 		return
 	}
 
-	scoped := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", tenant.IsCrossBranchServiceEnabled(c, h.DB))
+	scoped := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", true)
 
 	var items []map[string]interface{}
 	tx := scoped.Table("payment").
@@ -119,7 +119,7 @@ func (h *Handler) attachPaymentAllocations(c *gin.Context, item map[string]inter
 
 	// ⚠ Có alias `p` trong Table() ⇒ PHẢI truyền alias cho ScopedDB, nếu không điều kiện scope sinh ra
 	// `payment.company_id` trong khi FROM đã đổi tên → MySQL 1054 (500 mọi request, lỗi runtime).
-	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", tenant.IsCrossBranchServiceEnabled(c, h.DB), "p").
+	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", true, "p").
 		Table("payment p").
 		Select(paymentAllocationColumns).
 		Joins("LEFT JOIN order_service_used osu ON osu.id = p.serviceUsed_id").

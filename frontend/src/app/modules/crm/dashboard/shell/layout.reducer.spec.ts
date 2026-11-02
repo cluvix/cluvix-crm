@@ -10,11 +10,11 @@ const shown = (c: DashboardLayoutConfig, z: 'top' | 'main' | 'side') => zoneItem
 const frozen = (c: DashboardLayoutConfig) => JSON.stringify(c);
 
 describe('layout reducers (story-10)', () => {
-  it('mặc định: 5 khối hiện đúng vùng (mốc cho các ca dưới)', () => {
+  it('mặc định: 4 khối hiện đúng vùng (mốc cho các ca dưới)', () => {
     const c = base();
     expect(shown(c, 'top')).toEqual(['payment_in_month']);
     expect(shown(c, 'main')).toEqual(['quick_stats', 'appointment_accepted_stats']);
-    expect(shown(c, 'side')).toEqual(['payment_today', 'overview_appointment']);
+    expect(shown(c, 'side')).toEqual(['overview_appointment']);
   });
 
   it('placeItem cùng vùng: index = currentIndex của CDK (lên đầu / xuống cuối)', () => {
@@ -25,11 +25,11 @@ describe('layout reducers (story-10)', () => {
   });
 
   it('placeItem sang vùng khác: chèn đúng vị trí, rời vùng cũ, số khối không đổi', () => {
-    const c = placeItem(base(), 'payment_today', 'main', 1);
-    expect(shown(c, 'main')).toEqual(['quick_stats', 'payment_today', 'appointment_accepted_stats']);
-    expect(shown(c, 'side')).toEqual(['overview_appointment']);
+    const c = placeItem(base(), 'overview_appointment', 'main', 1);
+    expect(shown(c, 'main')).toEqual(['quick_stats', 'overview_appointment', 'appointment_accepted_stats']);
+    expect(shown(c, 'side')).toEqual([]);
     expect(c.items.length).toBe(base().items.length);
-    expect(shown(placeItem(base(), 'payment_today', 'top', 99), 'top')).toEqual(['payment_in_month', 'payment_today']);
+    expect(shown(placeItem(base(), 'overview_appointment', 'top', 99), 'top')).toEqual(['payment_in_month', 'overview_appointment']);
     // vùng đích rỗng
     const emptyTop = hideItem(base(), 'payment_in_month');
     expect(shown(placeItem(emptyTop, 'quick_stats', 'top', 0), 'top')).toEqual(['quick_stats']);
@@ -49,12 +49,12 @@ describe('layout reducers (story-10)', () => {
     c = showItem(c, 'quick_stats', CRM_DASHBOARD_WIDGETS);
     expect(shown(c, 'main')).toEqual(['appointment_accepted_stats', 'quick_stats']);
     // khối mặc định ở side, đang nằm ở main rồi bị ẩn ⇒ bật lại về side
-    let d = hideItem(placeItem(base(), 'payment_today', 'main', 0), 'payment_today');
-    d = showItem(d, 'payment_today', CRM_DASHBOARD_WIDGETS);
-    expect(shown(d, 'side')).toEqual(['overview_appointment', 'payment_today']);
-    expect(shown(d, 'main')).not.toContain('payment_today');
+    let d = hideItem(placeItem(base(), 'overview_appointment', 'main', 0), 'overview_appointment');
+    d = showItem(d, 'overview_appointment', CRM_DASHBOARD_WIDGETS);
+    expect(shown(d, 'side')).toEqual(['overview_appointment']);
+    expect(shown(d, 'main')).not.toContain('overview_appointment');
     // khối mặc định ẩn (Kho khối "+")
-    expect(shown(showItem(base(), 'additional_stats', CRM_DASHBOARD_WIDGETS), 'side')).toEqual(['payment_today', 'overview_appointment', 'additional_stats']);
+    expect(shown(showItem(base(), 'additional_stats', CRM_DASHBOARD_WIDGETS), 'side')).toEqual(['overview_appointment', 'additional_stats']);
   });
 
   it('setItemSize đổi cỡ; giá trị như cũ / key lạ ⇒ trả ĐÚNG object cũ (dirty không bật oan)', () => {
@@ -74,10 +74,10 @@ describe('layout reducers (story-10)', () => {
     mid.items.splice(mid.items.findIndex((x) => x.key === 'payment_branch_overview') + 1, 0, aas);
     expect(zoneItems(mid, 'main').slice(0, 3).map((x) => x.key)).toEqual(['quick_stats', 'payment_branch_overview', 'appointment_accepted_stats']);
     expect(shown(mid, 'main')).toEqual(['quick_stats', 'appointment_accepted_stats']);
-    // thả payment_today vào index 1 ⇒ ngay TRƯỚC appointment_accepted_stats (không phải trước khối ẩn rồi lệch)
-    expect(shown(placeItem(mid, 'payment_today', 'main', 1), 'main')).toEqual(['quick_stats', 'payment_today', 'appointment_accepted_stats']);
+    // thả overview_appointment vào index 1 ⇒ ngay TRƯỚC appointment_accepted_stats (không phải trước khối ẩn rồi lệch)
+    expect(shown(placeItem(mid, 'overview_appointment', 'main', 1), 'main')).toEqual(['quick_stats', 'overview_appointment', 'appointment_accepted_stats']);
     // thả vào index 2 (= số khối hiện) ⇒ CUỐI, sau appointment_accepted_stats
-    expect(shown(placeItem(mid, 'payment_today', 'main', 2), 'main')).toEqual(['quick_stats', 'appointment_accepted_stats', 'payment_today']);
+    expect(shown(placeItem(mid, 'overview_appointment', 'main', 2), 'main')).toEqual(['quick_stats', 'appointment_accepted_stats', 'overview_appointment']);
     // Xuống 1 bậc vượt qua khối ẩn
     expect(shown(moveBy(mid, 'quick_stats', 1), 'main')).toEqual(['appointment_accepted_stats', 'quick_stats']);
   });
@@ -85,7 +85,7 @@ describe('layout reducers (story-10)', () => {
   it('KHÔNG mutate đầu vào (OnPush: replace reference)', () => {
     const c = base();
     const snap = frozen(c);
-    placeItem(c, 'payment_today', 'main', 0);
+    placeItem(c, 'overview_appointment', 'main', 0);
     moveBy(c, 'quick_stats', 1);
     hideItem(c, 'quick_stats');
     showItem(c, 'additional_stats', CRM_DASHBOARD_WIDGETS);

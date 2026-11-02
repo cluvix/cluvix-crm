@@ -57,9 +57,8 @@ export const CONFIG_OPTION_CRM_SELECT = {
   OPTION_CUSTOMER_CROSS_BRANCH: 18,
   OPTION_AUTO_CARE_NEXT_DAY: 19,
   OPTION_EXPORT_PHONE: 20,
-  OPTION_PAYMENT_BY_TOTAL: 21,
-  OPTION_SKIP_PAYMENT_CHECK: 22,
-  OPTION_CROSS_BRANCH_TREATMENT: 23,
+  // id 21 (tính số lần dùng theo tổng gói), 22 (bỏ qua kiểm tra thanh toán), 23 (dùng dịch vụ ở chi nhánh
+  // khác) đã gỡ cả BE + DB — BE nay luôn cho dùng đơn hàng/dịch vụ/thanh toán của khách ở mọi chi nhánh.
   // story-14 (omnichat-core): id KHỚP BE `pkg/define/omni_channel.go` OptionOmnichat* — KHÔNG đoán.
   OPTION_OMNICHAT_VIEW_MODE: 24,
   OPTION_OMNICHAT_HUMAN_AGENT: 25,

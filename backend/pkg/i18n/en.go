@@ -35,6 +35,7 @@ var en = map[string]string{
 	"import_no_recognized_column":      "No recognizable column in the file — check the header rows (row 1 labels, row 2 field names)",
 	"import_duplicate_column":          "Column %s appears more than once; remove the duplicate to avoid writing the wrong value",
 	"import_column_required_empty":     "Column %s is required and cannot be empty",
+	"import_missing_required_column":   "File does not match the template: missing column %s",
 	"import_invalid_number":            "Invalid value in column %s: %s",
 	"import_id_old_duplicated_in_file": "Old id %d in column 'id cũ' duplicates row %d in the file — each old id may be used once per brand",
 	"import_id_old_taken":              "Old id %d in column 'id cũ' already belongs to another service (id=%d, code %s) — change it or remove the 'id cũ' column from the file",

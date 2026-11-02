@@ -395,7 +395,7 @@ func TestDashboardRevenue_RequiresMoneyPerm(t *testing.T) {
 	reporter := testhelpers.CreateScopedUser(t, testDB, "b1_rep", tn, tn.BranchID)
 	grant(t, reporter, define.PermManageCrmReport)
 
-	money := []string{"payment-in-month", "payment-today", "payment-branch-overview", "service-used-statistics"}
+	money := []string{"payment-in-month", "payment-branch-overview", "service-used-statistics"}
 	for _, m := range money {
 		url := "/api/crm/crm-dashboard/" + m
 		expect(t, call(r, http.MethodGet, url, receptionist, ""), http.StatusForbidden, "chỉ viewAppointment "+m)

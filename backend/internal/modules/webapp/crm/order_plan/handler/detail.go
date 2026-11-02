@@ -60,7 +60,7 @@ func (h *Handler) GetOrderPlanDetail(c *gin.Context) {
 	}
 
 	var items []map[string]interface{}
-	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", tenant.IsCrossBranchServiceEnabled(c, h.DB)).
+	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", true).
 		Table("order_plan").
 		Select(orderPlanDetailColumns).
 		Where("id = ?", id).Limit(1).Find(&items)
@@ -78,7 +78,7 @@ func (h *Handler) GetOrderPlanDetail(c *gin.Context) {
 
 	// Dịch vụ con của đơn — CỐ Ý không lọc chi nhánh (tenant.CrossBranchLookup, story-37): dịch vụ
 	// trong cùng đơn có thể thuộc chi nhánh khác (điều trị chéo chi nhánh), lọc theo branch sẽ làm
-	// mất dòng của chính đơn đang xem (đơn đã qua branch scope ở trên).
+	// mất dòng của chính đơn đang xem (bản thân đơn cũng nạp KHÔNG lọc chi nhánh ở trên).
 	services := make([]map[string]interface{}, 0)
 	txSvc := tenant.CrossBranchLookup(h.DB, "order_service_used").
 		Table("order_service_used").
@@ -116,7 +116,7 @@ func sumOrderPlanServices(services []map[string]interface{}) (total, vatTotal de
 	return total, vatTotal
 }
 
-// attachOrderPlanMoney tính tiền đã thu + đã hoàn của đơn (đơn `id` đã qua branch scope ở caller).
+// attachOrderPlanMoney tính tiền đã thu + đã hoàn của đơn (đơn `id` đã nạp ở caller, không lọc chi nhánh).
 //
 // Story-37 (E6/D15): bỏ vế company trong subquery — 1 thương hiệu/DB (DB-per-customer), mọi phiếu/
 // dịch vụ của đơn đều thuộc thương hiệu đó nên vế company không còn phân tách gì.

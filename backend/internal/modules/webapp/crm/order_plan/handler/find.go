@@ -24,7 +24,7 @@ func (h *Handler) GetOrderPlan(c *gin.Context) {
 	}
 
 	var item map[string]interface{}
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", tenant.IsCrossBranchServiceEnabled(c, h.DB)).Table("order_plan").
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", true).Table("order_plan").
 		Where("id = ?", id).Limit(1).Scan(&item).Error; err != nil {
 		response.NotFound(c)
 		return
@@ -37,7 +37,7 @@ func (h *Handler) GetOrderPlan(c *gin.Context) {
 	helpers.ParseDecimalFieldsForTables([]map[string]interface{}{item}, "order_plan")
 
 	// Dịch vụ con của đơn — CỐ Ý không lọc chi nhánh (tenant.CrossBranchLookup, story-37): dịch vụ
-	// trong cùng đơn có thể ở chi nhánh khác (điều trị chéo chi nhánh); đơn đã qua branch scope ở trên.
+	// trong cùng đơn có thể ở chi nhánh khác (điều trị chéo chi nhánh); bản thân đơn cũng nạp KHÔNG lọc chi nhánh ở trên.
 	var services []map[string]interface{}
 	tx := tenant.CrossBranchLookup(h.DB, "order_service_used").Table("order_service_used").
 		Where("order_plan_id = ?", id).Find(&services)
@@ -55,7 +55,7 @@ func (h *Handler) GetOrderPlan(c *gin.Context) {
 	item["vat_total"] = vatTotal
 	item["total_after_vat"] = total.Add(vatTotal)
 
-	// payment + refundServiceTotal của đơn (đơn đã qua branch scope ở trên). Story-37 (D15): bỏ vế
+	// payment + refundServiceTotal của đơn (đơn đã nạp ở trên, không lọc chi nhánh). Story-37 (D15): bỏ vế
 	// company trong subquery — 1 thương hiệu/DB, mọi phiếu/dịch vụ của đơn đều thuộc thương hiệu đó.
 	var agg struct {
 		Payment            decimal.Decimal `gorm:"column:payment"`

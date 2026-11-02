@@ -29,8 +29,8 @@ import { BaseApiService } from '@/share/services/base-api.service';
 import {
   FilterFieldDef,
   MAX_TEXT_FILTER_LENGTH,
+  clearedValueOf,
   defaultValueOf,
-  emptyValueOf,
   isBlankFilterValue,
   matchModeOf,
   toDateOnlyString,
@@ -601,7 +601,8 @@ export abstract class BaseListV2<T extends Identifiable> extends BaseApp impleme
    *
    * Xử theo đúng nguyên tắc "URL là nguồn sự thật":
    * - URL còn cờ state → khôi phục theo URL (vd người dùng dán link đã lọc trong khi đang ở trang).
-   * - URL không còn cờ → coi như vào trang sạch từ menu → xoá filter về mặc định.
+   * - URL không còn cờ → coi như vào trang sạch từ menu → đặt filter về mặc định (như lần đầu mở
+   *   màn — KHÁC nút "Xoá bộ lọc" là xoá về rỗng).
    *
    * PHẢI nghe `NavigationSkipped` chứ không chỉ `NavigationEnd`/`queryParams`: `replaceState` đổi
    * thanh địa chỉ nhưng KHÔNG báo cho router, nên sau lần ghi đầu router vẫn tưởng đang ở URL trần.
@@ -635,7 +636,7 @@ export abstract class BaseListV2<T extends Identifiable> extends BaseApp impleme
           this.search.set(this.utilsService.buildFilter(filters));
           this.getList();
         } else {
-          this.clearFilter();
+          this.resetToDefaultFilters();
         }
         // Ghi URL phải ĐỢI router commit xong, không được gọi đồng bộ ở đây.
         // Angular mặc định `urlUpdateStrategy: 'deferred'` — router ghi URL lên thanh địa chỉ ở
@@ -715,12 +716,26 @@ export abstract class BaseListV2<T extends Identifiable> extends BaseApp impleme
   }
 
   /**
-   * Xoá filter về mặc định — dùng chung cho mọi list, component con không phải tự viết.
+   * Nút "Xoá bộ lọc" — dùng chung cho mọi list, component con không phải tự viết.
+   *
+   * Xoá về RỖNG, kể cả field có `default` (khoảng ngày "tháng này", ...): `default` chỉ là giá trị
+   * lúc mới mở màn, người dùng bấm xoá là muốn bỏ hết điều kiện. Ngoại lệ duy nhất là field
+   * `required` (BE trả 422 khi thiếu) → về mặc định. F5 sau đó không áp lại default: URL giữ cờ
+   * `<prefix>_f` mà không có param filter ⇒ `restoreFromUrl()` hiểu là "đã xoá hết".
    */
   clearFilter(): void {
-    const defaults: Record<string, any> = {};
-    for (const def of this.filterDefs) defaults[def.name] = defaultValueOf(def);
-    this.rfFilterModel.reset(defaults, { emitEvent: false });
+    this.resetFilters(clearedValueOf);
+  }
+
+  /** Về đúng trạng thái lúc mới mở màn (áp `default`) — khi bấm lại mục menu trỏ URL trần. */
+  private resetToDefaultFilters(): void {
+    this.resetFilters(defaultValueOf);
+  }
+
+  private resetFilters(valueOf: (def: FilterFieldDef) => any): void {
+    const values: Record<string, any> = {};
+    for (const def of this.filterDefs) values[def.name] = valueOf(def);
+    this.rfFilterModel.reset(values, { emitEvent: false });
 
     const filters = this.buildFiltersFromForm();
     // Gán qua signal (input binding) để p-table nhận object mới, không tự tay sờ dt.filters.
@@ -777,9 +792,10 @@ export abstract class BaseListV2<T extends Identifiable> extends BaseApp impleme
   }
 
   /**
-   * Chặn 3 lỗi khai báo mà nếu để lọt sẽ hỏng URL một cách âm thầm — rất khó lần ra sau này:
-   * trùng `name`, trùng param URL (vd `_status` và `status` cùng suy ra `status`), và param
-   * đụng tên các khoá state dành riêng (`_f`, `_page`, `_size`, `_sort`).
+   * Chặn 4 lỗi khai báo mà nếu để lọt sẽ hỏng âm thầm — rất khó lần ra sau này:
+   * trùng `name`, trùng param URL (vd `_status` và `status` cùng suy ra `status`), param
+   * đụng tên các khoá state dành riêng (`_f`, `_page`, `_size`, `_sort`), và field `required`
+   * thiếu `default`.
    *
    * Dev thì ném lỗi để thấy ngay lúc mở trang; production chỉ log để không làm chết cả màn hình.
    */
@@ -792,6 +808,10 @@ export abstract class BaseListV2<T extends Identifiable> extends BaseApp impleme
     for (const def of this.filterDefs) {
       if (seenNames.has(def.name)) problems.push(`trùng name "${def.name}"`);
       seenNames.add(def.name);
+      // `required` mà không có `default` ⇒ clearFilter() vẫn về rỗng ⇒ BE trả 422, không ai hay.
+      if (def.required && def.default === undefined) {
+        problems.push(`field "${def.name}" khai required nhưng thiếu default`);
+      }
       if (def.urlSync === false) continue;
       const key = urlKeyOf(def);
       if (reserved.has(key)) {
@@ -873,7 +893,7 @@ export abstract class BaseListV2<T extends Identifiable> extends BaseApp impleme
 
   /**
    * Đọc state từ URL. Có cờ `<prefix>_f` → URL là nguồn sự thật: filter nào vắng mặt
-   * trên URL là do người dùng đã xoá, KHÔNG lấy lại giá trị mặc định.
+   * trên URL là do người dùng đã xoá, KHÔNG lấy lại giá trị mặc định (trừ field `required`).
    * @param source nguồn query param. Mặc định là snapshot của route; khi xử `NavigationSkipped`
    *   phải truyền `URLSearchParams` dựng từ URL đích vì snapshot lúc đó KHÔNG được cập nhật.
    * @returns true nếu URL có state và đã khôi phục
@@ -890,7 +910,7 @@ export abstract class BaseListV2<T extends Identifiable> extends BaseApp impleme
       const key = filterParamName(prefix, def);
       patch[def.name] = map.has(key)
         ? parseFilterValue(def, map.get(key)!, this.timezoneService)
-        : emptyValueOf(def);
+        : clearedValueOf(def);
     }
     this.rfFilterModel.patchValue(patch, { emitEvent: false });
 

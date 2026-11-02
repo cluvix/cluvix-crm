@@ -17,7 +17,7 @@ func (h *Handler) GetPayment(c *gin.Context) {
 		return
 	}
 	var item paymentDao.Payment
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", tenant.IsCrossBranchServiceEnabled(c, h.DB)).
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", true).
 		Where("id = ?", id).Take(&item).Error; err != nil {
 		response.NotFound(c)
 		return

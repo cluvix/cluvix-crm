@@ -37,52 +37,47 @@ func (h *Handler) verifyPaymentOwnership(c *gin.Context, id uint) bool {
 //     2. user_option id=1 (OPTION_UPDATE_PAYMENT) = 1 (bật).
 //     3. Là người tạo ra payment đó (created_by = userID).
 //     4. Vẫn trong cùng ngày tạo (theo timezone của thương hiệu).
-func (h *Handler) verifyCanEditPaymentCustomer(c *gin.Context, id uint) bool {
+//
+// Không lọc chi nhánh: phiếu của khách sửa được ở mọi chi nhánh (option 23 cũ, đã gỡ — luôn cho phép).
+// Trả về branch_id HIỆN TẠI của phiếu để caller chỉ kiểm branch khi FE đổi sang chi nhánh khác.
+func (h *Handler) verifyCanEditPaymentCustomer(c *gin.Context, id uint) (int, bool) {
 	var p paymentDao.Payment
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", tenant.IsCrossBranchServiceEnabled(c, h.DB)).First(&p, id).Error; err != nil {
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", true).First(&p, id).Error; err != nil {
 		response.NotFound(c)
-		return false
+		return 0, false
 	}
 
 	userID := middleware.GetUserID(c)
 
 	if h.hasPermission(userID, "updatePayment") {
-		return true
-	}
-
-	// Creator+same-day path: branch ownership must hold even when cross-branch read (option 18) là general
-	// viewing toggle. Option 23 (UserOptionCrossBranchService) bypass được nhánh này — cùng lý do với
-	// order_plan (xem verifyCanEditOrderPlan).
-	if !branchAllowed(c, p.BranchId) && !tenant.IsCrossBranchServiceEnabled(c, h.DB) {
-		response.Forbidden(c)
-		return false
+		return p.BranchId, true
 	}
 
 	if !h.hasPermission(userID, "createPayment") {
 		response.Forbidden(c)
-		return false
+		return 0, false
 	}
 
 	var optionVal int
 	h.DB.Table("user_option").Where("id = 1").Limit(1).Pluck("options", &optionVal)
 	if optionVal != 1 {
 		response.Forbidden(c)
-		return false
+		return 0, false
 	}
 
 	if p.CreatedBy == nil || *p.CreatedBy != userID {
 		response.Forbidden(c)
-		return false
+		return 0, false
 	}
 
 	now := time.Now().In(tz.LocFromContext(c, h.DB))
 	createdAt := time.Unix(p.CreatedAt, 0).In(now.Location())
 	if now.Year() != createdAt.Year() || now.Month() != createdAt.Month() || now.Day() != createdAt.Day() {
 		response.Forbidden(c)
-		return false
+		return 0, false
 	}
 
-	return true
+	return p.BranchId, true
 }
 
 // fkBranch — branch_id THẬT của 1 record cha (order_plan, order_service_used, customer, payment...)

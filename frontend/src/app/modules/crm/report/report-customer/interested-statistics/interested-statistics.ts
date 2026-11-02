@@ -85,6 +85,7 @@ export class InterestedStatistics extends BaseListV2<any> implements OnInit {
       {
         name: 'created_at',
         kind: 'dateRange',
+        required: true, // BE bắt buộc dải ngày (422 khi thiếu) → Xoá bộ lọc về mặc định
         // factory: clearFilter() tính lại theo hôm nay, không dính ngày lúc mở trang
         default: () => [this.timezoneService.monthStart(), this.timezoneService.todayEnd()],
       },

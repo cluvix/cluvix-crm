@@ -27,6 +27,10 @@ func (h *Handler) CreateOrderPlan(c *gin.Context) {
 	req.CreatedAt = 0
 	req.CreatedBy = nil
 	req.UpdatedBy = nil
+	if !orderBranchAllowed(c, req.BranchId, nil) {
+		response.Forbidden(c)
+		return
+	}
 
 	userID := int(middleware.GetUserID(c))
 
@@ -40,7 +44,8 @@ func (h *Handler) CreateOrderPlan(c *gin.Context) {
 // UpdateOrderPlan PUT /crm/order-plan/:id
 func (h *Handler) UpdateOrderPlan(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	if !h.verifyCanEditOrderPlan(c, uint(id)) {
+	curBranchID, ok := h.verifyCanEditOrderPlan(c, uint(id))
+	if !ok {
 		return
 	}
 	var req crmServices.OrderPlanRequest
@@ -49,9 +54,13 @@ func (h *Handler) UpdateOrderPlan(c *gin.Context) {
 		return
 	}
 	req.ID = uint(id)
+	if !orderBranchAllowed(c, req.BranchId, curBranchID) {
+		response.Forbidden(c)
+		return
+	}
 
 	userID := int(middleware.GetUserID(c))
-	scopedDB := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", tenant.IsCrossBranchServiceEnabled(c, h.DB))
+	scopedDB := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_plan", true)
 	if err := h.svc.Update(&req, userID, scopedDB); err != nil {
 		response.HandleError(c, err)
 		return

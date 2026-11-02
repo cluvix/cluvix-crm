@@ -41,7 +41,7 @@ const (
 	CustomerStatusBroker            = 15
 	// CustomerStatusContact — status mặc định của MỌI khách mới tạo (D14, crm-standalone:
 	// không còn nhánh Lead(4) theo phòng ban), hiển thị ngay trong CRM list. Xem CreateCustomer
-	// + CreateCustomerSwitch (crm/customer/handler).
+	// (crm/customer/handler).
 	CustomerStatusContact = 16
 	// CustomerStatusZalo — khách tự đăng ký qua Zalo Mini App (findOrCreateCustomer),
 	// ưu tiên xử lý sớm. Hiển thị CẢ CRM list lẫn Sale/lead — mirror Contact(16), khác

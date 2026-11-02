@@ -6,9 +6,7 @@ export interface LocationWardModel extends Identifiable {
   id?: number;
   codeWard?: string;
   name?: string;
-  nameWithType?: string; // Tên cùng với type
   path?: string;
-  pathWithType?: string;
   Type?: string;
   province_id?: number;
   SortOrder?: number;

@@ -29,7 +29,7 @@ describe('createWidgetData', () => {
   it('không có store (dashboard cũ) ⇒ gọi API với query rỗng, loading → ready', () => {
     const inj = setup(null);
     const loader = vi.fn(() => of({ n: 1 }));
-    const d = TestBed.runInInjectionContext(() => createWidgetData('payment_today', loader));
+    const d = TestBed.runInInjectionContext(() => createWidgetData('additional_stats', loader));
     expect(d.status()).toBe('loading');
     flush();
     expect(loader).toHaveBeenCalledWith({});
@@ -90,7 +90,7 @@ describe('createWidgetData', () => {
     setup(fakeStore());
     TestBed.inject(CrmDashboardDataCache).clear();
     const loader = vi.fn(() => of(7));
-    const d = TestBed.runInInjectionContext(() => createWidgetData<number>('payment_today', loader));
+    const d = TestBed.runInInjectionContext(() => createWidgetData<number>('additional_stats', loader));
     flush();
     d.refresh();
     flush();
@@ -101,7 +101,7 @@ describe('createWidgetData', () => {
   it('nhãn kỳ theo timeMode: day ⇒ ngày tham chiếu; range ⇒ null', () => {
     const st = fakeStore();
     setup(st);
-    const day = TestBed.runInInjectionContext(() => createWidgetData('payment_today', () => of(1)));
+    const day = TestBed.runInInjectionContext(() => createWidgetData('additional_stats', () => of(1)));
     const range = TestBed.runInInjectionContext(() => createWidgetData('source_overview', () => of(1)));
     expect(day.period()).toEqual({ key: 'common.label.today' });
     st.refDayLabel.set({ kind: 'date', date: '30/09' });
@@ -115,7 +115,7 @@ describe('createWidgetData', () => {
     TestBed.inject(CrmDashboardDataCache).clear();
     const pending = new Subject<string>();
     const loader = vi.fn((q: DashboardQuery) => (q.branch_id ? pending : of('A-all')));
-    const d = TestBed.runInInjectionContext(() => createWidgetData<string>('payment_today', loader));
+    const d = TestBed.runInInjectionContext(() => createWidgetData<string>('additional_stats', loader));
     flush();
     expect(d.status()).toBe('ready');
     st.query.set({ branch_id: 2 });
@@ -131,7 +131,7 @@ describe('createWidgetData', () => {
     TestBed.inject(CrmDashboardDataCache).clear();
     let fail = false;
     const loader = vi.fn(() => (fail ? throwError(() => new Error('500')) : of(1)));
-    const d = TestBed.runInInjectionContext(() => createWidgetData<number>('payment_today', loader));
+    const d = TestBed.runInInjectionContext(() => createWidgetData<number>('additional_stats', loader));
     flush();
     expect(d.status()).toBe('ready');
     fail = true;

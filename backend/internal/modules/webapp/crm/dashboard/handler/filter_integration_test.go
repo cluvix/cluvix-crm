@@ -170,7 +170,6 @@ func TestDashboardFilter_AllEndpointsGuard(t *testing.T) {
 	both := []uint{fx.branchA, fx.branchB}
 	eps := map[string]func(*Handler) gin.HandlerFunc{
 		"payment-in-month":               pim,
-		"payment-today":                  func(h *Handler) gin.HandlerFunc { return h.CrmPaymentToday },
 		"quick-starts":                   func(h *Handler) gin.HandlerFunc { return h.CrmQuickStarts },
 		"additional-stats":               func(h *Handler) gin.HandlerFunc { return h.CrmAdditionalStats },
 		"appointment-accepted-stats":     func(h *Handler) gin.HandlerFunc { return h.CrmAppointmentAcceptedStats },
@@ -232,20 +231,6 @@ func TestDashboardFilter_CacheIsolation(t *testing.T) {
 	}{{"", thisM}, {qA, decimal.NewFromInt(104)}, {qB, decimal.NewFromInt(36)}, {qLast, decimal.NewFromInt(7)}, {"", thisM}} {
 		if got := thucThu(t, callDashWith(t, h, pim, step.q, both)); !got.Equal(step.want) {
 			t.Fatalf("payment-in-month q=%q: muốn %s, nhận %s (dính cache phạm vi khác?)", step.q, step.want, got)
-		}
-	}
-
-	pt := func(h *Handler) gin.HandlerFunc { return h.CrmPaymentToday }
-	for _, step := range []struct {
-		q    string
-		want int64
-	}{{"", 10}, {qA, 4}, {qB, 6}, {qLast, 0}} {
-		var b struct {
-			ThucThu decimal.Decimal `json:"thucThu"`
-		}
-		decodeJSON(t, callDashWith(t, h, pt, step.q, both), &b)
-		if !b.ThucThu.Equal(decimal.NewFromInt(step.want)) {
-			t.Fatalf("payment-today q=%q: muốn %d, nhận %s", step.q, step.want, b.ThucThu)
 		}
 	}
 

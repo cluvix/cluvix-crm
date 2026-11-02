@@ -25,14 +25,15 @@ const (
 	CrmDashboardLayoutSourceSystem = "system"
 )
 
-// CrmDashboardWidgetKeys — 14 khối dashboard CRM (khớp registry FE). Key ngoài danh sách bị từ chối khi GHI
+// CrmDashboardWidgetKeys — 13 khối dashboard CRM (khớp registry FE). Key ngoài danh sách bị từ chối khi GHI
 // bố cục; FE tự bỏ qua key lạ khi ĐỌC. So với ERP (20 khối) KHÔNG có: clv_overview, marketing_view,
 // estimate_price_marketing, event_overview (CRM standalone không có nguồn dữ liệu), customer_status_marketing,
-// convert_online (user chốt 2026-10-19 bỏ 2 khối marketing).
+// convert_online (user chốt 2026-10-19 bỏ 2 khối marketing), payment_today (user chốt 2026-11-01: trùng với bộ lọc ngày
+// của payment_in_month).
 var CrmDashboardWidgetKeys = map[string]bool{
 	"payment_in_month": true, "quick_stats": true, "appointment_accepted_stats": true,
 	"payment_branch_overview": true, "service_statistics": true, "source_overview": true,
-	"service_type_accepted": true, "service_type_interest": true, "payment_today": true,
+	"service_type_accepted": true, "service_type_interest": true,
 	"overview_appointment": true, "additional_stats": true, "appointment_status": true,
 	"customer_status_overview": true, "customer_region": true,
 }

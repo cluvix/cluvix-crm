@@ -413,7 +413,7 @@ func (h *Handler) GetTreatmentService(c *gin.Context) {
 	}
 
 	var items []map[string]interface{}
-	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB)).
+	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", true).
 		Table("order_service_used").
 		Select(treatmentServiceDetailColumns).
 		Where("id = ?", id).Limit(1).Find(&items)
@@ -441,7 +441,7 @@ func (h *Handler) GetServiceUsedOfCustomer(c *gin.Context) {
 		return
 	}
 	var item map[string]interface{}
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB)).Table("order_service_used").
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", true).Table("order_service_used").
 		Where("id = ?", id).Limit(1).Scan(&item).Error; err != nil {
 		response.NotFound(c)
 		return
@@ -486,7 +486,7 @@ func (h *Handler) LockServiceUsed(c *gin.Context) {
 	var current struct {
 		UpdatedAt int64 `gorm:"column:updated_at"`
 	}
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB)).Table("order_service_used").
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", true).Table("order_service_used").
 		Select("updated_at").Where("id = ?", id).First(&current).Error; err != nil {
 		response.NotFound(c)
 		return
@@ -503,7 +503,7 @@ func (h *Handler) LockServiceUsed(c *gin.Context) {
 	}
 
 	var item map[string]any
-	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB)).Table("order_service_used").
+	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", true).Table("order_service_used").
 		Where("id = ?", id).Scan(&item)
 	if pagination.IsQueryError(tx.Error) {
 		pagination.FailQuery(c, tx.Error)
@@ -596,19 +596,25 @@ func (h *Handler) LockServiceUsed(c *gin.Context) {
 // formatVND format số tiền VND
 // ServiceUseds GET /crm/order-service-used/service-useds?customerId=X
 func (h *Handler) ServiceUseds(c *gin.Context) {
-	customerId := c.Query("customerId")
-	// FE cũ còn gửi thêm query companyId — bị bỏ qua (story-37); phạm vi theo branch scope bên dưới.
-	if customerId == "" {
+	// FE cũ còn gửi thêm query companyId — bị bỏ qua (story-37). Dịch vụ của khách dùng được ở mọi chi
+	// nhánh ⇒ không lọc chi nhánh bên dưới.
+	// Parse ra SỐ: MySQL ép '12abc' → 12 (warning 1292 bị nuốt) ⇒ URL rác đọc trúng dữ liệu khách khác.
+	customerId, errParse := strconv.ParseUint(c.Query("customerId"), 10, 64)
+	if errParse != nil || customerId == 0 {
 		c.JSON(http.StatusOK, []any{})
 		return
 	}
 
 	var rows []map[string]any
-	tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB), "osu").Table("order_service_used osu").
+	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", true, "osu").Table("order_service_used osu").
 		Select("osu.id, osu.service_id, s.name").
 		Joins("LEFT JOIN service s ON s.id = osu.service_id").
 		Where("osu.customer_id = ? AND osu.isLock = 1", customerId).
 		Find(&rows)
+	if pagination.IsQueryError(tx.Error) {
+		pagination.FailQuery(c, tx.Error)
+		return
+	}
 
 	result := make([]gin.H, 0, len(rows))
 	for _, r := range rows {
@@ -627,7 +633,7 @@ func (h *Handler) ServiceUsedOfCustomer(c *gin.Context) {
 		return
 	}
 	var rows []map[string]any
-	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB), "osu").Table("order_service_used osu").
+	tx := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", true, "osu").Table("order_service_used osu").
 		Select("osu.id, s.name as serviceName, osu.order_plan_id, osu.branch_id, "+
 			"COALESCE(osu.totalEnd, 0) + osu.vat_amount AS payable, osu.payment, osu.created_day").
 		Joins("LEFT JOIN service s ON s.id = osu.service_id").

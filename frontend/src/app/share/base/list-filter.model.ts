@@ -117,11 +117,19 @@ export interface FilterFieldDef {
 
   /**
    * Giá trị mặc định của control. Truyền factory `() => ...` cho giá trị phụ thuộc
-   * thời điểm (vd `() => [tz.todayStart(), tz.todayEnd()]`) để clearFilter() tính lại
-   * theo hôm nay chứ không dính ngày lúc mở trang.
+   * thời điểm (vd `() => [tz.todayStart(), tz.todayEnd()]`) để lần reset về mặc định (bấm lại
+   * menu, hoặc `clearFilter()` với field `required`) tính lại theo hôm nay chứ không dính ngày lúc mở trang.
    * Bỏ trống → `[]` với kind 'in', `null` với các kind còn lại.
    */
   default?: any | (() => any);
+
+  /**
+   * Filter BẮT BUỘC có giá trị — BE trả 422 khi thiếu (vd báo cáo bắt buộc dải ngày + trần 1 năm).
+   * "Xoá bộ lọc" và URL đã-lọc-mà-thiếu-param trả field này về `default` thay vì rỗng.
+   * Bỏ trống → "Xoá bộ lọc" xoá field về rỗng như mọi field khác, KỂ CẢ field có `default`
+   * (`default` chỉ áp lúc mới mở màn).
+   */
+  required?: boolean;
 
   /** ms debounce trước khi bắn filter. Mặc định: 500 cho 'text', 300 cho các kind khác. */
   debounce?: number;
@@ -203,6 +211,11 @@ export function emptyValueOf(def: FilterFieldDef): any {
 export function defaultValueOf(def: FilterFieldDef): any {
   if (def.default === undefined) return emptyValueOf(def);
   return typeof def.default === 'function' ? (def.default as () => any)() : def.default;
+}
+
+/** Giá trị sau khi "Xoá bộ lọc": rỗng, trừ field `required` thì về mặc định */
+export function clearedValueOf(def: FilterFieldDef): any {
+  return def.required ? defaultValueOf(def) : emptyValueOf(def);
 }
 
 /** Rỗng theo nghĩa "không lọc" — khớp với UtilsService.isFilterValueBlank */

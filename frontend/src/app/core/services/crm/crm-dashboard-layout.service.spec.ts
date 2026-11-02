@@ -34,8 +34,8 @@ describe('Dashboard — lỗi API không điều hướng toàn trang', () => {
 
   it('request dữ liệu khối tắt chuyển trang khi 404 và 403', () => {
     const { data, http } = setup();
-    data.paymentToday().subscribe({ error: () => undefined });
-    const r = http.expectOne((req) => req.url.endsWith('crm-dashboard/payment-today'));
+    data.paymentInMonth().subscribe({ error: () => undefined });
+    const r = http.expectOne((req) => req.url.endsWith('crm-dashboard/payment-in-month'));
     expect(r.request.context.get(SKIP_GLOBAL_404)).toBe(true);
     expect(r.request.context.get(SKIP_GLOBAL_403)).toBe(true);
   });

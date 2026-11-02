@@ -217,21 +217,6 @@ export class CustomerService extends BaseApiService<CustomerModel> {
   }
 
   /**
-   * API tạo mới khách hàng từ khách hàng có sẵn
-   * @param id
-   * @param paramsValue
-   * @param options
-   */
-  createCustomerSwitch(id: number, paramsValue: CustomerModel, options: any = {}): Observable<any> {
-    const params = this.beforeSave(paramsValue);
-    return this.apiService.post(
-      `${this.path}/${id}/create-customer-switch`,
-      params,
-      options,
-    );
-  }
-
-  /**
    * API tạo mới khách hàng lead
    * @param paramsValue
    * @param options

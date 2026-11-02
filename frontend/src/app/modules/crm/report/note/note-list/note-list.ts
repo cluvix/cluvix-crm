@@ -75,7 +75,7 @@ export class NoteList extends BaseListV2<NoteDisplayModel> implements OnInit, On
       {
         name: 'created_at',
         kind: 'dateRange',
-        // factory: clearFilter() tính lại theo tháng/hôm nay hiện tại, không dính giá trị lúc mở trang
+        // factory: chỉ áp lúc mở màn / bấm lại menu (tính theo hôm nay); "Xoá bộ lọc" xoá về rỗng
         default: () => [this.timezoneService.monthStart(), this.timezoneService.todayStart()],
       },
       {name: 'created_by', kind: 'in'},

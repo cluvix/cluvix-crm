@@ -5,8 +5,6 @@ package tenant
 import (
 	"sort"
 	"testing"
-
-	"erpCluvix/pkg/define"
 )
 
 // Neo hành vi BRANCH của ScopedDBNullBranch trên DB thật (bảng synthetic `canary_scope`).
@@ -62,15 +60,15 @@ func TestScopedDBNullBranch_ChiBranch(t *testing.T) {
 	}
 }
 
-// Cross-branch on/off: IsCrossBranchEnabled (id=18) và IsCrossBranchServiceEnabled (id=23) đọc
-// user_option, cache per-request; caller dùng kết quả làm skipBranch. Hành vi này KHÔNG đổi ở D15.
+// Cross-branch on/off: IsCrossBranchEnabled (id=18) đọc user_option, cache per-request; caller dùng
+// kết quả làm skipBranch. Hành vi này KHÔNG đổi ở D15.
 func TestCrossBranchOption_OnOff(t *testing.T) {
 	if testDB == nil {
 		t.Skip("no test DB")
 	}
 	seedCanaryBranch(t)
 	restore := map[int]int{}
-	for _, id := range []int{optCrossBranchID, define.UserOptionCrossBranchService} {
+	for _, id := range []int{optCrossBranchID} {
 		var v int
 		if err := testDB.Table("user_option").Where("id = ?", id).Limit(1).Pluck("options", &v).Error; err != nil {
 			t.Fatalf("đọc user_option %d: %v", id, err)
@@ -88,7 +86,7 @@ func TestCrossBranchOption_OnOff(t *testing.T) {
 		if on {
 			val = 1
 		}
-		for _, id := range []int{optCrossBranchID, define.UserOptionCrossBranchService} {
+		for _, id := range []int{optCrossBranchID} {
 			if err := testDB.Exec("UPDATE user_option SET options = ? WHERE id = ?", val, id).Error; err != nil {
 				t.Fatalf("set user_option %d=%d: %v", id, val, err)
 			}
@@ -103,12 +101,9 @@ func TestCrossBranchOption_OnOff(t *testing.T) {
 		if got := IsCrossBranchEnabled(c, testDB); got != on {
 			t.Errorf("IsCrossBranchEnabled on=%v: got %v", on, got)
 		}
-		if got := IsCrossBranchServiceEnabled(c, testDB); got != on {
-			t.Errorf("IsCrossBranchServiceEnabled on=%v: got %v", on, got)
-		}
 
 		var got []string
-		if err := ScopedDBNullBranchSkipBranch(c, testDB, "canary_scope", IsCrossBranchServiceEnabled(c, testDB)).
+		if err := ScopedDBNullBranchSkipBranch(c, testDB, "canary_scope", IsCrossBranchEnabled(c, testDB)).
 			Table("canary_scope").Order("label").Pluck("label", &got).Error; err != nil {
 			t.Fatalf("query: %v", err)
 		}

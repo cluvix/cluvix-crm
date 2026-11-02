@@ -29,7 +29,6 @@ export class UnitHelperService {
     return {
       id: item?.id ?? null,
       name: item?.name ?? '',
-      type: item?.type ?? null,
     };
   }
 

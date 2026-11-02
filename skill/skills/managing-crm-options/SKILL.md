@@ -13,7 +13,7 @@ description: >-
 
 > reference/option-crm-options.md: chi tiết option 1–13 · reference/option-crm-options-p2.md:
 > chi tiết option 15–20. SKILL.md này gồm tổng quan `user_option` (option-crm.md) + option 14
-> mask phone (p4) + option 21–23 (p3).
+> mask phone (p4) + ghi chú option 21–23 đã gỡ.
 
 
 
@@ -46,9 +46,7 @@ Prompt cho mọi task liên quan đến `user_option` table, `OptionCrm` compone
 | 18 | `OPTION_CUSTOMER_CROSS_BRANCH` | Hiển thị dữ liệu toàn cơ sở | Chỉ thấy cơ sở của mình | Tất cả cơ sở thấy nhau |
 | 19 | `OPTION_AUTO_CARE_NEXT_DAY` | Tự động tạo chăm sóc ngày hôm sau | Không tạo (mặc định) | Tạo care T+1 sau mỗi điều trị |
 | 20 | `OPTION_EXPORT_PHONE` | Hiển thị SĐT khi export | Chỉ BGĐ (dept=9) thấy SĐT | Tất cả user thấy SĐT |
-| 21 | `OPTION_PAYMENT_BY_TOTAL` | Tính tiền điều trị theo tổng gói | Giá lẻ từng buổi (mặc định) | Tổng giá gói / numTreatment |
-| 22 | `OPTION_SKIP_PAYMENT_CHECK` | Bỏ qua kiểm tra thanh toán | Bắt buộc đóng tiền đủ ngưỡng | Điều trị ngay, không check payment |
-| 23 | `OPTION_CROSS_BRANCH_TREATMENT` | Điều trị dịch vụ đã mua ở chi nhánh khác | Chỉ điều trị đúng chi nhánh đã mua | Điều trị được ở bất kỳ chi nhánh nào cùng công ty |
+| 21–23 | — | ĐÃ GỠ 2026-11-01 — xem §Option 21–23 cuối file | | |
 
 **File constants:** `frontend/src/app/define/config-general.define.ts` → `CONFIG_OPTION_CRM_SELECT`
 
@@ -245,114 +243,14 @@ func (h *Handler) attachCustomerToXxx(c *gin.Context, item map[string]interface{
 FE không mask — hoàn toàn rely vào BE. `option-crm` chỉ là config UI.
 
 
-Options id 21–23. Tiếp theo từ `option-crm-options-p2.md`.
+## Option 21–23 — ĐÃ GỠ (2026-11-01)
 
----
+3 công tắc này đã xoá khỏi BE + FE + DB (migration `*_drop_user_option_21_22_23.up.sql`, `DELETE … WHERE id IN (21,22,23)`). KHÔNG tái dùng id 21–23 cho option mới.
 
-## Option 21 — OPTION_PAYMENT_BY_TOTAL — Tính tiền điều trị theo tổng gói
+| id | Tên cũ | Hành vi cố định sau khi gỡ |
+|---|---|---|
+| 21 | `OPTION_PAYMENT_BY_TOTAL` — tính số lần dùng theo tổng gói | Không còn code đọc (flow treatment_course của ERP cũ không có trong CRM) |
+| 22 | `OPTION_SKIP_PAYMENT_CHECK` — bỏ qua kiểm tra thanh toán | Không còn code đọc (như trên) |
+| 23 | `OPTION_CROSS_BRANCH_TREATMENT` — dùng dịch vụ đã mua ở chi nhánh khác | **LUÔN cho phép** (user chốt): mọi chỗ từng gọi `tenant.IsCrossBranchServiceEnabled` (đã xoá) nay truyền `skipBranch=true` vào `tenant.ScopedDBNullBranchSkipBranch` — `order_plan`, `order_service_used`, `payment`, `customer_detail`, `print/order_plan`, `print/payment`. Nhánh creator+same-day của `verifyCanEditOrderPlan`/`verifyCanEditPaymentCustomer` KHÔNG còn check chi nhánh; `UpdatePaymentCustomer`/`UpdateDepositCustomer` chỉ `branchAllowed` khi `branch_id` ĐỔI. **NGOẠI LỆ — list tổng `ListOrderPlan` (+ export) GIỮ `ScopedDBNullBranch`**: mở list toàn hệ thống = lộ doanh thu/khách chi nhánh khác (review 2026-11-02). |
 
-### Bối cảnh
-
-FlowCount (Beauty/PHCN/YHCT) check khách đóng đủ tiền trước khi cho điều trị buổi tiếp theo. Mặc định tính theo **giá lẻ từng buổi** — không phù hợp khi khách mua combo được giảm giá.
-
-Ví dụ: 10 buổi, giá lẻ 1M/buổi, mua combo 8M. Đóng 4M:
-- Option OFF (mặc định): 1M/buổi → tới buổi 5 phải đóng thêm
-- Option ON (gói): 800K/buổi → tới buổi 6 mới phải đóng thêm
-
-### Logic BE — `service/treatment_course.go → beforeSave()`
-
-Chỉ chạy khi: FlowCount + insert + CategoryId = CategoryTreatment + numTreatment > 0 + chưa thanh toán đủ
-
-```go
-var optPayByTotal int
-tx.Table("user_option").Where("id = ?", 21).Limit(1).Pluck("options", &optPayByTotal)
-totalListPrice := suData.UnitPrice.Mul(decimal.NewFromInt(int64(suData.Quantity)))
-basePrice := totalListPrice
-if optPayByTotal == 1 {
-    basePrice = suData.TotalEnd
-}
-if !basePrice.IsZero() && !suData.Payment.Equal(suData.TotalEnd) && suData.NumTreatment > 0 {
-    moneyPerTreatment := basePrice.Div(decimal.NewFromInt(int64(suData.NumTreatment))).Round(0)
-    moneyNeeded := decimal.NewFromInt(int64(newQty)).Mul(moneyPerTreatment)
-    if suData.Payment.LessThan(moneyNeeded) {
-        pound := moneyNeeded.Sub(suData.Payment)
-        flag := suData.TotalEnd.Sub(suData.Payment) // cap: không báo quá số tiền còn nợ
-        if pound.GreaterThan(flag) { pound = flag }
-        return errs.NewLocalizedError("payment_required_before_treatment", formatted)
-    }
-}
-```
-
-**Công thức:**
-- OFF: `moneyPerTreatment = (unitPrice × quantity) / numTreatment` — giá lẻ từng buổi
-- ON: `moneyPerTreatment = totalEnd / numTreatment` — giá gói sau giảm
-
-**Error ignore:** query user_option không bắt error → fail-safe về 0 (default behavior). Consistent với option 19 pattern.
-
-**Không áp dụng cho:** FlowPercent (Dental), FlowVisit, update mode, non-CategoryTreatment (bảo hành/tái khám).
-
-### Scope — BE-only
-
-FE (FormBeauty/FormRehab) không cần thay đổi. Check hoàn toàn trong `beforeSave()`.
-
-### Migration
-
-`20260620153253_add_option_payment_by_total.up.sql` — INSERT id=21, `options=0` default.
-
-### FE
-
-- Constant: `CONFIG_OPTION_CRM_SELECT.OPTION_PAYMENT_BY_TOTAL = 21`
-- UI: card "Tính tiền điều trị theo tổng gói" (orange/amber theme, icon `pi-calculator`)
-- `categoryPaymentByTotal` array: `[{ name: 'Giá lẻ...', key: 0 }, { name: 'Tổng giá gói', key: 1 }]`
-
----
-
-## Option 22 — OPTION_SKIP_PAYMENT_CHECK — Bỏ qua kiểm tra thanh toán
-
-- `options=0` (OFF, mặc định): check payment như cũ — option 21 vẫn áp dụng
-- `options=1` (ON): skip toàn bộ payment gate — có đơn hàng + dịch vụ là được điều trị
-
-Áp dụng: FlowCount (Beauty, PHCN, YHCT). **Không áp dụng** FlowPercent (Dental).
-
-**BE:** `service/treatment_course.go → beforeSave()` — query option 22 **TRƯỚC** option 21. Nếu ON → `break` ra khỏi FlowCount block, không chạy check option 21.
-
-```go
-var optSkipPayment int
-tx.Table("user_option").Where("id = ?", 22).Limit(1).Pluck("options", &optSkipPayment)
-if optSkipPayment == 1 {
-    break
-}
-// option 21 check tiếp theo...
-```
-
-**Scope:** BE-only. FE không cần consumer.  
-**Migration:** `20260625114211_add_user_option_skip_payment_check.up.sql` — INSERT id=22, `options=0` default.  
-**FE UI:** card đỏ (red/rose), icon `pi-lock-open`, đặt **trên** card option 21.  
-**Constant:** `CONFIG_OPTION_CRM_SELECT.OPTION_SKIP_PAYMENT_CHECK = 22`
-
----
-
-## Option 23 — OPTION_CROSS_BRANCH_TREATMENT — Điều trị dịch vụ đã mua ở chi nhánh khác
-
-- `options=0` (OFF, mặc định): dịch vụ mua ở chi nhánh nào chỉ hiển thị/thao tác được ở đúng chi nhánh đó
-- `options=1` (ON): bypass branch scope (company scope giữ nguyên) cho toàn bộ luồng thao tác 1 bản ghi cụ thể hoặc list riêng theo khách
-
-**Helper:** `tenant.IsCrossBranchServiceEnabled(c, db)` (`pkg/tenant/scope.go`) — sibling của `IsCrossBranchEnabled` (option 18), check `user_option` id=23, cache per-request qua `gin.Context`. Dùng làm `skipBranch` arg:
-
-```go
-q := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "order_service_used", tenant.IsCrossBranchServiceEnabled(c, h.DB), "osu")...
-```
-
-**Áp dụng (2026-07):** GET/PUT/DELETE 1 bản ghi hoặc list theo `customer_id` trên bảng `order_service_used`, `treatment_course`, `order_treatment_plan`, `payment`, `supplier_labo_order`, `customer_warranty_card` — module `treatment_service`, `treatment_course`, `order_treatment_plan`, `payment`, `labo_order`, `customer_warranty_card`, `print/order_plan`, `print/payment`. Chi tiết flow: `skills/working-on-crm/reference/treatment.md`.
-
-**KHÔNG áp dụng:** list/report tổng hợp toàn công ty (không gắn 1 `customer_id`/1 record cụ thể) — vd `ListTreatmentService`, `ListServiceUsedWithAppointment`, `crm/report/handler/treatment.go`, `ListLaboOrder`, `ListCustomerWarrantyCard`, `ListTreatmentCourse` — giữ nguyên branch scope, tránh lộ số liệu cross-branch trong báo cáo.
-
-**Write-path:** option 23 ON còn bypass `branchAllowed` trong creator+same-day fallback của `verifyCanEditTreatmentCourse`/`verifyCanEditOrderPlan`/`verifyCanEditPaymentCustomer` — xem `option-crm-options.md` §branchAllowed.
-
-`ScopedDBNullBranchSkipBranch(c, db, table, skipBranch bool, alias...)` là sibling function của `ScopedDBNullBranch` trong `pkg/tenant/scope.go` — company scope giữ nguyên, branch filter bị bỏ qua khi `skipBranch=true`. Dùng pattern này khi cần 1 option riêng bypass branch scope cho đúng 1 flow, thay vì đụng vào option 18 chung.
-
-**Scope:** BE-only. FE không cần consumer (chỉ có UI toggle ở option-crm).
-**Migration:** `20260701131038_add_user_option_cross_branch_treatment.up.sql` — INSERT id=23, `options=0` default.
-**FE UI:** card cyan/sky, icon `pi-sitemap`, đặt cuối trang `option-crm.html`.
-**Constant:** `CONFIG_OPTION_CRM_SELECT.OPTION_CROSS_BRANCH_TREATMENT = 23`
-
+Cần bật/tắt lại theo khách ⇒ thêm option MỚI (id mới) theo checklist §5, không khôi phục id cũ.

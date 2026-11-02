@@ -111,8 +111,6 @@ h.DB.Table("customer").
 - `ScopedDBNullBranch` thêm `branch_id = X OR IS NULL` → bỏ sót duplicate ở branch khác; khách trùng ở bất kỳ branch nào đều phải bị chặn.
 - `phoneCond`/`PhoneMatchCond` so khớp mọi định dạng đã lưu (`0906904884`/`84906904884`/`+84906904884`/`906904884`) — ZMA lưu dạng Zalo trả về, web lưu dạng người dùng gõ; `phone = ?` thuần sẽ trượt và cho tạo trùng.
 
-**`CreateCustomerSwitch`:** cùng logic query, không cần validate lại phạm vi (đã scope-checked ở luồng gốc).
-
 ## Update
 - **Optimistic locking**: check version khớp DB → `version += 1`
 - Whitelist fields qua `customerAllowedFields` map (service layer)

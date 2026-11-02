@@ -122,7 +122,7 @@ func (h *Handler) PrintPayment(c *gin.Context) {
 	}
 
 	var payment map[string]interface{}
-	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", tenant.IsCrossBranchServiceEnabled(c, h.DB)).Table("payment").
+	if err := tenant.ScopedDBNullBranchSkipBranch(c, h.DB, "payment", true).Table("payment").
 		Select("id, code, customer_id, serviceUsed_id, parent_id, amount, payment_time, payment_of_date, note, method, branch_id").
 		Where("id = ?", id).Limit(1).Scan(&payment).Error; err != nil || len(payment) == 0 {
 		response.NotFound(c)
