@@ -7,7 +7,7 @@
 // KHÔNG khớp — replace im lặng không làm gì, và SW_VERSION bị tính lại MỖI LẦN service worker
 // khởi động ⇒ STATIC_CACHE đổi tên liên tục ⇒ cache tĩnh không bao giờ dùng lại được.
 // ⚠ Đừng thêm biểu thức vào sau chuỗi — làm vậy là tái hiện đúng bug đó.
-const SW_VERSION = '2.2.1792312397356';
+const SW_VERSION = '2.2.1793620062216';
 const DOMAIN_KEY = self.location.hostname.replace(/\./g, '-');
 const STATIC_CACHE = `cluvix:${DOMAIN_KEY}:static:${SW_VERSION}`;
 const ASSET_CACHE = `cluvix:${DOMAIN_KEY}:assets:v1`; // không gắn SW_VERSION → giữ cache assets qua các lần deploy

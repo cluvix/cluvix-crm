@@ -102,7 +102,7 @@
       // Phải DÙNG CHUNG URL với CachedTranslateLoader (cùng ?v=), nếu không sẽ là 2 entry cache khác
       // nhau => tải trùng ~109 KB gzip mỗi cold load, và bản không-?v= sẽ bị giam khi nginx bật
       // immutable. Giá trị dưới do prebuild `scripts/inject-version.js` ghi đè mỗi lần build.
-      var I18N_VERSION = '2.2.1792312397356';
+      var I18N_VERSION = '2.2.1793620062216';
       fetch('./assets/i18n/' + lng + '.json?v=' + I18N_VERSION)
         .then(function (res) { return res.json(); })
         .then(function (data) {

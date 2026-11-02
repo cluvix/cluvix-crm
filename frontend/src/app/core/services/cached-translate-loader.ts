@@ -7,7 +7,7 @@ import viVN from '@assets/i18n/vi-VN.json';
 const LS_KEY_PREFIX = 'i18n_';
 // Auto-injected bởi scripts/inject-version.js khi prebuild (format: "<pkg.version>.<timestamp>").
 // Mỗi build → version mới → localStorage cache cũ tự invalidate, user nhận JSON mới ngay lần load đầu.
-const LS_VERSION = '2.2.1792312397356';
+const LS_VERSION = '2.2.1793620062216';
 
 // Inline fallback cho default lang — đảm bảo translations luôn có ngay lập tức
 // kể cả khi localStorage trống (incognito, fresh install). HTTP fetch chạy nền để
