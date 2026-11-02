@@ -240,7 +240,7 @@ export class ContactList extends BaseListV2<CustomerModel> implements OnInit {
     }
     await this.modelService.ensureCacheLoaded();
     this.dialogRef = this.dialogWrapperService.open(CustomerFormV2, {
-      width: '700px',
+      width: '960px',
       data: { customer, status: CUSTOMER_STATUS.LEAD },
       header: this.translate.instant('common.label.update_customer'),
     });
